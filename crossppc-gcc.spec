@@ -69,8 +69,8 @@ TEXCONFIG=false ../configure \
 	--with-newlib \
 	--without-x \
 	--target=%{target} \
-	--host=i686-pld-linux-gnu \
-	--build=i686-pld-linux-gnu
+	--host=%{_target_platform} \
+	--build=%{_target_platform}
 
 PATH=$PATH:/sbin:%{_sbindir}
 
