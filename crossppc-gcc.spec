@@ -67,8 +67,6 @@ Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 %patch0 -p1
 
 %build
-cp -f /usr/share/automake/config.sub .
-
 FAKE_ROOT=$PWD/fake-root
 
 rm -rf $FAKE_ROOT && install -d $FAKE_ROOT/usr/include
@@ -76,6 +74,7 @@ cp -r linux-libc-headers-%{_llh_ver}/include/{asm-ppc,linux} $FAKE_ROOT/usr/incl
 ln -s asm-ppc $FAKE_ROOT/usr/include/asm
 
 cd libc
+cp -f /usr/share/automake/config.* scripts
 rm -rf builddir && install -d builddir && cd builddir
 ../configure \
 	--prefix=$FAKE_ROOT/usr \
@@ -94,6 +93,7 @@ install bits/stdio_lim.h $FAKE_ROOT/usr/include/bits
 touch $FAKE_ROOT/usr/include/gnu/stubs.h
 cd ../..
 
+cp -f /usr/share/automake/config.* .
 rm -rf obj-%{target}
 install -d obj-%{target}
 cd obj-%{target}
