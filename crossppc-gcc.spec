@@ -18,6 +18,7 @@ Source1:	http://ep09.pld-linux.org/~mmazur/linux-libc-headers/linux-libc-headers
 Source2:	glibc-20041030.tar.bz2
 # Source2-md5:	4e14871efd881fbbf523a0ba16175bc7
 Patch0:		%{name}-libc-sysdeps-configure.patch
+URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
 BuildRequires:	automake
 BuildRequires:	bison
