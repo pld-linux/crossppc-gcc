@@ -5,13 +5,13 @@ Summary(pl):	Skro¶ne narzêdzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
-Version:	3.3.4
-Release:	2
+Version:	3.3.5
+Release:	0.1
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	a1c267b34f05c8660b24251865614d8b
+# Source0-md5:	70ee088b498741bb08c779f9617df3a5
 BuildRequires:	crossppc-binutils
 BuildRequires:	flex
 BuildRequires:	bison
