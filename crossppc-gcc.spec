@@ -121,6 +121,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{gccarch}
 %dir %{gcclib}
 %attr(755,root,root) %{gcclib}/cc1
+%attr(755,root,root) %{gcclib}/cc1plus
 ##%attr(755,root,root) %{gcclib}/tradcpp0
 ##%attr(755,root,root) %{gcclib}/cpp0
 %attr(755,root,root) %{gcclib}/collect2
