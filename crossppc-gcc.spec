@@ -58,6 +58,7 @@ Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 %setup -q -n gcc-%{version}
 
 %build
+cp -f /usr/share/automake/config.sub .
 rm -rf obj-%{target}
 install -d obj-%{target}
 cd obj-%{target}
