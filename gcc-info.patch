@@ -40,3 +40,19 @@
  @end direntry
  @ifset INTERNALS
  @ifset USING
+--- gcc-2.95.1.orig/gcc/ch/chill.texi	Wed Dec 16 21:59:05 1998
++++ gcc-2.95.1/gcc/ch/chill.texi	Wed Sep 22 22:39:09 1999
+@@ -5,9 +5,10 @@
+ 
+ @ifinfo
+ @format
+-START-INFO-DIR-ENTRY
+-* Chill::                       Chill compiler
+-END-INFO-DIR-ENTRY
++@dircategory Programming tools:
++@direntry
++* Chill: (chill).			Chill compiler
++@end direntry
+ @end format
+ @end ifinfo
+ 
