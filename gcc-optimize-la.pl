@@ -19,10 +19,8 @@ foreach (@lines)
     if (/(^dependency_libs='(.*)')/)
     {
 	@libs = split(/[\ \t\n]+/, trim($2));
-	%seen = ();
-	@uniqs = sort(grep { ! $seen{$_} ++ } @libs);
-	@L = grep(/^-L.*gcc\/.*\/\d\.\d\.\d$/, @uniqs);
-	@l = grep(/^-l.*/, @uniqs);
+	@L = grep(/^-L.*gcc\/.*\/\d\.\d\.\d$/, @libs);
+	@l = grep(/^-l.*/, @libs);
 	$opt_L = join(' ', @L);
 	$opt_l = join(' ', @l);
 	print("dependency_libs='");
