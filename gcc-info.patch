@@ -66,7 +66,7 @@ In other *.texi we can use tabs.
  @settitle GNAT Coding Style
 -@dircategory Programming
 +@dircategory Programming Languages:
- @direntry 
+ @direntry
 -* gnat-style: (gnat-style).      GNAT Coding Style
 +* gnat-style: (gnat-style).		GNAT Coding Style
  @end direntry
@@ -174,9 +174,9 @@ In other *.texi we can use tabs.
 +* jv-convert::          Converting from one encoding to another
 +* rmic::                Generate stubs for Remote Method Invocation.
 +* rmiregistry::         The remote object registry.
- * About CNI::           Description of the Cygnus Native Interface
+ * About CNI::           Description of the Compiled Native Interface
+ * System properties::   Modifying runtime behavior of the libgcj library
  * Resources::		Where to look for more information
- @end menu
 @@ -139,7 +133,7 @@
  @include fdl.texi
  
