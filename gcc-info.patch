@@ -96,9 +96,9 @@
  @end direntry
  This file documents the use and the internals of
  the GNU Fortran 95 compiler, (@command{gfortran}).
---- gcc-4.0-20040919.orig/gcc/java/gcj.texi	2004-08-12 18:10:52.000000000 +0200
-+++ gcc-4.0-20040919/gcc/java/gcj.texi	2004-09-26 11:15:40.926278808 +0200
-@@ -50,26 +50,20 @@
+--- gcc-4.0-20050102/gcc/java/gcj.texi.orig	2004-12-06 18:59:57.000000000 +0100
++++ gcc-4.0-20050102/gcc/java/gcj.texi	2005-01-09 22:17:46.968983608 +0100
+@@ -50,28 +50,20 @@
  
  @ifinfo
  @format
@@ -119,6 +119,8 @@
 -* jcf-dump: (gcj)Invoking jcf-dump.
 -                            Print information about Java class files
 -* gij: (gcj)Invoking gij.   GNU interpreter for Java bytecode
+-* gcj-dbtool: (gcj)Invoking gcj-dbtool.
+-                            Tool for manipulating class file databases.
 -* jv-convert: (gcj)Invoking jv-convert.
 -                            Convert file from one encoding to another
 -* grmic: (gcj)Invoking grmic.
@@ -135,8 +137,12 @@
  @end direntry
  @end format
  
-@@ -106,15 +100,15 @@
- * Copying::		 The GNU General Public License
+@@ -105,19 +97,18 @@
+ @file{.class} files.
+ 
+ @menu
+-* Copying::		 The GNU General Public License
++* Copying::		The GNU General Public License
  * GNU Free Documentation License::
  			How you can share and copy this manual
 -* Invoking gcj::	Compiler options supported by @command{gcj}
@@ -146,8 +152,9 @@
 -* Invoking jv-scan::    Print information about source files
 -* Invoking jcf-dump::   Print information about class files
 -* Invoking gij::	Interpreting Java bytecodes
+-* Invoking gcj-dbtool:: Tool for manipulating class file databases.
 -* Invoking jv-convert:: Converting from one encoding to another
--* Invoking grmic::        Generate stubs for Remote Method Invocation.
+-* Invoking grmic::      Generate stubs for Remote Method Invocation.
 -* Invoking grmiregistry:: The remote object registry.
 +* gcjh::		Generate header files from class files
 +* jv-scan::		Print information about source files
@@ -159,7 +166,7 @@
  * About CNI::           Description of the Compiled Native Interface
  * System properties::   Modifying runtime behavior of the libgcj library
  * Resources::		Where to look for more information
-@@ -126,7 +120,7 @@
+@@ -129,7 +120,7 @@
  @include fdl.texi
  
  
@@ -168,7 +175,7 @@
  @chapter Invoking gcj
  
  @c man title gcj Ahead-of-time compiler for the Java language
-@@ -636,7 +630,7 @@
+@@ -656,7 +647,7 @@
  @end itemize
  
  
@@ -177,7 +184,7 @@
  @chapter Invoking gcjh
  
  @c man title gcjh generate header files from Java class files
-@@ -737,7 +731,7 @@
+@@ -757,7 +748,7 @@
  
  @c man end
  
@@ -186,7 +193,7 @@
  @chapter Invoking jv-scan
  
  @c man title jv-scan print information about Java source file
-@@ -800,7 +794,7 @@
+@@ -820,7 +811,7 @@
  
  @c man end
  
@@ -195,7 +202,7 @@
  @chapter Invoking jcf-dump
  
  @c man title jcf-dump print information about Java class files
-@@ -860,7 +854,7 @@
+@@ -880,7 +871,7 @@
  
  @c man end
  
@@ -204,7 +211,7 @@
  @chapter Invoking gij
  
  @c man title gij GNU interpreter for Java bytecode
-@@ -960,7 +954,7 @@
+@@ -1050,7 +1041,7 @@
  
  @c man end
  
@@ -213,7 +220,7 @@
  @chapter Invoking jv-convert
  
  @c man title jv-convert Convert file from one encoding to another
-@@ -1019,7 +1013,7 @@
+@@ -1109,7 +1100,7 @@
  
  @c man end
  
@@ -222,7 +229,7 @@
  @chapter Invoking grmic
  
  @c man title grmic Generate stubs for Remote Method Invocation
-@@ -1098,7 +1092,7 @@
+@@ -1188,7 +1179,7 @@
  @c man end
  
  
