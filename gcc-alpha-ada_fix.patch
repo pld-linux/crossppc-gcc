@@ -81,3 +81,38 @@
  	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) vxaddr2line 
  	$(GNATLINK) -v vxaddr2line -o $@ --GCC=$(GCC_LINK) $(CLIB)
  
+--- gcc/gcc/ada/Make-lang.in~	2005-03-02 18:52:34.000000000 +0000
++++ gcc/gcc/ada/Make-lang.in	2005-03-02 19:07:26.000000000 +0000
+@@ -880,27 +880,27 @@
+ ada/treeprs.ads : ada/treeprs.adt ada/sinfo.ads ada/xtreeprs.adb
+ 	-$(MKDIR) ada/bldtools
+ 	$(CP) $^ ada/bldtools
+-	(cd ada/bldtools; gnatmake -q xtreeprs ; ./xtreeprs ../treeprs.ads )
++	(cd ada/bldtools; gnatmake -q xtreeprs.adb ; ./xtreeprs ../treeprs.ads )
+ 
+ ada/einfo.h : ada/einfo.ads ada/einfo.adb ada/xeinfo.adb
+ 	-$(MKDIR) ada/bldtools
+ 	$(CP) $^ ada/bldtools
+-	(cd ada/bldtools; gnatmake -q xeinfo ; ./xeinfo ../einfo.h )
++	(cd ada/bldtools; gnatmake -q xeinfo.adb ; ./xeinfo ../einfo.h )
+ 
+ ada/sinfo.h : ada/sinfo.ads ada/xsinfo.adb
+ 	-$(MKDIR) ada/bldtools
+ 	$(CP) $^ ada/bldtools
+-	(cd ada/bldtools; gnatmake -q xsinfo ; ./xsinfo ../sinfo.h )
++	(cd ada/bldtools; gnatmake -q xsinfo.adb ; ./xsinfo ../sinfo.h )
+ 
+ ada/nmake.adb : ada/sinfo.ads ada/nmake.adt ada/xnmake.adb
+ 	-$(MKDIR) ada/bldtools
+ 	$(CP) $^ ada/bldtools
+-	(cd ada/bldtools; gnatmake -q xnmake ; ./xnmake -b ../nmake.adb )
++	(cd ada/bldtools; gnatmake -q xnmake.adb ; ./xnmake -b ../nmake.adb )
+ 
+ ada/nmake.ads :  ada/sinfo.ads ada/nmake.adt ada/xnmake.adb ada/nmake.adb
+ 	-$(MKDIR) ada/bldtools
+ 	$(CP) $^ ada/bldtools
+-	(cd ada/bldtools; gnatmake -q xnmake ; ./xnmake -s ../nmake.ads )
++	(cd ada/bldtools; gnatmake -q xnmake.adb ; ./xnmake -s ../nmake.ads )
+ 
+ update-sources : ada/treeprs.ads ada/einfo.h ada/sinfo.h ada/nmake.adb \
+ 	ada/nmake.ads
