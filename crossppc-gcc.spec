@@ -5,13 +5,19 @@ Summary(pl):	Skro¶ne narzêdzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
-Version:	3.3.5
-Release:	0.1
+Version:	3.4.3
+Release:	1
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
 # Source0-md5:	70ee088b498741bb08c779f9617df3a5
+%define		_llh_ver	2.6.9.1
+Source1:	http://ep09.pld-linux.org/~mmazur/linux-libc-headers/linux-libc-headers-%{_llh_ver}.tar.bz2
+# Source1-md5:	d3507b2c0203a0760a677022badcf455
+Source2:	glibc-20041030.tar.bz2
+# Source2-md5:	4e14871efd881fbbf523a0ba16175bc7
+Patch0:		%{name}-libc-sysdeps-configure.patch
 BuildRequires:	autoconf
 BuildRequires:	automake
 BuildRequires:	bison
@@ -25,8 +31,8 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define		target		ppc-pld-linux
 %define		arch		%{_prefix}/%{target}
-%define		gccarch		%{_libdir}/gcc-lib/%{target}
-%define		gcclib		%{_libdir}/gcc-lib/%{target}/%{version}
+%define		gccarch		%{_libdir}/gcc/%{target}
+%define		gcclib		%{gccarch}/%{version}
 
 %define		_noautostrip	.*%{gcclib}/libgcc\\.a
 
@@ -56,10 +62,37 @@ This package adds C++ support to the GNU Compiler Collection for PPC.
 Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 
 %prep
-%setup -q -n gcc-%{version}
+%setup -q -n gcc-%{version} -a1 -a2
+%patch0 -p1
 
 %build
 cp -f /usr/share/automake/config.sub .
+
+FAKE_ROOT=$PWD/fake-root
+
+rm -rf $FAKE_ROOT && install -d $FAKE_ROOT/usr/include
+cp -r linux-libc-headers-%{_llh_ver}/include/{asm-ppc,linux} $FAKE_ROOT/usr/include
+ln -s asm-ppc $FAKE_ROOT/usr/include/asm
+
+cd libc
+rm -rf builddir && install -d builddir && cd builddir
+../configure \
+	--prefix=$FAKE_ROOT/usr \
+	--build=%{_target_platform} \
+	--host=%{target} \
+	--disable-nls \
+	--enable-add-ons=linuxthreads \
+	--with-headers=$FAKE_ROOT/usr/include \
+	--disable-sanity-checks \
+	--enable-hacker-mode
+
+%{__make} sysdeps/gnu/errlist.c
+%{__make} install-headers
+
+install bits/stdio_lim.h $FAKE_ROOT/usr/include/bits
+touch $FAKE_ROOT/usr/include/gnu/stubs.h
+cd ../..
+
 rm -rf obj-%{target}
 install -d obj-%{target}
 cd obj-%{target}
@@ -76,19 +109,19 @@ TEXCONFIG=false \
 	--libexecdir=%{_libdir} \
 	--disable-shared \
 	--enable-languages="c,c++" \
+	--enable-c99 \
+	--enable-long-long \
 	--with-gnu-as \
 	--with-gnu-ld \
 	--with-system-zlib \
 	--with-multilib \
-	--without-headers \
-	--with-newlib \
+	--with-sysroot=$FAKE_ROOT \
 	--without-x \
 	--target=%{target} \
 	--host=%{_target_platform} \
 	--build=%{_target_platform}
 
-%{__make} all-gcc \
-	CC="%{__cc} -DHAVE_DESIGNATED_INITIALIZERS=0"
+%{__make} all-gcc
 
 %install
 rm -rf $RPM_BUILD_ROOT
