@@ -22,10 +22,9 @@ ExcludeArch:	ppc
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define		target		ppc-pld-linux
-%define		_prefix		/usr
 %define		arch		%{_prefix}/%{target}
-%define		gccarch		%{_prefix}/lib/gcc-lib/%{target}
-%define		gcclib		%{_prefix}/lib/gcc-lib/%{target}/%{version}
+%define		gccarch		%{_libdir}/gcc-lib/%{target}
+%define		gcclib		%{_libdir}/gcc-lib/%{target}/%{version}
 
 %define		_noautostrip	.*libgcc\\.a
 
@@ -56,6 +55,9 @@ TEXCONFIG=false ../configure \
 	--prefix=%{_prefix} \
 	--infodir=%{_infodir} \
 	--mandir=%{_mandir} \
+	--bindir=%{_bindir} \
+	--libdir=%{_libdir} \
+	--libexecdir=%{_libdir} \
 	--disable-shared \
 	--enable-haifa \
 	--enable-languages="c,c++" \
@@ -81,7 +83,7 @@ cd ..
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -d $RPM_BUILD_ROOT{/lib,%{_datadir},%{_bindir},%{gcclib}}
+install -d $RPM_BUILD_ROOT{%{_datadir},%{_bindir},%{gcclib}}
 
 cd obj-%{target}
 PATH=$PATH:/sbin:%{_sbindir}
