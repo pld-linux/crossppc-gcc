@@ -25,7 +25,14 @@ foreach (@lines)
 	@l = grep(/^-l.*/, @uniqs);
 	$opt_L = join(' ', @L);
 	$opt_l = join(' ', @l);
-	print("dependency_libs='$opt_L $opt_l'\n");
+	print("dependency_libs='");
+	print($opt_L);
+	if (scalar(@L))
+	{
+	    print(" ");
+	}
+	print($opt_l);
+	print("'\n");
     }
     elsif (/^libdir='(.*)'/)
     {
