@@ -74,32 +74,31 @@ In other *.texi we can use tabs.
  @macro syntax{element}
 --- gcc-3.2/gcc/ada/gnat_rm.texi.orig	Fri Nov  1 22:58:52 2002
 +++ gcc-3.2/gcc/ada/gnat_rm.texi	Fri Nov  1 23:09:45 2002
-@@ -31,9 +31,9 @@
+@@ -31,6 +31,10 @@
  @settitle GNAT Reference Manual
  @setchapternewpage odd
  @syncodeindex fn cp
--@dircategory Programming
 +@dircategory Programming Languages:
- @direntry
--* gnat_rm: (gnat_rm).            GNAT Reference Manual
++@direntry
 +* gnat_rm: (gnat_rm).			GNAT Reference Manual
- @end direntry
++@end direntry
  
  @titlepage
+ 
 --- gcc-3.2/gcc/ada/gnat_ug.texi.orig	Fri Nov  1 22:58:52 2002
 +++ gcc-3.2/gcc/ada/gnat_ug.texi	Fri Nov  1 23:10:20 2002
-@@ -75,9 +75,9 @@
+@@ -75,6 +75,11 @@
  @syncodeindex fn cp
  @c %**end of header
  
--@dircategory Programming
 +@dircategory Programming Languages:
- @direntry
--* gnat_ug: (gnat_ug).            GNAT User's Guide
++@direntry
 +* gnat_ug: (gnat_ug).                   GNAT User's Guide
- @end direntry
- 
++@end direntry
++
  @titlepage
+ 
+ @ifset vms
 --- gcc-3.2/gcc/f/g77.texi.orig	Mon Apr 29 09:58:32 2002
 +++ gcc-3.2/gcc/f/g77.texi	Fri Nov  1 23:11:56 2002
 @@ -90,9 +90,9 @@
