@@ -1,4 +1,3 @@
-diff -urN gcc-2.95.1.orig/gcc/cpp.texi gcc-2.95.1/gcc/cpp.texi
 --- gcc-2.95.1.orig/gcc/cpp.texi	Tue May 18 01:37:18 1999
 +++ gcc-2.95.1/gcc/cpp.texi	Thu Aug 19 12:46:15 1999
 @@ -3,9 +3,9 @@
@@ -9,11 +8,10 @@ diff -urN gcc-2.95.1.orig/gcc/cpp.texi gcc-2.95.1/gcc/cpp.texi
 +@dircategory Programming tools:
  @direntry
 -* Cpp: (cpp).		       The GNU C preprocessor.
-+* Cpp: (cpp)				The GNU C preprocessor
++* Cpp: (cpp).				The GNU C preprocessor
  @end direntry
  @end ifinfo
  
-diff -urN gcc-2.95.1.orig/gcc/f/g77.texi gcc-2.95.1/gcc/f/g77.texi
 --- gcc-2.95.1.orig/gcc/f/g77.texi	Mon Jun 21 13:58:54 1999
 +++ gcc-2.95.1/gcc/f/g77.texi	Thu Aug 19 12:46:15 1999
 @@ -71,9 +71,9 @@
@@ -24,11 +22,10 @@ diff -urN gcc-2.95.1.orig/gcc/f/g77.texi gcc-2.95.1/gcc/f/g77.texi
 +@dircategory Programming tools:
  @direntry
 -* g77: (g77).                  The GNU Fortran compiler.
-+* g77: (g77)				The GNU Fortran compiler
++* g77: (g77).				The GNU Fortran compiler
  @end direntry
  @ifset INTERNALS
  @ifset USING
-diff -urN gcc-2.95.1.orig/gcc/gcc.texi gcc-2.95.1/gcc/gcc.texi
 --- gcc-2.95.1.orig/gcc/gcc.texi	Mon Aug  9 08:47:01 1999
 +++ gcc-2.95.1/gcc/gcc.texi	Thu Aug 19 12:47:17 1999
 @@ -80,9 +80,9 @@
@@ -39,7 +36,7 @@ diff -urN gcc-2.95.1.orig/gcc/gcc.texi gcc-2.95.1/gcc/gcc.texi
 +@dircategory Programming tools:
  @direntry
 -* gcc: (gcc).                  The GNU Compiler Collection.
-+* gcc: (gcc).				The GNU Compiler Collection.
++* gcc: (gcc).				The GNU Compiler Collection
  @end direntry
  @ifset INTERNALS
  @ifset USING
