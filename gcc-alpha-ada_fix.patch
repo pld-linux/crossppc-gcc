@@ -83,6 +83,15 @@
  
 --- gcc/gcc/ada/Make-lang.in~	2005-03-02 18:52:34.000000000 +0000
 +++ gcc/gcc/ada/Make-lang.in	2005-03-02 19:07:26.000000000 +0000
+@@ -367,7 +367,7 @@
+ ada/doctools/xgnatugn$(build_exeext): ada/xgnatugn.adb
+ 	-$(MKDIR) ada/doctools
+ 	$(CP) $^ ada/doctools
+-	cd ada/doctools && gnatmake -q xgnatugn -a0../rts
++	cd ada/doctools && gnatmake -q xgnatugn.adb -a0../rts
+ 
+ # Note that gnat_ugn_unw.texi does not depend on xgnatugn 
+ # being built so we can distribute a pregenerated gnat_ugn_unw.info
 @@ -880,27 +880,27 @@
  ada/treeprs.ads : ada/treeprs.adt ada/sinfo.ads ada/xtreeprs.adb
  	-$(MKDIR) ada/bldtools
