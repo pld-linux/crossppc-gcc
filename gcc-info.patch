@@ -249,14 +249,3 @@ In other *.texi we can use tabs.
  @chapter Invoking rmiregistry
  
  @c man title rmiregistry Remote object registry
---- gcc-3.2/gcc/ksi/doc/ksi.texi.orig	Sat Jul 20 22:48:08 2002
-+++ gcc-3.2/gcc/ksi/doc/ksi.texi	Fri Nov  1 23:19:39 2002
-@@ -15,7 +15,7 @@
- @contents
- 
- @ifnottex
--@dircategory Programming tools:
-+@dircategory Programming Languages:
- @direntry
- * ksi: (ksi).				Ksi Language and Compiler Manual
- @end direntry
