@@ -133,10 +133,10 @@ rm -rf $RPM_BUILD_ROOT
 rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
 
 %if 0%{!?debug:1}
-%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcc.a
-%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcov.a
 %{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/nof/libgcc.a
 %{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/nof/libgcov.a
+%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcc.a
+%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcov.a
 %endif
 
 %clean
@@ -158,12 +158,11 @@ rm -rf $RPM_BUILD_ROOT
 %{gcclib}/specs*
 %dir %{gcclib}/include
 %{gcclib}/include/*.h
-%{_mandir}/man1/%{target}-gcc.1*
 %{_mandir}/man1/%{target}-cpp.1*
+%{_mandir}/man1/%{target}-gcc.1*
 
 %files c++
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_bindir}/%{target}-g++
-%attr(755,root,root) %{_bindir}/%{target}-c++
 %attr(755,root,root) %{gcclib}/cc1plus
 %{_mandir}/man1/%{target}-g++.1*
