@@ -58,12 +58,12 @@ In other *.texi we can use tabs.
  @end direntry
  This file documents the internals of the GNU compilers.
  @sp 1
---- gcc-3.2/gcc/ada/gnat-style.texi.orig	Sun Dec 23 12:23:14 2001
-+++ gcc-3.2/gcc/ada/gnat-style.texi	Fri Nov  1 23:08:50 2002
-@@ -25,9 +25,9 @@
+--- gcc-3.4-20040405/gcc/ada/gnat-style.texi.orig	2004-04-05 17:22:22.129295816 +0200
++++ gcc-3.4-20040405/gcc/ada/gnat-style.texi	2004-04-05 17:24:50.921675936 +0200
+@@ -28,9 +28,9 @@
+ @setchapternewpage odd
  
- @setfilename gnat-style.info
- @settitle GNAT Coding Style
+ 
 -@dircategory Programming
 +@dircategory Programming Languages:
  @direntry
@@ -86,8 +86,8 @@ In other *.texi we can use tabs.
  @end direntry
  
  @copying
---- gcc-3.2/gcc/ada/gnat_ug.texi.orig	Fri Nov  1 22:58:52 2002
-+++ gcc-3.2/gcc/ada/gnat_ug.texi	Fri Nov  1 23:10:20 2002
+--- gcc-3.2/gcc/ada/gnat_ugn.texi.orig	Fri Nov  1 22:58:52 2002
++++ gcc-3.2/gcc/ada/gnat_ugn.texi	Fri Nov  1 23:10:20 2002
 @@ -75,6 +75,11 @@
  @syncodeindex fn cp
  @c %**end of header
