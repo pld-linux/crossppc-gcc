@@ -5,13 +5,13 @@ Summary(pl):	Skro¶ne narzêdzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
-Version:	3.3.3
+Version:	3.3.4
 Release:	1
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	3c6cfd9fcd180481063b4058cf6faff2
+# Source0-md5:	a1c267b34f05c8660b24251865614d8b
 BuildRequires:	crossppc-binutils
 BuildRequires:	flex
 BuildRequires:	bison
@@ -26,7 +26,7 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %define		gccarch		%{_libdir}/gcc-lib/%{target}
 %define		gcclib		%{_libdir}/gcc-lib/%{target}/%{version}
 
-%define		_noautostrip	.*libgcc\\.a
+%define		_noautostrip	.*%{gcclib}/libgcc\\.a
 
 %description
 This package contains a cross-gcc which allows the creation of
@@ -40,6 +40,18 @@ anderem Rechner Code für ppc-Linux zu generieren.
 %description -l pl
 Ten pakiet zawiera skro¶ny gcc pozwalaj±cy na robienie na innych
 maszynach binariów do uruchamiania na PPC (architektura "ppc-linux").
+
+%package c++
+Summary:	C++ support for crossppc-gcc
+Summary(pl):	Obs³uga C++ dla crossppc-gcc
+Group:		Development/Languages
+Requires:	%{name} = %{epoch}:%{version}-%{release}
+
+%description c++
+This package adds C++ support to the GNU Compiler Collection for PPC.
+
+%description c++ -l pl
+Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 
 %prep
 %setup -q -n gcc-%{version}
@@ -72,33 +84,21 @@ TEXCONFIG=false \
 	--host=%{_target_platform} \
 	--build=%{_target_platform}
 
-%{__make} \
-	CC="gcc -DHAVE_DESIGNATED_INITIALIZERS=0" all-gcc
+%{__make} all-gcc \
+	CC="%{__cc} -DHAVE_DESIGNATED_INITIALIZERS=0"
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -d $RPM_BUILD_ROOT{%{_datadir},%{_bindir},%{gcclib}}
 
-cd obj-%{target}
-PATH=$PATH:/sbin:%{_sbindir}
-
-%{__make} -C gcc install \
-	prefix=%{_prefix} \
-	mandir=%{_mandir} \
-	infodir=%{_infodir} \
-	gxx_include_dir=$RPM_BUILD_ROOT%{arch}/include/g++ \
+%{__make} -C obj-%{target} install \
 	DESTDIR=$RPM_BUILD_ROOT
 
-# c++filt is provided by binutils
-#rm -f $RPM_BUILD_ROOT%{_bindir}/i386-mipsel-c++filt
-
-# what is this there for???
+# don't want this here
 rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
 
-# the same... make hardlink
-#ln -f $RPM_BUILD_ROOT%{arch}/bin/gcc $RPM_BUILD_ROOT%{_bindir}/%{target}-gcc
-
+%if 0%{!?debug:1}
 %{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcc.a
+%endif
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -107,32 +107,18 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_bindir}/%{target}-gcc
 %attr(755,root,root) %{_bindir}/%{target}-cpp
-%attr(755,root,root) %{_bindir}/%{target}-g++
-%attr(755,root,root) %{_bindir}/%{target}-c++
-#%dir %{arch}/bin
-#%attr(755,root,root) %{arch}/bin/cpp
-#%attr(755,root,root) %{arch}/bin/gcc
-#%attr(755,root,root) %{arch}/bin/gcov
-#%%{arch}/include/_G_config.h
 %dir %{gccarch}
 %dir %{gcclib}
 %attr(755,root,root) %{gcclib}/cc1
-%attr(755,root,root) %{gcclib}/cc1plus
-##%attr(755,root,root) %{gcclib}/tradcpp0
-##%attr(755,root,root) %{gcclib}/cpp0
 %attr(755,root,root) %{gcclib}/collect2
-#%%{gcclib}/SYSCALLS.c.X
 %{gcclib}/libgcc.a
 %{gcclib}/specs*
 %dir %{gcclib}/include
 %{gcclib}/include/*.h
-#%%{gcclib}/include/iso646.h
-#%%{gcclib}/include/limits.h
-#%%{gcclib}/include/proto.h
-#%%{gcclib}/include/stdarg.h
-#%%{gcclib}/include/stdbool.h
-#%%{gcclib}/include/stddef.h
-#%%{gcclib}/include/syslimits.h
-#%%{gcclib}/include/varargs.h
-#%%{gcclib}/include/va-*.h
 %{_mandir}/man1/%{target}-gcc.1*
+
+%files c++
+%defattr(644,root,root,755)
+%attr(755,root,root) %{_bindir}/%{target}-g++
+%attr(755,root,root) %{_bindir}/%{target}-c++
+%attr(755,root,root) %{gcclib}/cc1plus
