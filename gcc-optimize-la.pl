@@ -19,7 +19,7 @@ foreach (@lines)
     if (/(^dependency_libs='(.*)')/)
     {
 	@libs = split(/[\ \t\n]+/, trim($2));
-	@L = grep(/^-L.*gcc\/.*\/\d\.\d\.\d$/, @libs);
+	@L = grep(/^-L.*gcc\/.*\/\d\.\d\.\d(\/32)*$/, @libs);
 	@l = grep(/^-l.*/, @libs);
 	$opt_L = join(' ', @L);
 	$opt_l = join(' ', @l);
