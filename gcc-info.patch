@@ -1,0 +1,45 @@
+diff -Nru egcs-1.1.1/gcc/cpp.texi egcs-1.1.1.new/gcc/cpp.texi
+--- egcs-1.1.1/gcc/cpp.texi	Tue Jun 23 10:35:51 1998
++++ egcs-1.1.1.new/gcc/cpp.texi	Fri Jan 29 23:18:51 1999
+@@ -3,9 +3,9 @@
+ @settitle The C Preprocessor
+ 
+ @ifinfo
+-@dircategory Programming
++@dircategory Programming tools:
+ @direntry
+-* Cpp: (cpp).		       The GNU C preprocessor.
++* Cpp: (cpp)				The GNU C preprocessor
+ @end direntry
+ @end ifinfo
+ 
+diff -Nru egcs-1.1.1/gcc/f/g77.texi egcs-1.1.1.new/gcc/f/g77.texi
+--- egcs-1.1.1/gcc/f/g77.texi	Mon Nov 23 09:36:01 1998
++++ egcs-1.1.1.new/gcc/f/g77.texi	Fri Jan 29 23:18:00 1999
+@@ -152,9 +152,9 @@
+ @c @end tex
+ 
+ @ifinfo
+-@dircategory Programming
++@dircategory Programming tools:
+ @direntry
+-* g77: (g77).                  The GNU Fortran compiler.
++* g77: (g77)				The GNU Fortran compiler
+ @end direntry
+ @ifset INTERNALS
+ @ifset USING
+diff -Nru egcs-1.1.1/gcc/gcc.texi egcs-1.1.1.new/gcc/gcc.texi
+--- egcs-1.1.1/gcc/gcc.texi	Sun Nov  1 11:38:49 1998
++++ egcs-1.1.1.new/gcc/gcc.texi	Fri Jan 29 23:13:16 1999
+@@ -80,9 +80,9 @@
+ @c @end tex
+ 
+ @ifinfo
+-@dircategory Programming
++@dircategory Programming tools:
+ @direntry
+-* gcc: (gcc).                  The GNU C compiler.
++* gcc: (gcc)				The GNU C compiler
+ @end direntry
+ @ifset INTERNALS
+ @ifset USING
