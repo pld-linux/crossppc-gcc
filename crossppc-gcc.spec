@@ -11,7 +11,7 @@ Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	70ee088b498741bb08c779f9617df3a5
+# Source0-md5:	e744b30c834360fccac41eb7269a3011
 %define		_llh_ver	2.6.9.1
 Source1:	http://ep09.pld-linux.org/~mmazur/linux-libc-headers/linux-libc-headers-%{_llh_ver}.tar.bz2
 # Source1-md5:	d3507b2c0203a0760a677022badcf455
@@ -34,7 +34,7 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %define		gccarch		%{_libdir}/gcc/%{target}
 %define		gcclib		%{gccarch}/%{version}
 
-%define		_noautostrip	.*%{gcclib}/libgcc\\.a
+%define		_noautostrip	.*%{gcclib}.*/libgc.*\\.a
 
 %description
 This package contains a cross-gcc which allows the creation of
@@ -126,7 +126,7 @@ TEXCONFIG=false \
 %install
 rm -rf $RPM_BUILD_ROOT
 
-%{__make} -C obj-%{target} install \
+%{__make} -C obj-%{target} install-gcc \
 	DESTDIR=$RPM_BUILD_ROOT
 
 # don't want this here
@@ -134,6 +134,9 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
 
 %if 0%{!?debug:1}
 %{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcc.a
+%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcov.a
+%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/nof/libgcc.a
+%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/nof/libgcov.a
 %endif
 
 %clean
@@ -147,14 +150,20 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{gcclib}
 %attr(755,root,root) %{gcclib}/cc1
 %attr(755,root,root) %{gcclib}/collect2
+%dir %{gcclib}/nof
+%{gcclib}/nof/*crt*.o
+%{gcclib}/nof/libgcc.a
+%{gcclib}/*crt*.o
 %{gcclib}/libgcc.a
 %{gcclib}/specs*
 %dir %{gcclib}/include
 %{gcclib}/include/*.h
 %{_mandir}/man1/%{target}-gcc.1*
+%{_mandir}/man1/%{target}-cpp.1*
 
 %files c++
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_bindir}/%{target}-g++
 %attr(755,root,root) %{_bindir}/%{target}-c++
 %attr(755,root,root) %{gcclib}/cc1plus
+%{_mandir}/man1/%{target}-g++.1*
