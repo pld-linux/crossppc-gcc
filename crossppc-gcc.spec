@@ -12,7 +12,6 @@ License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
 # Source0-md5:	3c6cfd9fcd180481063b4058cf6faff2
-Patch1:		crossppc-gcc-3.3.3-include-fix.patch
 BuildRequires:	crossppc-binutils
 BuildRequires:	flex
 BuildRequires:	bison
@@ -22,7 +21,6 @@ Requires:	crossppc-binutils
 ExcludeArch:	ppc
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
-%define		cxx		0
 %define		target		ppc-pld-linux
 %define		_prefix		/usr
 %define		arch		%{_prefix}/%{target}
@@ -46,7 +44,6 @@ i386 binariów do uruchamiania na PPC (architektura "ppc-linux").
 
 %prep
 %setup -q -n gcc-%{version}
-%patch1 -p1
 
 %build
 rm -rf obj-%{target}
@@ -61,22 +58,26 @@ TEXCONFIG=false ../configure \
 	--mandir=%{_mandir} \
 	--disable-shared \
 	--enable-haifa \
-	--enable-languages="c" \
+	--enable-languages="c,c++" \
 	--enable-long-long \
 	--enable-namespaces \
 	--with-gnu-as \
 	--with-gnu-ld \
 	--with-system-zlib \
 	--with-multilib \
+	--without-headers \
+	--with-newlib \
 	--without-x \
-	--target=%{target}
+	--target=%{target} \
+	--host=i686-pld-linux-gnu \
+	--build=i686-pld-linux-gnu
 
 PATH=$PATH:/sbin:%{_sbindir}
 
 cd ..
 #LDFLAGS_FOR_TARGET="%{rpmldflags}"
 
-%{__make} -C obj-%{target}
+%{__make} -C obj-%{target} CC="gcc -DHAVE_DESIGNATED_INITIALIZERS=0" all-gcc
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -110,6 +111,8 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_bindir}/%{target}-gcc
 %attr(755,root,root) %{_bindir}/%{target}-cpp
+%attr(755,root,root) %{_bindir}/%{target}-g++
+%attr(755,root,root) %{_bindir}/%{target}-c++
 #%dir %{arch}/bin
 #%attr(755,root,root) %{arch}/bin/cpp
 #%attr(755,root,root) %{arch}/bin/gcc
