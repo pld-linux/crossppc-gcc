@@ -1,3 +1,31 @@
+--- gcc-3.4-20040611/gcc/doc/cpp.texi.orig	2004-01-18 12:59:03.000000000 +0100
++++ gcc-3.4-20040611/gcc/doc/cpp.texi	2004-06-12 03:49:21.959450032 +0200
+@@ -52,9 +52,9 @@
+ @set cppmanual
+ 
+ @ifinfo
+-@dircategory Programming
++@dircategory Programming Languages
+ @direntry
+-* Cpp: (cpp).		       The GNU C preprocessor.
++* Cpp: (cpp).				The GNU C preprocessor.
+ @end direntry
+ @end ifinfo
+ 
+--- gcc-3.4-20040611/gcc/doc/cppinternals.texi.orig	2002-01-07 20:03:36.000000000 +0100
++++ gcc-3.4-20040611/gcc/doc/cppinternals.texi	2004-06-12 03:50:08.394390848 +0200
+@@ -3,9 +3,9 @@
+ @settitle The GNU C Preprocessor Internals
+ 
+ @ifinfo
+-@dircategory Programming
++@dircategory Programming Languages
+ @direntry
+-* Cpplib: (cppinternals).      Cpplib internals.
++* Cpplib: (cppinternals).			Cpplib internals.
+ @end direntry
+ @end ifinfo
+ 
 --- gcc-3.2/gcc/doc/gcc.texi.orig	Fri Nov  1 22:58:48 2002
 +++ gcc-3.2/gcc/doc/gcc.texi	Fri Nov  1 23:06:12 2002
 @@ -65,9 +65,9 @@
