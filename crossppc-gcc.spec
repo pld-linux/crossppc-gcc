@@ -31,15 +31,15 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %description
 This package contains a cross-gcc which allows the creation of
 binaries to be run on PPC linux (architecture ppc-linux) on
-i386-machines.
+other machines.
 
 %description -l de
 Dieses Paket enthält einen Cross-gcc, der es erlaubt, auf einem
-i386-Rechner Code für ppc-Linux zu generieren.
+anderem Rechner Code für ppc-Linux zu generieren.
 
 %description -l pl
-Ten pakiet zawiera skro¶ny gcc pozwalaj±cy na robienie na maszynach
-i386 binariów do uruchamiania na PPC (architektura "ppc-linux").
+Ten pakiet zawiera skro¶ny gcc pozwalaj±cy na robienie na innych
+maszynach binariów do uruchamiania na PPC (architektura "ppc-linux").
 
 %prep
 %setup -q -n gcc-%{version}
@@ -51,7 +51,8 @@ cd obj-%{target}
 
 CFLAGS="%{rpmcflags}" \
 CXXFLAGS="%{rpmcflags}" \
-TEXCONFIG=false ../configure \
+TEXCONFIG=false \
+../configure \
 	--prefix=%{_prefix} \
 	--infodir=%{_infodir} \
 	--mandir=%{_mandir} \
@@ -59,10 +60,7 @@ TEXCONFIG=false ../configure \
 	--libdir=%{_libdir} \
 	--libexecdir=%{_libdir} \
 	--disable-shared \
-	--enable-haifa \
 	--enable-languages="c,c++" \
-	--enable-long-long \
-	--enable-namespaces \
 	--with-gnu-as \
 	--with-gnu-ld \
 	--with-system-zlib \
@@ -74,12 +72,8 @@ TEXCONFIG=false ../configure \
 	--host=%{_target_platform} \
 	--build=%{_target_platform}
 
-PATH=$PATH:/sbin:%{_sbindir}
-
-cd ..
-#LDFLAGS_FOR_TARGET="%{rpmldflags}"
-
-%{__make} -C obj-%{target} CC="gcc -DHAVE_DESIGNATED_INITIALIZERS=0" all-gcc
+%{__make} \
+	CC="gcc -DHAVE_DESIGNATED_INITIALIZERS=0" all-gcc
 
 %install
 rm -rf $RPM_BUILD_ROOT
