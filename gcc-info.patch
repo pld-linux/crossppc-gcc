@@ -1,35 +1,3 @@
-Note: gnat_ug.texi is postprocessed by some tool - so it may not
-contain tab characters - spaces must be used instead.
-In other *.texi we can use tabs.
-
---- gcc-3.2/gcc/doc/cpp.texi.orig	Fri Nov  1 22:58:48 2002
-+++ gcc-3.2/gcc/doc/cpp.texi	Fri Nov  1 23:03:38 2002
-@@ -53,9 +53,9 @@
- @set cppmanual
- 
- @ifinfo
--@dircategory Programming
-+@dircategory Programming Languages:
- @direntry
--* Cpp: (cpp).		       The GNU C preprocessor.
-+* Cpp: (cpp).				The GNU C preprocessor
- @end direntry
- @end ifinfo
- 
---- gcc-3.2/gcc/doc/cppinternals.texi.orig	Mon Jan  7 20:03:36 2002
-+++ gcc-3.2/gcc/doc/cppinternals.texi	Fri Nov  1 23:04:42 2002
-@@ -3,9 +3,9 @@
- @settitle The GNU C Preprocessor Internals
- 
- @ifinfo
--@dircategory Programming
-+@dircategory Programming Languages:
- @direntry
--* Cpplib: (cppinternals).      Cpplib internals.
-+* Cpplib: (cppinternals).		Cpplib internals
- @end direntry
- @end ifinfo
- 
 --- gcc-3.2/gcc/doc/gcc.texi.orig	Fri Nov  1 22:58:48 2002
 +++ gcc-3.2/gcc/doc/gcc.texi	Fri Nov  1 23:06:12 2002
 @@ -65,9 +65,9 @@
@@ -58,36 +26,22 @@ In other *.texi we can use tabs.
  @end direntry
  This file documents the internals of the GNU compilers.
  @sp 1
---- gcc-3.2/gcc/ada/gnat-style.texi.orig	Sun Dec 23 12:23:14 2001
-+++ gcc-3.2/gcc/ada/gnat-style.texi	Fri Nov  1 23:08:50 2002
-@@ -25,9 +25,9 @@
+--- gcc-3.4-20040611/gcc/ada/gnat-style.texi.orig	2004-06-09 11:20:43.000000000 +0200
++++ gcc-3.4-20040611/gcc/ada/gnat-style.texi	2004-06-12 03:22:07.287957872 +0200
+@@ -28,9 +28,9 @@
+ @setchapternewpage odd
  
- @setfilename gnat-style.info
- @settitle GNAT Coding Style
+ 
 -@dircategory Programming
-+@dircategory Programming Languages:
++@dircategory Programming Languages
  @direntry
 -* gnat-style: (gnat-style).      GNAT Coding Style
 +* gnat-style: (gnat-style).		GNAT Coding Style
  @end direntry
  
  @macro syntax{element}
---- gcc-3.3/gcc/ada/gnat_rm.texi.orig	2003-02-04 02:55:38.000000000 +0100
-+++ gcc-3.3/gcc/ada/gnat_rm.texi	2003-05-17 08:40:07.000000000 +0200
-@@ -24,9 +24,9 @@
- 
- @include gcc-common.texi
- 
--@dircategory GNU Ada tools
-+@dircategory Programming Languages:
- @direntry
--* GNAT Reference Manual: (gnat_rm).  Reference Manual for GNU Ada tools.
-+* GNAT Reference Manual: (gnat_rm).	Reference Manual for GNU Ada tools
- @end direntry
- 
- @copying
---- gcc-3.2/gcc/ada/gnat_ug.texi.orig	Fri Nov  1 22:58:52 2002
-+++ gcc-3.2/gcc/ada/gnat_ug.texi	Fri Nov  1 23:10:20 2002
+--- gcc-3.4-20040611/gcc/ada/gnat_ugn.texi.orig	Fri Nov  1 22:58:52 2002
++++ gcc-3.4-20040611/gcc/ada/gnat_ugn.texi	Fri Nov  1 23:10:20 2002
 @@ -75,6 +75,11 @@
  @syncodeindex fn cp
  @c %**end of header
