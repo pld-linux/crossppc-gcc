@@ -1,30 +1,30 @@
---- gcc-3.4.0/gcc/ada/link.c.orig	Mon Jan 12 12:45:24 2004
-+++ gcc-3.4.0/gcc/ada/link.c	Tue Jun  1 15:57:42 2004
-@@ -165,9 +165,9 @@
+--- gcc-4.0-20040919/gcc/ada/link.c.orig	2004-09-13 12:18:40.000000000 +0200
++++ gcc-4.0-20040919/gcc/ada/link.c	2004-09-26 12:24:29.079704096 +0200
+@@ -164,9 +164,9 @@
  
  #elif defined (linux)
- const char *object_file_option = "";
--const char *run_path_option = "-Wl,-rpath,";
--char shared_libgnat_default = STATIC;
--int link_max = 8192;
-+const char *run_path_option = "";
-+char shared_libgnat_default = SHARED;
-+int link_max = 131072;
- unsigned char objlist_file_supported = 1;
- unsigned char using_gnu_linker = 1;
- const char *object_library_extension = ".a";
---- gcc-3.4.0/gcc/ada/Makefile.in.orig	Mon Apr 26 11:19:09 2004
-+++ gcc-3.4.0/gcc/ada/Makefile.in	Tue Jun  1 15:58:33 2004
-@@ -142,7 +142,7 @@
+ const char *__gnat_object_file_option = "";
+-const char *__gnat_run_path_option = "-Wl,-rpath,";
+-char __gnat_shared_libgnat_default = STATIC;
+-int __gnat_link_max = 8192;
++const char *__gnat_run_path_option = "";
++char __gnat_shared_libgnat_default = SHARED;
++int __gnat_link_max = 131072;
+ unsigned char __gnat_objlist_file_supported = 1;
+ unsigned char __gnat_using_gnu_linker = 1;
+ const char *__gnat_object_library_extension = ".a";
+--- gcc-4.0-20040919/gcc/ada/Makefile.in.orig	2004-09-26 11:40:30.000000000 +0200
++++ gcc-4.0-20040919/gcc/ada/Makefile.in	2004-09-26 12:29:16.913946640 +0200
+@@ -140,7 +140,7 @@
  objext = .o
  exeext =
  arext  = .a
 -soext  = .so
 +soext  = .so.1
  shext  =
+ hyphen = -
  
- # Define this as & to perform parallel make on a Sequent.
-@@ -1269,6 +1269,90 @@
+@@ -1337,6 +1337,90 @@
    LIBRARY_VERSION := $(LIB_VERSION)
  endif
  
@@ -114,8 +114,8 @@
 +
  ifeq ($(strip $(filter-out %x86_64 linux%,$(arch) $(osys))),)
    LIBGNAT_TARGET_PAIRS = \
-   a-intnam.ads<4lintnam.ads \
-@@ -1767,6 +1840,9 @@
+   a-intnam.ads<a-intnam-linux.ads \
+@@ -1742,6 +1826,9 @@
  # is guaranteed to overflow the buffer.
  
  gnatlib: ../stamp-gnatlib1 ../stamp-gnatlib2
@@ -125,7 +125,7 @@
  	$(MAKE) -C rts CC="../../xgcc -B../../" \
  	        INCLUDES="$(INCLUDES_FOR_SUBDIR) -I./../.." \
                  CFLAGS="$(GNATLIBCFLAGS_FOR_C)" \
-@@ -1779,6 +1855,8 @@
+@@ -1754,6 +1841,8 @@
  		srcdir=$(fsrcdir) \
  	        -f ../Makefile \
  	        $(GNATRTL_OBJS)
@@ -134,21 +134,22 @@
  	$(RM) rts/libgnat$(arext) rts/libgnarl$(arext)
  	$(AR) $(AR_FLAGS) rts/libgnat$(arext) \
  	   $(addprefix rts/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
-@@ -1891,14 +1969,15 @@
+@@ -1779,7 +1868,7 @@
  	     THREAD_KIND="$(THREAD_KIND)" \
               gnatlib
- 	$(RM) rts/libgnat$(soext) rts/libgnarl$(soext)
+ 	$(RM) rts/libgna*$(soext)
 -	cd rts; ../../xgcc -B../../ -shared $(TARGET_LIBGCC2_CFLAGS) \
 +	cd rts; ../../xgcc -B../../ -shared -shared-libgcc $(TARGET_LIBGCC2_CFLAGS) \
- 		-o libgnat-$(LIBRARY_VERSION)$(soext) \
+ 		-o libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) \
- 		$(SO_OPTS)libgnat-$(LIBRARY_VERSION)$(soext) $(MISCLIB) -lm
- 	cd rts; ../../xgcc -B../../ -shared $(TARGET_LIBGCC2_CFLAGS) \
- 		-o libgnarl-$(LIBRARY_VERSION)$(soext) \
+ 		$(SO_OPTS)libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
+@@ -1788,7 +1877,8 @@
+ 		-o libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		$(GNATRTL_TASKING_OBJS) \
--		$(SO_OPTS)libgnarl-$(LIBRARY_VERSION)$(soext) $(THREADSLIB)
-+		$(SO_OPTS)libgnarl-$(LIBRARY_VERSION)$(soext) $(THREADSLIB) \
+ 		$(SO_OPTS)libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
+-		$(THREADSLIB)
++		$(THREADSLIB) \
 +		./libgnat-$(LIBRARY_VERSION)$(soext)
- 	cd rts; $(LN_S) libgnat-$(LIBRARY_VERSION)$(soext) libgnat$(soext)
- 	cd rts; $(LN_S) libgnarl-$(LIBRARY_VERSION)$(soext) libgnarl$(soext)
- 
+ 	cd rts; $(LN_S) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
+ 		libgnat$(soext)
+ 	cd rts; $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
