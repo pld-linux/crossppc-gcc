@@ -19,6 +19,7 @@ BuildRequires:	bison
 BuildRequires:	autoconf
 BuildRequires:	/bin/bash
 Requires:	crossppc-binutils
+ExcludeArch:	ppc
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define		cxx		0
