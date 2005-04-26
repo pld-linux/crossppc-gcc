@@ -5,19 +5,24 @@ Summary(pl):	Skro¶ne narzêdzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
-Version:	3.4.3
-Release:	2
+Version:	4.0.0
+Release:	1
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	e744b30c834360fccac41eb7269a3011
-%define		_llh_ver	2.6.9.1
+# Source0-md5:	55ee7df1b29f719138ec063c57b89db6
+%define		_llh_ver	2.6.11.2
 Source1:	http://ep09.pld-linux.org/~mmazur/linux-libc-headers/linux-libc-headers-%{_llh_ver}.tar.bz2
-# Source1-md5:	d3507b2c0203a0760a677022badcf455
-Source2:	glibc-20041030.tar.bz2
-# Source2-md5:	4e14871efd881fbbf523a0ba16175bc7
+# Source1-md5:	2d21d8e7ff641da74272b114c786464e
+%define		_glibc_ver	2.3.5
+Source2:	ftp://sources.redhat.com/pub/glibc/releases/glibc-%{_glibc_ver}.tar.bz2
+# Source2-md5:	93d9c51850e0513aa4846ac0ddcef639
+Source3:	ftp://sources.redhat.com/pub/glibc/releases/glibc-linuxthreads-%{_glibc_ver}.tar.bz2
+# Source3-md5:	77011b0898393c56b799bc011a0f37bf
 Patch0:		%{name}-libc-sysdeps-configure.patch
+Patch1:		%{name}-pr20973.patch
+Patch2:		%{name}-pr21173.patch
 URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
 BuildRequires:	automake
@@ -63,8 +68,11 @@ This package adds C++ support to the GNU Compiler Collection for PPC.
 Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 
 %prep
-%setup -q -n gcc-%{version} -a1 -a2
+%setup -q -n gcc-%{version} -a1 -a2 -a3
+mv linuxthreads* glibc-%{_glibc_ver}/
 %patch0 -p1
+%patch1 -p1
+%patch2 -p1
 
 %build
 FAKE_ROOT=$PWD/fake-root
@@ -73,7 +81,7 @@ rm -rf $FAKE_ROOT && install -d $FAKE_ROOT/usr/include
 cp -r linux-libc-headers-%{_llh_ver}/include/{asm-ppc,linux} $FAKE_ROOT/usr/include
 ln -s asm-ppc $FAKE_ROOT/usr/include/asm
 
-cd libc
+cd glibc-%{_glibc_ver}
 cp -f /usr/share/automake/config.* scripts
 rm -rf builddir && install -d builddir && cd builddir
 ../configure \
@@ -129,6 +137,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %{__make} -C obj-%{target} install-gcc \
 	DESTDIR=$RPM_BUILD_ROOT
+
+install obj-%{target}/gcc/specs $RPM_BUILD_ROOT%{gcclib}
 
 # don't want this here
 rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
