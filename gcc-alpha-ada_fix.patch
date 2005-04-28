@@ -1,0 +1,127 @@
+--- gcc/gcc/ada/Makefile.in~	2005-02-21 18:18:29.000000000 +0000
++++ gcc/gcc/ada/Makefile.in	2005-02-25 00:21:36.000000000 +0000
+@@ -1602,67 +1602,67 @@
+            ../../vxaddr2line$(exeext)
+ 
+ ../../gnatchop$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatchop --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatchop.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatchop 
+ 	$(GNATLINK) -v gnatchop -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnat$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatcmd --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatcmd.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatcmd 
+ 	$(GNATLINK) -v gnatcmd -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatkr$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatkr --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatkr.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatkr 
+ 	$(GNATLINK) -v gnatkr -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatls$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatls --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatls.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatls 
+ 	$(GNATLINK) -v gnatls -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatname$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatname --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatname.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatname 
+ 	$(GNATLINK) -v gnatname -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gprmake$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gprmake --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gprmake.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gprmake
+ 	$(GNATLINK) -v gprmake -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatprep$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatprep --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatprep.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatprep 
+ 	$(GNATLINK) -v gnatprep -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatxref$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatxref --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatxref.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatxref 
+ 	$(GNATLINK) -v gnatxref -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatfind$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatfind --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatfind.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatfind 
+ 	$(GNATLINK) -v gnatfind -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatclean$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatclean --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatclean.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatclean
+ 	$(GNATLINK) -v gnatclean -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatsym$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatsym --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatsym.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) gnatsym
+ 	$(GNATLINK) -v gnatsym -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../gnatdll$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c $(ADA_INCLUDES) gnatdll --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c $(ADA_INCLUDES) gnatdll.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) $(GNATBIND_FLAGS) gnatdll
+ 	$(GNATLINK) -v gnatdll -o $@ --GCC=$(GCC_LINK) $(TOOLS_LIBS)
+ 
+ ../../vxaddr2line$(exeext): ../stamp-tools
+-	$(GNATMAKE) -c  $(ADA_INCLUDES) vxaddr2line --GCC="$(CC) $(ALL_ADAFLAGS)"
++	$(GNATMAKE) -c  $(ADA_INCLUDES) vxaddr2line.adb --GCC="$(CC) $(ALL_ADAFLAGS)"
+ 	$(GNATBIND) $(ADA_INCLUDES) $(GNATBIND_FLAGS) vxaddr2line 
+ 	$(GNATLINK) -v vxaddr2line -o $@ --GCC=$(GCC_LINK) $(CLIB)
+ 
+--- gcc/gcc/ada/Make-lang.in~	2005-03-02 18:52:34.000000000 +0000
++++ gcc/gcc/ada/Make-lang.in	2005-03-02 19:07:26.000000000 +0000
+@@ -367,7 +367,7 @@
+ ada/doctools/xgnatugn$(build_exeext): ada/xgnatugn.adb
+ 	-$(MKDIR) ada/doctools
+ 	$(CP) $^ ada/doctools
+-	cd ada/doctools && gnatmake -q xgnatugn -a0../rts
++	cd ada/doctools && gnatmake -q xgnatugn.adb -a0../rts
+ 
+ # Note that gnat_ugn_unw.texi does not depend on xgnatugn 
+ # being built so we can distribute a pregenerated gnat_ugn_unw.info
+@@ -880,27 +880,27 @@
+ ada/treeprs.ads : ada/treeprs.adt ada/sinfo.ads ada/xtreeprs.adb
+ 	-$(MKDIR) ada/bldtools/treeprs
+ 	$(CP) $^ ada/bldtools/treeprs
+-	(cd ada/bldtools/treeprs; gnatmake -q xtreeprs ; ./xtreeprs ../../treeprs.ads )
++	(cd ada/bldtools/treeprs; gnatmake -q xtreeprs.adb ; ./xtreeprs ../../treeprs.ads )
+ 
+ ada/einfo.h : ada/einfo.ads ada/einfo.adb ada/xeinfo.adb
+ 	-$(MKDIR) ada/bldtools/einfo
+ 	$(CP) $^ ada/bldtools/einfo
+-	(cd ada/bldtools/einfo; gnatmake -q xeinfo ; ./xeinfo ../../einfo.h )
++	(cd ada/bldtools/einfo; gnatmake -q xeinfo.adb ; ./xeinfo ../../einfo.h )
+ 
+ ada/sinfo.h : ada/sinfo.ads ada/xsinfo.adb
+ 	-$(MKDIR) ada/bldtools/sinfo
+ 	$(CP) $^ ada/bldtools/sinfo
+-	(cd ada/bldtools/sinfo; gnatmake -q xsinfo ; ./xsinfo ../../sinfo.h )
++	(cd ada/bldtools/sinfo; gnatmake -q xsinfo.adb ; ./xsinfo ../../sinfo.h )
+ 
+ ada/nmake.adb : ada/sinfo.ads ada/nmake.adt ada/xnmake.adb
+ 	-$(MKDIR) ada/bldtools/nmake_b
+ 	$(CP) $^ ada/bldtools/nmake_b
+-	(cd ada/bldtools/nmake_b; gnatmake -q xnmake ; ./xnmake -b ../../nmake.adb )
++	(cd ada/bldtools/nmake_b; gnatmake -q xnmake.adb ; ./xnmake -b ../../nmake.adb )
+ 
+ ada/nmake.ads :  ada/sinfo.ads ada/nmake.adt ada/xnmake.adb ada/nmake.adb
+ 	-$(MKDIR) ada/bldtools/nmake_s
+ 	$(CP) $^ ada/bldtools/nmake_s
+-	(cd ada/bldtools/nmake_s; gnatmake -q xnmake ; ./xnmake -s ../../nmake.ads )
++	(cd ada/bldtools/nmake_s; gnatmake -q xnmake.adb ; ./xnmake -s ../../nmake.ads )
+ 
+ update-sources : ada/treeprs.ads ada/einfo.h ada/sinfo.h ada/nmake.adb \
+ 	ada/nmake.ads
