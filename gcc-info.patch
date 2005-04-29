@@ -148,7 +148,7 @@ In other *.texi we can use tabs.
 +* jcf-dump: (gcj)jcf-dump.		Print information about Java class files
 +* gij: (gcj)gij.			GNU interpreter for Java bytecode
 +* jv-convert: (gcj)jv-convert.		Convert file from one encoding to another
-+* rmic: (gcj)rmic.			Generate stubs for Remote Method Invocation.
++* rmic: (gcj)rmic.			Generate stubs for Remote Method Invocation
 +* rmiregistry: (gcj)rmiregistry.	The remote object registry
  @end direntry
  @end format
@@ -172,8 +172,8 @@ In other *.texi we can use tabs.
 +* jcf-dump::            Print information about class files
 +* gij::	                Interpreting Java bytecodes
 +* jv-convert::          Converting from one encoding to another
-+* rmic::                Generate stubs for Remote Method Invocation.
-+* rmiregistry::         The remote object registry.
++* rmic::                Generate stubs for Remote Method Invocation
++* rmiregistry::         The remote object registry
  * About CNI::           Description of the Cygnus Native Interface
  * Resources::		Where to look for more information
  @end menu
