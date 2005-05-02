@@ -6,7 +6,7 @@ Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
 Version:	4.0.0
-Release:	1
+Release:	2
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
@@ -21,15 +21,16 @@ Source2:	ftp://sources.redhat.com/pub/glibc/releases/glibc-%{_glibc_ver}.tar.bz2
 Source3:	ftp://sources.redhat.com/pub/glibc/releases/glibc-linuxthreads-%{_glibc_ver}.tar.bz2
 # Source3-md5:	77011b0898393c56b799bc011a0f37bf
 Patch0:		%{name}-libc-sysdeps-configure.patch
-Patch1:		%{name}-pr20973.patch
-Patch2:		%{name}-pr21173.patch
+Patch1:		gcc-pr20973.patch
+Patch2:		gcc-pr21173.patch
 URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
 BuildRequires:	automake
 BuildRequires:	bison
 BuildRequires:	crossppc-binutils
+BuildRequires:	fileutils >= 4.0.41
 BuildRequires:	flex
-BuildRequires:	/bin/bash
+BuildRequires:	texinfo >= 4.1
 Requires:	crossppc-binutils
 Requires:	gcc-dirs
 ExcludeArch:	ppc
@@ -69,7 +70,7 @@ Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 
 %prep
 %setup -q -n gcc-%{version} -a1 -a2 -a3
-mv linuxthreads* glibc-%{_glibc_ver}/
+mv linuxthreads* glibc-%{_glibc_ver}
 %patch0 -p1
 %patch1 -p1
 %patch2 -p1
@@ -117,13 +118,16 @@ TEXCONFIG=false \
 	--libdir=%{_libdir} \
 	--libexecdir=%{_libdir} \
 	--disable-shared \
+	--disable-threads \
 	--enable-languages="c,c++" \
 	--enable-c99 \
 	--enable-long-long \
+	--disable-nls \
 	--with-gnu-as \
 	--with-gnu-ld \
+	--with-demangler-in-ld \
 	--with-system-zlib \
-	--with-multilib \
+	--disable-multilib \
 	--with-sysroot=$FAKE_ROOT \
 	--without-x \
 	--target=%{target} \
@@ -143,9 +147,19 @@ install obj-%{target}/gcc/specs $RPM_BUILD_ROOT%{gcclib}
 # don't want this here
 rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
 
+# include/ contains install-tools/include/* and headers that were fixed up
+# by fixincludes, we don't want former
+gccdir=$RPM_BUILD_ROOT%{gcclib}
+mkdir	$gccdir/tmp
+# we have to save these however
+mv -f	$gccdir/include/syslimits.h $gccdir/tmp
+rm -rf	$gccdir/include
+mv -f	$gccdir/tmp $gccdir/include
+cp -f	$gccdir/install-tools/include/*.h $gccdir/include
+# but we don't want anything more from install-tools
+rm -rf	$gccdir/install-tools
+
 %if 0%{!?debug:1}
-%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/nof/libgcc.a
-%{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/nof/libgcov.a
 %{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcc.a
 %{target}-strip -g $RPM_BUILD_ROOT%{gcclib}/libgcov.a
 %endif
@@ -161,9 +175,6 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{gcclib}
 %attr(755,root,root) %{gcclib}/cc1
 %attr(755,root,root) %{gcclib}/collect2
-%dir %{gcclib}/nof
-%{gcclib}/nof/*crt*.o
-%{gcclib}/nof/libgcc.a
 %{gcclib}/*crt*.o
 %{gcclib}/libgcc.a
 %{gcclib}/specs*
