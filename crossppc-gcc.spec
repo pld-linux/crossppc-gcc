@@ -5,13 +5,15 @@ Summary(pl):	Skro¶ne narzêdzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
-Version:	4.0.0
-Release:	2
+Version:	4.0.1
+%define		_snap	20050507
+Release:	0.%{_snap}.1
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
-Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	55ee7df1b29f719138ec063c57b89db6
+#Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
+Source0:	ftp://gcc.gnu.org/pub/gcc/snapshots/4.0-%{_snap}/gcc-4.0-%{_snap}.tar.bz2
+# Source0-md5:	701f385de867d117f3648165174b254a
 %define		_llh_ver	2.6.11.2
 Source1:	http://ep09.pld-linux.org/~mmazur/linux-libc-headers/linux-libc-headers-%{_llh_ver}.tar.bz2
 # Source1-md5:	2d21d8e7ff641da74272b114c786464e
@@ -21,8 +23,6 @@ Source2:	ftp://sources.redhat.com/pub/glibc/releases/glibc-%{_glibc_ver}.tar.bz2
 Source3:	ftp://sources.redhat.com/pub/glibc/releases/glibc-linuxthreads-%{_glibc_ver}.tar.bz2
 # Source3-md5:	77011b0898393c56b799bc011a0f37bf
 Patch0:		%{name}-libc-sysdeps-configure.patch
-Patch1:		gcc-pr20973.patch
-Patch2:		gcc-pr21173.patch
 URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
 BuildRequires:	automake
@@ -69,11 +69,10 @@ This package adds C++ support to the GNU Compiler Collection for PPC.
 Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 
 %prep
-%setup -q -n gcc-%{version} -a1 -a2 -a3
+#setup -q -n gcc-%{version} -a1 -a2 -a3
+%setup -q -n gcc-4.0-%{_snap} -a1 -a2 -a3
 mv linuxthreads* glibc-%{_glibc_ver}
 %patch0 -p1
-%patch1 -p1
-%patch2 -p1
 
 %build
 FAKE_ROOT=$PWD/fake-root
