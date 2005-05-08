@@ -96,9 +96,9 @@
  @end direntry
  This file documents the use and the internals of
  the GNU Fortran 95 compiler, (@command{gfortran}).
---- gcc-4.0-20050102/gcc/java/gcj.texi.orig	2004-12-06 18:59:57.000000000 +0100
-+++ gcc-4.0-20050102/gcc/java/gcj.texi	2005-01-09 22:17:46.968983608 +0100
-@@ -50,28 +50,21 @@
+--- gcc-4.0-20050507/gcc/java/gcj.texi.orig	2005-05-07 00:53:37.000000000 +0200
++++ gcc-4.0-20050507/gcc/java/gcj.texi	2005-05-08 13:09:27.000000000 +0200
+@@ -50,30 +50,22 @@
  
  @ifinfo
  @format
@@ -114,6 +114,8 @@
  @direntry
 -* gcjh: (gcj)Invoking gcjh.
 -                            Generate header files from Java class files
+-* gjnih: (gcj)Invoking gjnih.
+-                            Generate JNI header files from Java class files
 -* jv-scan: (gcj)Invoking jv-scan.
 -                            Print information about Java source files
 -* jcf-dump: (gcj)Invoking jcf-dump.
@@ -128,6 +130,7 @@
 -* grmiregistry: (gcj)Invoking grmiregistry.
 -                            The remote object registry.
 +* gcjh: (gcj)gcjh.			Generate header files from Java class files
++* gjnih: (gcj)Invoking gjnih.		Generate JNI header files from Java class files
 +* jv-scan: (gcj)jv-scan.		Print information about Java source files
 +* jcf-dump: (gcj)jcf-dump.		Print information about Java class files
 +* gij: (gcj)gij.			GNU interpreter for Java bytecode
@@ -138,7 +141,7 @@
  @end direntry
  @end format
  
-@@ -105,19 +98,19 @@
+@@ -107,20 +99,20 @@
  @file{.class} files.
  
  @menu
@@ -150,6 +153,7 @@
 +* gcj::			Compiler options supported by @command{gcj}
  * Compatibility::	Compatibility between gcj and other tools for Java
 -* Invoking gcjh::       Generate header files from class files
+-* Invoking gjnih::      Generate JNI header files from class files
 -* Invoking jv-scan::    Print information about source files
 -* Invoking jcf-dump::   Print information about class files
 -* Invoking gij::	Interpreting Java bytecodes
@@ -158,6 +162,7 @@
 -* Invoking grmic::      Generate stubs for Remote Method Invocation.
 -* Invoking grmiregistry:: The remote object registry.
 +* gcjh::		Generate header files from class files
++* gjnih::		Generate JNI header files from class files
 +* jv-scan::		Print information about source files
 +* jcf-dump::		Print information about class files
 +* gij::			Interpreting Java bytecodes
@@ -168,7 +173,7 @@
  * About CNI::           Description of the Compiled Native Interface
  * System properties::   Modifying runtime behavior of the libgcj library
  * Resources::		Where to look for more information
-@@ -129,7 +122,7 @@
+@@ -132,7 +124,7 @@
  @include fdl.texi
  
  
@@ -177,7 +182,7 @@
  @chapter Invoking gcj
  
  @c man title gcj Ahead-of-time compiler for the Java language
-@@ -656,7 +649,7 @@
+@@ -659,7 +651,7 @@
  @end itemize
  
  
@@ -186,7 +191,16 @@
  @chapter Invoking gcjh
  
  @c man title gcjh generate header files from Java class files
-@@ -757,7 +750,7 @@
+@@ -775,7 +767,7 @@
+ 
+ @c man end
+ 
+-@node Invoking gjnih
++@node gjnih
+ @chapter Invoking gjnih
+ 
+ @c man title gjnih generate JNI header files from Java class files
+@@ -889,7 +881,7 @@
  
  @c man end
  
@@ -195,7 +209,7 @@
  @chapter Invoking jv-scan
  
  @c man title jv-scan print information about Java source file
-@@ -820,7 +813,7 @@
+@@ -952,7 +944,7 @@
  
  @c man end
  
@@ -204,7 +218,7 @@
  @chapter Invoking jcf-dump
  
  @c man title jcf-dump print information about Java class files
-@@ -880,7 +873,7 @@
+@@ -1012,7 +1004,7 @@
  
  @c man end
  
@@ -213,7 +227,7 @@
  @chapter Invoking gij
  
  @c man title gij GNU interpreter for Java bytecode
-@@ -981,7 +974,7 @@
+@@ -1132,7 +1124,7 @@
  
  @c man end
  
@@ -222,7 +236,7 @@
  @chapter Invoking gcj-dbtool.
  
  @c man title gcj-dbtool Manipulate class file mapping databases for libgcj
-@@ -1050,7 +1043,7 @@
+@@ -1223,7 +1215,7 @@
  
  @c man end
  
@@ -231,7 +245,7 @@
  @chapter Invoking jv-convert
  
  @c man title jv-convert Convert file from one encoding to another
-@@ -1109,7 +1102,7 @@
+@@ -1282,7 +1274,7 @@
  
  @c man end
  
@@ -240,7 +254,7 @@
  @chapter Invoking grmic
  
  @c man title grmic Generate stubs for Remote Method Invocation
-@@ -1188,7 +1181,7 @@
+@@ -1361,7 +1353,7 @@
  @c man end
  
  
