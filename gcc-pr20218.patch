@@ -1,21 +1,24 @@
+Date: Wed, 4 May 2005 21:52:46 -0700
 From: "H dot  J dot  Lu" <hjl at lucon dot org>
-Subject: RFC: PATCH: PR middle-end/20218: Can't use __attribute__ ((visibility ("hidden"))) to hide a symbol
+Subject: PATCH: PR middle-end/20218: Can't use __attribute__ ((visibility ("hidden"))) to hide a symbol
 
-This is the first attempt to to fix PR 20218. It keeps a list of
-referenced global symbols and outputs non-default visibility at the
-end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
+Here is the updated patch. It works for me on ia32, ia64 and x86_64.
 
-
-2005-02-28  H.J. Lu  <hongjiu.lu@intel.com>
+2005-05-04  H.J. Lu  <hongjiu.lu@intel.com>
 
 	PR middle-end/20218
 	* config/elfos.h (ASM_OUTPUT_EXTERNAL): New.
 	(TARGET_ASM_FILE_END): New.
+
 	* config/i386/i386-protos.h (ix86_elf_file_end): New.
+
 	* config/i386/i386.c (ix86_elf_file_end): New.
+
 	* config/i386/linux.h (TARGET_ASM_FILE_END): Defined.
 	* config/i386/linux64.h (TARGET_ASM_FILE_END): Likewise.
+
 	* config/ia64/hpux.h (TARGET_ASM_FILE_END): Removed.
+
 	* config/ia64/ia64.c (ia64_hpux_add_extern_decl): Removed.
 	(ia64_hpux_file_end): Renamed to ...
 	(ia64_file_end): This. Handle symbol with non-default
@@ -24,12 +27,15 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 	(ia64_asm_output_external): Rewritten.
 	(extern_func_list): Removed.
 	(extern_func_head): Likewise.
-	* output.h (extern_symbol_list): New.
-	(extern_symbol_head): New.
-	(default_elf_asm_output_external): New.
+
+	* output.h (default_elf_asm_output_external): New.
 	(default_elf_asm_output_external_1): New.
 	(default_elf_asm_file_end): New.
 	(maybe_assemble_visibility): New.
+
+	* tree.h (extern_symbol_list): New.
+	(extern_symbol_head): New.
+
 	* varasm.c (maybe_assemble_visibility): Make it extern and
 	return int.
 	(extern_symbol_head): New.
@@ -37,8 +43,8 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 	(default_elf_asm_output_external): New.
 	(default_elf_asm_file_end): New.
 
---- gcc/config/elfos.h.global	2004-10-18 09:14:38.000000000 -0700
-+++ gcc/config/elfos.h	2005-02-28 12:23:53.013906179 -0800
+--- gcc/config/elfos.h.global	2005-04-14 14:57:02.000000000 -0700
++++ gcc/config/elfos.h	2005-05-04 20:35:06.000000000 -0700
 @@ -487,3 +487,17 @@ Boston, MA 02111-1307, USA.  */
          fprintf ((FILE), "\"\n");					\
      }									\
@@ -57,8 +63,8 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 +#ifndef TARGET_ASM_FILE_END
 +#define TARGET_ASM_FILE_END default_elf_asm_file_end
 +#endif
---- gcc/config/i386/i386-protos.h.global	2005-02-01 17:41:25.000000000 -0800
-+++ gcc/config/i386/i386-protos.h	2005-02-28 13:10:37.406053326 -0800
+--- gcc/config/i386/i386-protos.h.global	2005-04-24 11:06:02.000000000 -0700
++++ gcc/config/i386/i386-protos.h	2005-05-04 20:35:06.000000000 -0700
 @@ -28,6 +28,7 @@ extern int ix86_frame_pointer_required (
  extern void ix86_setup_frame_addresses (void);
  
@@ -67,9 +73,9 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  extern HOST_WIDE_INT ix86_initial_elimination_offset (int, int);
  extern void ix86_expand_prologue (void);
  extern void ix86_expand_epilogue (int);
---- gcc/config/i386/i386.c.global	2005-02-27 22:26:51.000000000 -0800
-+++ gcc/config/i386/i386.c	2005-02-28 13:09:58.402099944 -0800
-@@ -3937,6 +3937,13 @@ ix86_file_end (void)
+--- gcc/config/i386/i386.c.global	2005-05-04 20:35:05.000000000 -0700
++++ gcc/config/i386/i386.c	2005-05-04 20:35:06.000000000 -0700
+@@ -4103,6 +4103,13 @@ ix86_file_end (void)
      file_end_indicate_exec_stack ();
  }
  
@@ -84,7 +90,7 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  
  const char *
 --- gcc/config/i386/linux.h.global	2004-11-28 17:04:42.000000000 -0800
-+++ gcc/config/i386/linux.h	2005-02-28 13:12:28.068734976 -0800
++++ gcc/config/i386/linux.h	2005-05-04 20:35:06.000000000 -0700
 @@ -185,3 +185,6 @@ Boston, MA 02111-1307, USA.  */
  
  /* This macro may be overridden in i386/k*bsd-gnu.h.  */
@@ -93,7 +99,7 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 +#undef TARGET_ASM_FILE_END
 +#define TARGET_ASM_FILE_END ix86_elf_file_end
 --- gcc/config/i386/linux64.h.global	2004-11-28 17:04:42.000000000 -0800
-+++ gcc/config/i386/linux64.h	2005-02-28 13:22:53.285839795 -0800
++++ gcc/config/i386/linux64.h	2005-05-04 20:35:06.000000000 -0700
 @@ -73,3 +73,6 @@ Boston, MA 02111-1307, USA.  */
  
  /* This macro may be overridden in i386/k*bsd-gnu.h.  */
@@ -101,9 +107,9 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 +
 +#undef TARGET_ASM_FILE_END
 +#define TARGET_ASM_FILE_END ix86_elf_file_end
---- gcc/config/ia64/hpux.h.global	2005-02-27 22:10:57.000000000 -0800
-+++ gcc/config/ia64/hpux.h	2005-02-28 11:28:57.000000000 -0800
-@@ -152,10 +152,6 @@ do {								\
+--- gcc/config/ia64/hpux.h.global	2005-03-17 13:05:06.000000000 -0800
++++ gcc/config/ia64/hpux.h	2005-05-04 20:35:06.000000000 -0700
+@@ -147,10 +147,6 @@ do {								\
     definitions, so do not use them in gthr-posix.h.  */
  #define GTHREAD_USE_WEAK 0
  
@@ -114,9 +120,9 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  #undef CTORS_SECTION_ASM_OP
  #define CTORS_SECTION_ASM_OP  "\t.section\t.init_array,\t\"aw\",\"init_array\""
  
---- gcc/config/ia64/ia64.c.global	2005-02-23 11:26:35.000000000 -0800
-+++ gcc/config/ia64/ia64.c	2005-02-28 13:37:55.304919908 -0800
-@@ -248,6 +248,7 @@ static void bundling (FILE *, int, rtx, 
+--- gcc/config/ia64/ia64.c.global	2005-04-28 16:11:38.000000000 -0700
++++ gcc/config/ia64/ia64.c	2005-05-04 21:07:52.000000000 -0700
+@@ -234,6 +234,7 @@ static void bundling (FILE *, int, rtx, 
  static void ia64_output_mi_thunk (FILE *, tree, HOST_WIDE_INT,
  				  HOST_WIDE_INT, tree);
  static void ia64_file_start (void);
@@ -124,7 +130,7 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  
  static void ia64_select_rtx_section (enum machine_mode, rtx,
  				     unsigned HOST_WIDE_INT);
-@@ -259,10 +260,6 @@ static void ia64_rwreloc_select_rtx_sect
+@@ -245,10 +246,6 @@ static void ia64_rwreloc_select_rtx_sect
  					     unsigned HOST_WIDE_INT)
       ATTRIBUTE_UNUSED;
  static unsigned int ia64_section_type_flags (tree, const char *, int);
@@ -135,7 +141,7 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  static void ia64_init_libfuncs (void)
       ATTRIBUTE_UNUSED;
  static void ia64_hpux_init_libfuncs (void)
-@@ -374,6 +371,9 @@ static const struct attribute_spec ia64_
+@@ -360,6 +357,9 @@ static const struct attribute_spec ia64_
  #undef TARGET_ASM_FILE_START
  #define TARGET_ASM_FILE_START ia64_file_start
  
@@ -145,9 +151,13 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  #undef TARGET_RTX_COSTS
  #define TARGET_RTX_COSTS ia64_rtx_costs
  #undef TARGET_ADDRESS_COST
-@@ -4493,41 +4493,21 @@ ia64_secondary_reload_class (enum reg_cl
+@@ -4493,43 +4493,24 @@ ia64_secondary_reload_class (enum reg_cl
+    the Intel assembler does not support undefined externals.  */
+ 
  void
- ia64_asm_output_external (FILE *file, tree decl, const char *name)
+-ia64_asm_output_external (FILE *file, tree decl, const char *name)
++ia64_asm_output_external (FILE *file ATTRIBUTE_UNUSED, tree decl,
++			  const char *name)
  {
 -  int save_referenced;
 -
@@ -194,7 +204,7 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  }
  
  /* Parse the -mfixed-range= option string.  */
-@@ -8472,36 +8452,16 @@ ia64_hpux_function_arg_padding (enum mac
+@@ -7902,36 +7883,16 @@ ia64_hpux_function_arg_padding (enum mac
     return DEFAULT_FUNCTION_ARG_PADDING (mode, type);
  }
  
@@ -236,13 +246,14 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
      {
        tree decl = p->decl;
        tree id = DECL_ASSEMBLER_NAME (decl);
-@@ -8510,18 +8470,27 @@ ia64_hpux_file_end (void)
- 	abort ();
+@@ -7939,18 +7900,28 @@ ia64_hpux_file_end (void)
+       gcc_assert (id);
  
        if (!TREE_ASM_WRITTEN (decl) && TREE_SYMBOL_REFERENCED (id))
 -        {
 +	{
-+	  int vis = maybe_assemble_visibility (decl);
++	  int vis = ((*targetm.binds_local_p) (decl)
++		     && maybe_assemble_visibility (decl));
  	  const char *name = XSTR (XEXP (DECL_RTL (decl), 0), 0);
  
 +	  /* GNU as does not need anything here, but the HP linker
@@ -270,11 +281,26 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  }
  
  /* Set SImode div/mod functions, init_integral_libfuncs only initializes
---- gcc/output.h.global	2005-01-19 09:55:57.000000000 -0800
-+++ gcc/output.h	2005-02-28 13:20:05.017611574 -0800
-@@ -517,6 +517,23 @@ extern void default_file_start (void);
+--- gcc/output.h.global	2005-04-28 16:11:31.000000000 -0700
++++ gcc/output.h	2005-05-04 20:35:06.000000000 -0700
+@@ -543,6 +543,12 @@ extern void default_file_start (void);
  extern void file_end_indicate_exec_stack (void);
  extern bool default_valid_pointer_mode (enum machine_mode);
+ 
++extern void default_elf_asm_output_external (FILE *file, tree,
++					     const char *);
++extern void default_elf_asm_output_external_1 (tree);
++extern void default_elf_asm_file_end (void);
++extern int maybe_assemble_visibility (tree);
++
+ extern int default_address_cost (rtx);
+ 
+ /* When performing hot/cold basic block partitioning, insert note in
+--- gcc/tree.h.global	2005-05-04 11:20:53.000000000 -0700
++++ gcc/tree.h	2005-05-04 20:35:06.000000000 -0700
+@@ -3769,6 +3769,17 @@ extern void process_pending_assemble_ext
+ extern void finish_aliases_1 (void);
+ extern void finish_aliases_2 (void);
  
 +/* Linked list of all external symbols that are to be emitted by
 +   GCC.  */
@@ -287,26 +313,20 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 +
 +extern GTY(()) struct extern_symbol_list *extern_symbol_head;
 +
-+extern void default_elf_asm_output_external (FILE *file, tree,
-+					     const char *);
-+extern void default_elf_asm_output_external_1 (tree);
-+extern void default_elf_asm_file_end (void);
-+extern int maybe_assemble_visibility (tree);
-+
- extern int default_address_cost (rtx);
- 
- /* dbxout helper functions */
---- gcc/varasm.c.global	2005-02-27 22:26:51.000000000 -0800
-+++ gcc/varasm.c	2005-02-28 13:17:40.865263064 -0800
-@@ -137,7 +137,6 @@ static unsigned HOST_WIDE_INT array_size
+ /* In stmt.c */
+ extern void expand_computed_goto (tree);
+ extern bool parse_output_constraint (const char **, int, int, int,
+--- gcc/varasm.c.global	2005-05-04 20:35:05.000000000 -0700
++++ gcc/varasm.c	2005-05-04 20:35:06.000000000 -0700
+@@ -123,7 +123,6 @@ static unsigned HOST_WIDE_INT array_size
  static unsigned min_align (unsigned, unsigned);
  static void output_constructor (tree, unsigned HOST_WIDE_INT, unsigned int);
  static void globalize_decl (tree);
 -static void maybe_assemble_visibility (tree);
  static int in_named_entry_eq (const void *, const void *);
  static hashval_t in_named_entry_hash (const void *);
- #ifdef BSS_SECTION_ASM_OP
-@@ -4535,13 +4534,18 @@ default_assemble_visibility (tree decl, 
+ static void initialize_cold_section_name (void);
+@@ -4664,13 +4663,18 @@ default_assemble_visibility (tree decl, 
  
  /* A helper function to call assemble_visibility when needed for a decl.  */
  
@@ -327,7 +347,7 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
  }
  
  /* Returns 1 if the target configuration supports defining public symbols
-@@ -5360,4 +5364,62 @@ file_end_indicate_exec_stack (void)
+@@ -5496,4 +5500,64 @@ file_end_indicate_exec_stack (void)
    named_section_flags (".note.GNU-stack", flags);
  }
  
@@ -379,7 +399,9 @@ end. I only verified it on Linux/ia32, Linux/x86_64 and Linux/ia64.
 +      /* We output the name if and only if TREE_SYMBOL_REFERENCED is
 +	 set in order to avoid putting out names that are never really
 +	 used.  */
-+      if (!TREE_ASM_WRITTEN (decl) && TREE_SYMBOL_REFERENCED (id))
++      if (targetm.binds_local_p (decl)
++	  && !TREE_ASM_WRITTEN (decl)
++	  && TREE_SYMBOL_REFERENCED (id))
 +	{
 +	  maybe_assemble_visibility (decl);
 +	  TREE_ASM_WRITTEN (decl) = 1;
