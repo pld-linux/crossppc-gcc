@@ -13,8 +13,8 @@
  unsigned char __gnat_objlist_file_supported = 1;
  unsigned char __gnat_using_gnu_linker = 1;
  const char *__gnat_object_library_extension = ".a";
---- gcc-4.0-20040919/gcc/ada/Makefile.in.orig	2004-09-26 11:40:30.000000000 +0200
-+++ gcc-4.0-20040919/gcc/ada/Makefile.in	2004-09-26 12:29:16.913946640 +0200
+--- gcc-4.1-20050522/gcc/ada/Makefile.in.orig	2005-05-26 10:48:40.000000000 +0000
++++ gcc-4.1-20050522/gcc/ada/Makefile.in	2005-05-26 10:59:25.000000000 +0000
 @@ -139,7 +139,7 @@
  objext = .o
  exeext =
@@ -24,7 +24,7 @@
  shext  =
  hyphen = -
  
-@@ -1366,6 +1366,31 @@
+@@ -1367,6 +1367,31 @@
    LIBRARY_VERSION := $(LIB_VERSION)
  endif
  
@@ -56,7 +56,7 @@
  ifeq ($(strip $(filter-out hppa% linux%,$(arch) $(osys))),)
    LIBGNAT_TARGET_PAIRS = \
    a-intnam.ads<a-intnam-linux.ads \
-@@ -1463,6 +1488,31 @@
+@@ -1468,6 +1493,31 @@
    LIBRARY_VERSION := $(LIB_VERSION)
  endif
  
@@ -88,17 +88,17 @@
  ifeq ($(strip $(filter-out powerpc darwin%,$(arch) $(osys))),)
    LIBGNAT_TARGET_PAIRS = \
    a-intnam.ads<a-intnam-darwin.ads \
-@@ -1825,6 +1875,9 @@
- # is guaranteed to overflow the buffer.
+@@ -1763,6 +1813,9 @@
+ GCC_FOR_TARGET=./xgcc -B./ $(FLAGS_FOR_TARGET)
  
  gnatlib: ../stamp-gnatlib1 ../stamp-gnatlib2
 +	$(RMDIR) save
 +	$(MKDIR) save
 +	$(MV) *.o save/
- 	$(MAKE) -C rts CC="../../xgcc -B../../" \
- 	        INCLUDES="$(INCLUDES_FOR_SUBDIR) -I./../.." \
-                 CFLAGS="$(GNATLIBCFLAGS_FOR_C)" \
-@@ -1837,6 +1890,8 @@
+ 	$(MAKE) -C rts \
+ 		CC="`echo \"$(GCC_FOR_TARGET)\" \
+ 		| sed -e 's^./xgcc^../../xgcc^' -e 's^-B./^-B../../^'`" \
+@@ -1779,6 +1832,8 @@
  		srcdir=$(fsrcdir) \
  	        -f ../Makefile \
  	        $(GNATRTL_OBJS)
@@ -107,16 +107,7 @@
  	$(RM) rts/libgnat$(arext) rts/libgnarl$(arext)
  	$(AR) $(AR_FLAGS) rts/libgnat$(arext) \
  	   $(addprefix rts/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
-@@ -1862,7 +1917,7 @@
- 	     THREAD_KIND="$(THREAD_KIND)" \
-              gnatlib
- 	$(RM) rts/libgna*$(soext)
--	cd rts; ../../xgcc -B../../ -shared $(TARGET_LIBGCC2_CFLAGS) \
-+	cd rts; ../../xgcc -B../../ -shared -shared-libgcc $(TARGET_LIBGCC2_CFLAGS) \
- 		-o libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
- 		$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) \
- 		$(SO_OPTS)libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
-@@ -1871,7 +1926,8 @@
+@@ -1816,7 +1871,8 @@
  		-o libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		$(GNATRTL_TASKING_OBJS) \
  		$(SO_OPTS)libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
@@ -126,6 +117,15 @@
  	cd rts; $(LN_S) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		libgnat$(soext)
  	cd rts; $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
+@@ -1863,7 +1919,7 @@
+ 	     THREAD_KIND="$(THREAD_KIND)" \
+              gnatlib
+ 	$(RM) rts/libgna*$(soext)
+-	cd rts; ../../xgcc -B../../ -shared $(TARGET_LIBGCC2_CFLAGS) \
++	cd rts; ../../xgcc -B../../ -shared -shared-libgcc $(TARGET_LIBGCC2_CFLAGS) \
+ 		-o libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
+ 		$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) \
+ 		$(SO_OPTS)libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) $(MISCLIB)
 --- gcc-4.0-20050514/gcc/ada.orig/system-linux-sparc64.ads	1970-01-01 00:00:00.000000000 +0000
 +++ gcc-4.0-20050514/gcc/ada/system-linux-sparc64.ads	2005-05-21 18:34:52.000000000 +0000
 @@ -0,0 +1,151 @@
