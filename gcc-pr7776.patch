@@ -1,0 +1,88 @@
+Date: Tue, 14 Jun 2005 00:20:06 -0600 (MDT)
+From: Roger Sayle <roger at eyesopen dot com>
+Subject: [PATCH] PR 7776: Warn about if ("abc" < "xyz") ... (take 2) 
+
+The following patch is a revised version of my proposed solution to
+PR middle-end/7776, which addresses Daniel Jacobowitz's concerns about
+the potential utility of testing string literals for equality/inequality
+with NULL.
+
+See http://gcc.gnu.org/ml/gcc-patches/2005-06/msg00369.html (and the
+following thread) for details and motivation.
+
+The following patch has been tested on i686-pc-linux-gnu with a full
+"make bootstrap", all default languages, and regression tested with a
+top-level "make -k check" with no new failures.
+
+Ok for mainline?
+
+2005-06-13  Roger Sayle  <roger@eyesopen.com>
+
+	PR middle-end/7776
+	* common.opt (Wstring-literal-comparison): New command line option.
+	* c-opts.c (c_common_handle_option): Set it with -Wall.
+	* c-typeck.c (parser_build_binary_op): Issue warning if either
+	operand of a comparison operator is a string literal, except for
+	testing equality or inequality against NULL.
+
+	* gcc.dg/Wstring-literal-comparison-1.c: New test case.
+	* gcc.dg/Wstring-literal-comparison-2.c: Likewise.
+	* gcc.dg/Wstring-literal-comparison-3.c: Likewise.
+	* gcc.dg/Wstring-literal-comparison-4.c: Likewise.
+
+
+*** a/gcc/common.opt	4 Jun 2005 17:07:55 -0000	1.73
+--- b/gcc/common.opt	13 Jun 2005 16:59:28 -0000
+*************** Wstrict-aliasing=
+*** 117,122 ****
+--- 117,126 ----
+  Common Joined UInteger
+  Warn about code which might break strict aliasing rules
+
++ Wstring-literal-comparison
++ Common Var(warn_string_literal_comparison)
++ Warn about comparisons to constant string literals
++
+  Wswitch
+  Common Var(warn_switch)
+  Warn about enumerated switches, with no default, missing a case
+*** a/gcc/c-opts.c	25 May 2005 03:58:55 -0000	1.146
+--- b/gcc/c-opts.c	13 Jun 2005 16:59:29 -0000
+*************** c_common_handle_option (size_t scode, co
+*** 370,375 ****
+--- 370,376 ----
+  	warn_sign_compare = value;
+        warn_switch = value;
+        warn_strict_aliasing = value;
++       warn_string_literal_comparison = value;
+
+        /* Only warn about unknown pragmas that are not in system
+  	 headers.  */
+*** a/gcc/c-typeck.c	11 Jun 2005 19:47:01 -0000	1.453
+--- b/gcc/c-typeck.c	13 Jun 2005 16:59:31 -0000
+*************** parser_build_binary_op (enum tree_code c
+*** 2412,2417 ****
+--- 2412,2434 ----
+
+      }
+
++   /* Warn about comparisons against string literals, with the exception
++      of testing for equality or inequality of a string literal with NULL.  */
++   if (code == EQ_EXPR || code == NE_EXPR)
++     {
++       if ((TREE_CODE (arg1.value) == STRING_CST
++ 	   && !integer_zerop (arg2.value))
++ 	  || (TREE_CODE (arg2.value) == STRING_CST
++ 	      && !integer_zerop (arg1.value)))
++ 	warning (OPT_Wstring_literal_comparison,
++ 		 "comparison with string literal");
++     }
++   else if (TREE_CODE_CLASS (code) == tcc_comparison
++ 	   && (TREE_CODE (arg1.value) == STRING_CST
++ 	       || TREE_CODE (arg2.value) == STRING_CST))
++     warning (OPT_Wstring_literal_comparison,
++ 	     "comparison with string literal");
++
+    unsigned_conversion_warning (result.value, arg1.value);
+    unsigned_conversion_warning (result.value, arg2.value);
+    overflow_warning (result.value);
