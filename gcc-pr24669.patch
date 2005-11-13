@@ -1,0 +1,16 @@
+--- gcc/gcc/config/i386/i386.c      (revision 106482)
++++ gcc/gcc/config/i386/i386.c      (working copy)
+@@ -5396,8 +5396,12 @@
+   if (parts.index && GET_CODE (parts.index) == SUBREG)
+     parts.index = SUBREG_REG (parts.index);
+
++  /* Penalize displacements a bit.  */
++  if (parts.disp && parts.disp != const0_rtx)
++    cost++;
++
+   /* More complex memory references are better.  */
+-  if (parts.disp && parts.disp != const0_rtx)
++  if (parts.scale)
+     cost--;
+   if (parts.seg != SEG_DEFAULT)
+     cost--;
