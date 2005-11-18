@@ -1,0 +1,43 @@
+--- gcc/libjava/classpath/native/jni/qt-peer/componentevent.cpp.ark	2005-11-02 22:57:59.000000000 +0100
++++ gcc/libjava/classpath/native/jni/qt-peer/componentevent.cpp	2005-11-02 22:58:07.000000000 +0100
+@@ -38,6 +38,8 @@
+ #include <QWidget>
+ #include <QPoint>
+ 
++#include <assert.h>
++
+ #include "componentevent.h"
+   
+ AWTInitEvent::AWTInitEvent(JNIEnv *env, jobject obj) : AWTEvent()
+--- gcc/libjava/classpath/configure.ac.ark	2005-11-02 23:02:44.000000000 +0100
++++ gcc/libjava/classpath/configure.ac	2005-11-02 23:06:39.000000000 +0100
+@@ -311,6 +311,7 @@
+ 		  AC_CHECK_FILE([$EXTRA_QT_INCLUDE_DIR/QWidget],
+ 		  	QT_CFLAGS="$QT_CFLAGS -I$EXTRA_QT_INCLUDE_DIR",
+ 			AC_MSG_WARN([QWidget not found])))
++    QT_CFLAGS="$QT_CFLAGS -I\$(top_srcdir)/../../build/\$(shell cat \$(top_srcdir)/../../build/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }')/libstdc++-v3/include -I\$(top_srcdir)/../../build/\$(shell cat \$(top_srcdir)/../../build/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }')/libstdc++-v3/include/\$(shell cat \$(top_srcdir)/../../build/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }') -I\$(top_srcdir)/../../libstdc++-v3/libsupc++"
+     AC_MSG_NOTICE([Set QT_CFLAGS... $QT_CFLAGS])
+     AC_CHECK_PROG(MOC, [moc], [moc])
+     AC_SUBST(QT_CFLAGS)
+--- gcc/libjava/classpath/configure.ark	2005-11-02 23:03:14.000000000 +0100
++++ gcc/libjava/classpath/configure	2005-11-02 23:05:47.000000000 +0100
+@@ -10661,7 +10661,7 @@
+ fi
+ 
+ fi
+-
++QT_CFLAGS="$QT_CFLAGS -I\$(top_srcdir)/../../build/\$(shell cat \$(top_srcdir)/../../build/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }')/libstdc++-v3/include -I\$(top_srcdir)/../../build/\$(shell cat \$(top_srcdir)/../../build/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }')/libstdc++-v3/include/\$(shell cat \$(top_srcdir)/../../build/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }') -I\$(top_srcdir)/../../libstdc++-v3/libsupc++"
+     { echo "$as_me:$LINENO: Set QT_CFLAGS... $QT_CFLAGS" >&5
+ echo "$as_me: Set QT_CFLAGS... $QT_CFLAGS" >&6;}
+     # Extract the first word of "moc", so it can be a program name with args.
+--- gcc/libjava/classpath/gnu/java/awt/peer/qt/QtToolkit.java.ark	2005-11-03 09:57:52.000000000 +0100
++++ gcc/libjava/classpath/gnu/java/awt/peer/qt/QtToolkit.java	2005-11-03 09:58:05.000000000 +0100
+@@ -135,7 +135,7 @@
+   {
+     eventQueue = new EventQueue();
+     repaintThread = new QtRepaintThread();
+-    System.loadLibrary("qtpeer");
++    System.loadLibrary("-gnu-java-awt-peer-qt");
+ 
+     String theme = null;
+     try 
