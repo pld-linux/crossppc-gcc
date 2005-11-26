@@ -24,7 +24,7 @@
  shext  =
  hyphen = -
  
-@@ -1367,6 +1367,31 @@
+@@ -1180,6 +1180,31 @@
    LIBRARY_VERSION := $(LIB_VERSION)
  endif
  
@@ -56,7 +56,7 @@
  ifeq ($(strip $(filter-out hppa% linux%,$(arch) $(osys))),)
    LIBGNAT_TARGET_PAIRS = \
    a-intnam.ads<a-intnam-linux.ads \
-@@ -1468,6 +1493,31 @@
+@@ -1287,6 +1312,31 @@
    LIBRARY_VERSION := $(LIB_VERSION)
  endif
  
@@ -88,26 +88,16 @@
  ifeq ($(strip $(filter-out powerpc darwin%,$(arch) $(osys))),)
    LIBGNAT_TARGET_PAIRS = \
    a-intnam.ads<a-intnam-darwin.ads \
-@@ -1763,6 +1813,9 @@
- GCC_FOR_TARGET=./xgcc -B./ $(FLAGS_FOR_TARGET)
+@@ -1364,7 +1414,7 @@
+  s-[a-o]*.adb s-[p-z]*.adb s-[a-o]*.ads s-[p-z]*.ads  
  
- gnatlib: ../stamp-gnatlib1 ../stamp-gnatlib2
-+	$(RMDIR) save
-+	$(MKDIR) save
-+	$(MV) *.o save/
- 	$(MAKE) -C rts \
- 		CC="`echo \"$(GCC_FOR_TARGET)\" \
- 		| sed -e 's^./xgcc^../../xgcc^' -e 's^-B./^-B../../^'`" \
-@@ -1779,6 +1832,8 @@
- 		srcdir=$(fsrcdir) \
- 	        -f ../Makefile \
- 	        $(GNATRTL_OBJS)
-+	$(MV) save/*.o .
-+	$(RMDIR) save
- 	$(RM) rts/libgnat$(arext) rts/libgnarl$(arext)
- 	$(AR) $(AR_FLAGS) rts/libgnat$(arext) \
- 	   $(addprefix rts/,$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS))
-@@ -1816,7 +1871,8 @@
+ LIBGNAT=../rts/libgnat.a 
+-GCC_LINK="$(CC) -static-libgcc $(ADA_INCLUDES)"
++GCC_LINK="$(CC) $(ADA_INCLUDES)"
+ 
+ # when compiling the tools, the runtime has to be first on the path so that
+ # it hides the runtime files lying with the rest of the sources
+@@ -1644,7 +1694,8 @@
  		-o libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		$(GNATRTL_TASKING_OBJS) \
  		$(SO_OPTS)libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
@@ -117,7 +107,7 @@
  	cd rts; $(LN_S) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		libgnat$(soext)
  	cd rts; $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
-@@ -1863,7 +1919,7 @@
+@@ -1691,7 +1742,7 @@
  	     THREAD_KIND="$(THREAD_KIND)" \
               gnatlib
  	$(RM) rts/libgna*$(soext)
