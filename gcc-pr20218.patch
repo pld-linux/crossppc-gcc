@@ -59,6 +59,57 @@ diff -uNrp gcc-4_1-branch/gcc.orig/config/i386/i386.h gcc-4_1-branch/gcc/config/
  #define NEED_INDICATE_EXEC_STACK 0
  
  /* Output assembler code to FILE to increment profiler label # LABELNO
+diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/linux.h gcc-4_1-branch/gcc/config/rs6000/linux.h
+--- gcc-4_1-branch/gcc.orig/config/rs6000/linux.h	2005-11-30 11:15:31.000000000 +0000
++++ gcc-4_1-branch/gcc/config/rs6000/linux.h	2005-12-06 20:02:14.949860336 +0000
+@@ -108,7 +108,8 @@
+ #define RELOCATABLE_NEEDS_FIXUP \
+   (target_flags & target_flags_explicit & MASK_RELOCATABLE)
+ 
+-#define TARGET_ASM_FILE_END file_end_indicate_exec_stack
++#undef TARGET_ASM_FILE_END
++#define TARGET_ASM_FILE_END rs6000_elf_file_end
+ 
+ #define TARGET_POSIX_IO
+ 
+diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/linux64.h gcc-4_1-branch/gcc/config/rs6000/linux64.h
+--- gcc-4_1-branch/gcc.orig/config/rs6000/linux64.h	2005-11-30 11:15:31.000000000 +0000
++++ gcc-4_1-branch/gcc/config/rs6000/linux64.h	2005-12-06 20:02:03.882542824 +0000
+@@ -543,7 +543,8 @@ while (0)
+ #undef DRAFT_V4_STRUCT_RET
+ #define DRAFT_V4_STRUCT_RET (!TARGET_64BIT)
+ 
+-#define TARGET_ASM_FILE_END rs6000_elf_end_indicate_exec_stack
++#undef TARGET_ASM_FILE_END
++#define TARGET_ASM_FILE_END rs6000_elf_file_end
+ 
+ #define TARGET_POSIX_IO
+ 
+diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/rs6000.c gcc-4_1-branch/gcc/config/rs6000/rs6000.c
+--- gcc-4_1-branch/gcc.orig/config/rs6000/rs6000.c	2005-11-30 11:15:31.000000000 +0000
++++ gcc-4_1-branch/gcc/config/rs6000/rs6000.c	2005-12-06 20:17:39.014381176 +0000
+@@ -611,7 +611,7 @@ static void rs6000_file_start (void);
+ static unsigned int rs6000_elf_section_type_flags (tree, const char *, int);
+ static void rs6000_elf_asm_out_constructor (rtx, int);
+ static void rs6000_elf_asm_out_destructor (rtx, int);
+-static void rs6000_elf_end_indicate_exec_stack (void) ATTRIBUTE_UNUSED;
++static void rs6000_elf_file_end (void) ATTRIBUTE_UNUSED;
+ static void rs6000_elf_select_section (tree, int, unsigned HOST_WIDE_INT);
+ static void rs6000_elf_unique_section (tree, int);
+ static void rs6000_elf_select_rtx_section (enum machine_mode, rtx,
+@@ -18060,10 +18060,11 @@ rs6000_elf_declare_function_name (FILE *
+ }
+ 
+ static void
+-rs6000_elf_end_indicate_exec_stack (void)
++rs6000_elf_file_end (void)
+ {
+   if (TARGET_32BIT)
+     file_end_indicate_exec_stack ();
++  default_elf_asm_file_end ();
+ }
+ #endif
+ 
 diff -uNrp gcc-4_1-branch/gcc.orig/output.h gcc-4_1-branch/gcc/output.h
 --- gcc-4_1-branch/gcc.orig/output.h	2005-11-30 11:16:27.000000000 +0000
 +++ gcc-4_1-branch/gcc/output.h	2005-12-06 17:42:34.018988936 +0000
