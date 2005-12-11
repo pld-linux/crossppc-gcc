@@ -1,0 +1,11 @@
+--- gcc-4.0-20040919/libstdc++-v3/configure.orig	2004-09-03 20:09:37.000000000 +0200
++++ gcc-4.0-20040919/libstdc++-v3/configure	2004-09-26 11:29:06.830762704 +0200
+@@ -5752,7 +5752,7 @@
+               int j;
+               __locale_t        loc;
+                __locale_t        loc_dup;
+-              loc = __newlocale(1 << LC_ALL, "de_DE", 0);
++              loc = __newlocale(1 << LC_ALL, "C", 0);
+               loc_dup = __duplocale(loc);
+               i = __strcoll_l(__one, __two, loc);
+               j = __strcoll_l(__one, __two, loc_dup);

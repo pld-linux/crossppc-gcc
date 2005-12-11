@@ -1,0 +1,183 @@
+
+	PR target/24419
+	* i386.c (pro_epilogue_adjust_stack): Add another argument to
+	indicate if memory should be clobbered or not. Adjust stack
+	pointer directly if memory shouldn't be clobbered.
+	(ix86_expand_prologue): Updated. Don't clobber member if
+	adjusting stack after registers have been saved on stack.
+	(ix86_expand_epilogue): Updated to call
+	pro_epilogue_adjust_stack with memory clobbered.
+
+	* i386.md: Don't convert stack pointer subtractions to push
+	when memory isn't clobbered if red zone is enabled.
+
+--- gcc/gcc/config/i386/i386.c	2005-10-18 17:26:40.000000000 -0700
++++ gcc/gcc/config/i386/i386.c	2005-10-18 20:35:19.000000000 -0700
+@@ -4761,22 +4761,38 @@ ix86_emit_save_regs_using_mov (rtx point
+    otherwise.  */
+ 
+ static void
+-pro_epilogue_adjust_stack (rtx dest, rtx src, rtx offset, int style)
++pro_epilogue_adjust_stack (rtx dest, rtx src, rtx offset, int style,
++			   bool clobber_memory)
+ {
+   rtx insn;
+ 
+   if (! TARGET_64BIT)
+-    insn = emit_insn (gen_pro_epilogue_adjust_stack_1 (dest, src, offset));
++    {
++      if (clobber_memory)
++	insn = emit_insn (gen_pro_epilogue_adjust_stack_1 (dest, src,
++							   offset));
++      else
++	insn = emit_insn (gen_addsi3 (dest, src, offset));
++    }
+   else if (x86_64_immediate_operand (offset, DImode))
+-    insn = emit_insn (gen_pro_epilogue_adjust_stack_rex64 (dest, src, offset));
++    {
++      if (clobber_memory)
++	insn = emit_insn (gen_pro_epilogue_adjust_stack_rex64 (dest,
++							       src,
++							       offset));
++      else
++	insn = emit_insn (gen_adddi3 (dest, src, offset));
++    }
+   else
+     {
+       rtx r11;
+       /* r11 is used by indirect sibcall return as well, set before the
+ 	 epilogue and used after the epilogue.  ATM indirect sibcall
+ 	 shouldn't be used together with huge frame sizes in one
+-	 function because of the frame_size check in sibcall.c.  */
+-      gcc_assert (style);
++	 function because of the frame_size check in sibcall.c. If
++	 huge frame size is used, memory should always be clobbered
++	 when stack is adjusted.  */
++      gcc_assert (style && clobber_memory);
+       r11 = gen_rtx_REG (DImode, FIRST_REX_INT_REG + 3 /* R11 */);
+       insn = emit_insn (gen_rtx_SET (DImode, r11, offset));
+       if (style < 0)
+@@ -4797,6 +4813,7 @@ ix86_expand_prologue (void)
+   bool pic_reg_used;
+   struct ix86_frame frame;
+   HOST_WIDE_INT allocate;
++  bool using_mov;
+ 
+   ix86_compute_frame_layout (&frame);
+ 
+@@ -4821,7 +4838,8 @@ ix86_expand_prologue (void)
+ 
+   /* When using red zone we may start register saving before allocating
+      the stack frame saving one cycle of the prologue.  */
+-  if (TARGET_RED_ZONE && frame.save_regs_using_mov)
++  using_mov = TARGET_RED_ZONE && frame.save_regs_using_mov;
++  if (using_mov)
+     ix86_emit_save_regs_using_mov (frame_pointer_needed ? hard_frame_pointer_rtx
+ 				   : stack_pointer_rtx,
+ 				   -frame.nregs * UNITS_PER_WORD);
+@@ -4830,7 +4848,7 @@ ix86_expand_prologue (void)
+     ;
+   else if (! TARGET_STACK_PROBE || allocate < CHECK_STACK_LIMIT)
+     pro_epilogue_adjust_stack (stack_pointer_rtx, stack_pointer_rtx,
+-			       GEN_INT (-allocate), -1);
++			       GEN_INT (-allocate), -1, !using_mov);
+   else
+     {
+       /* Only valid for Win32.  */
+@@ -5011,7 +5029,7 @@ ix86_expand_epilogue (int style)
+ 	      emit_move_insn (hard_frame_pointer_rtx, tmp);
+ 
+ 	      pro_epilogue_adjust_stack (stack_pointer_rtx, sa,
+-					 const0_rtx, style);
++					 const0_rtx, style, true);
+ 	    }
+ 	  else
+ 	    {
+@@ -5025,7 +5043,7 @@ ix86_expand_epilogue (int style)
+ 	pro_epilogue_adjust_stack (stack_pointer_rtx, stack_pointer_rtx,
+ 				   GEN_INT (frame.to_allocate
+ 					    + frame.nregs * UNITS_PER_WORD),
+-				   style);
++				   style, true);
+       /* If not an i386, mov & pop is faster than "leave".  */
+       else if (TARGET_USE_LEAVE || optimize_size
+ 	       || !cfun->machine->use_fast_prologue_epilogue)
+@@ -5034,7 +5052,7 @@ ix86_expand_epilogue (int style)
+ 	{
+ 	  pro_epilogue_adjust_stack (stack_pointer_rtx,
+ 				     hard_frame_pointer_rtx,
+-				     const0_rtx, style);
++				     const0_rtx, style, true);
+ 	  if (TARGET_64BIT)
+ 	    emit_insn (gen_popdi1 (hard_frame_pointer_rtx));
+ 	  else
+@@ -5050,11 +5068,12 @@ ix86_expand_epilogue (int style)
+ 	  gcc_assert (frame_pointer_needed);
+ 	  pro_epilogue_adjust_stack (stack_pointer_rtx,
+ 				     hard_frame_pointer_rtx,
+-				     GEN_INT (offset), style);
++				     GEN_INT (offset), style, true);
+ 	}
+       else if (frame.to_allocate)
+ 	pro_epilogue_adjust_stack (stack_pointer_rtx, stack_pointer_rtx,
+-				   GEN_INT (frame.to_allocate), style);
++				   GEN_INT (frame.to_allocate), style,
++				   true);
+ 
+       for (regno = 0; regno < FIRST_PSEUDO_REGISTER; regno++)
+ 	if (ix86_save_reg (regno, false))
+--- gcc/gcc/config/i386/i386.md	2005-10-18 17:26:40.000000000 -0700
++++ gcc/gcc/config/i386/i386.md	2005-10-18 17:26:40.000000000 -0700
+@@ -19532,11 +19532,15 @@
+ 	      (clobber (mem:BLK (scratch)))])])
+ 
+ ;; Convert esp subtractions to push.
++;; This conversion is safe only under assumption that unallocated stack is
++;; implicitly clobbered as specified by 32bit ABI (for signal handlers and such).
++;; This is not valid with red zone, but we can work harder and enable the
++;; optimization for functions that are not using it.
+ (define_peephole2
+   [(match_scratch:SI 0 "r")
+    (parallel [(set (reg:SI SP_REG) (plus:SI (reg:SI SP_REG) (const_int -4)))
+ 	      (clobber (reg:CC FLAGS_REG))])]
+-  "optimize_size || !TARGET_SUB_ESP_4"
++  "(optimize_size || !TARGET_SUB_ESP_4) && !TARGET_RED_ZONE"
+   [(clobber (match_dup 0))
+    (set (mem:SI (pre_dec:SI (reg:SI SP_REG))) (match_dup 0))])
+ 
+@@ -19544,7 +19548,7 @@
+   [(match_scratch:SI 0 "r")
+    (parallel [(set (reg:SI SP_REG) (plus:SI (reg:SI SP_REG) (const_int -8)))
+ 	      (clobber (reg:CC FLAGS_REG))])]
+-  "optimize_size || !TARGET_SUB_ESP_8"
++  "(optimize_size || !TARGET_SUB_ESP_8) && !TARGET_RED_ZONE"
+   [(clobber (match_dup 0))
+    (set (mem:SI (pre_dec:SI (reg:SI SP_REG))) (match_dup 0))
+    (set (mem:SI (pre_dec:SI (reg:SI SP_REG))) (match_dup 0))])
+@@ -19664,11 +19668,15 @@
+ 	      (clobber (mem:BLK (scratch)))])])
+ 
+ ;; Convert esp subtractions to push.
++;; This conversion is safe only under assumption that unallocated stack is
++;; implicitly clobbered as specified by 32bit ABI (for signal handlers and such).
++;; This is not valid with red zone, but we can work harder and enable the
++;; optimization for functions that are not using it.
+ (define_peephole2
+   [(match_scratch:DI 0 "r")
+    (parallel [(set (reg:DI SP_REG) (plus:DI (reg:DI SP_REG) (const_int -8)))
+ 	      (clobber (reg:CC FLAGS_REG))])]
+-  "optimize_size || !TARGET_SUB_ESP_4"
++  "(optimize_size || !TARGET_SUB_ESP_4) && !TARGET_RED_ZONE"
+   [(clobber (match_dup 0))
+    (set (mem:DI (pre_dec:DI (reg:DI SP_REG))) (match_dup 0))])
+ 
+@@ -19676,7 +19684,7 @@
+   [(match_scratch:DI 0 "r")
+    (parallel [(set (reg:DI SP_REG) (plus:DI (reg:DI SP_REG) (const_int -16)))
+ 	      (clobber (reg:CC FLAGS_REG))])]
+-  "optimize_size || !TARGET_SUB_ESP_8"
++  "(optimize_size || !TARGET_SUB_ESP_8) && !TARGET_RED_ZONE"
+   [(clobber (match_dup 0))
+    (set (mem:DI (pre_dec:DI (reg:DI SP_REG))) (match_dup 0))
+    (set (mem:DI (pre_dec:DI (reg:DI SP_REG))) (match_dup 0))])
+

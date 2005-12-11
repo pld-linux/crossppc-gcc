@@ -1,0 +1,394 @@
+--- gcc/gcc/Makefile.in	12 Oct 2005 12:38:00 -0000	1.1547
++++ gcc/gcc/Makefile.in	21 Oct 2005 11:22:39 -0000
+@@ -2375,7 +2376,7 @@ postreload.o : postreload.c $(CONFIG_H) 
+    $(RTL_H) real.h $(FLAGS_H) $(EXPR_H) $(OPTABS_H) reload.h $(REGS_H) \
+    hard-reg-set.h insn-config.h $(BASIC_BLOCK_H) $(RECOG_H) output.h \
+    function.h toplev.h cselib.h $(TM_P_H) except.h $(TREE_H) $(MACHMODE_H) \
+-   $(OBSTACK_H) timevar.h tree-pass.h
++   $(TARGET_H) $(OBSTACK_H) timevar.h tree-pass.h
+ postreload-gcse.o : postreload-gcse.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+    $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h $(FLAGS_H) real.h insn-config.h \
+    $(RECOG_H) $(EXPR_H) $(BASIC_BLOCK_H) function.h output.h toplev.h \
+--- gcc/gcc/passes.c	11 Oct 2005 19:18:24 -0000	2.117
++++ gcc/gcc/passes.c	21 Oct 2005 11:22:40 -0000
+@@ -650,6 +650,7 @@ init_optimization_passes (void)
+   NEXT_PASS (pass_postreload_cse);
+   NEXT_PASS (pass_gcse2);
+   NEXT_PASS (pass_flow2);
++  NEXT_PASS (pass_machine_postreload);
+   NEXT_PASS (pass_stack_adjustments);
+   NEXT_PASS (pass_peephole2);
+   NEXT_PASS (pass_if_after_reload);
+--- gcc/gcc/postreload.c	5 Jul 2005 16:20:09 -0000	2.33
++++ gcc/gcc/postreload.c	21 Oct 2005 11:22:40 -0000
+@@ -41,6 +41,7 @@ Software Foundation, 51 Franklin Street,
+ #include "output.h"
+ #include "cselib.h"
+ #include "real.h"
++#include "target.h"
+ #include "toplev.h"
+ #include "except.h"
+ #include "tree.h"
+@@ -1599,3 +1600,33 @@ struct tree_opt_pass pass_postreload_cse
+   'o'                                   /* letter */
+ };
+ 
++/* Machine dependent postreload pass.  */
++static bool
++gate_handle_machine_postreload (void)
++{
++  return targetm.machine_dependent_postreload != 0;
++}
++
++
++static void
++rest_of_handle_machine_postreload (void)
++{
++  targetm.machine_dependent_postreload ();
++}
++
++struct tree_opt_pass pass_machine_postreload =
++{
++  "mach-postreload",                    /* name */
++  gate_handle_machine_postreload,       /* gate */
++  rest_of_handle_machine_postreload,    /* execute */
++  NULL,                                 /* sub */
++  NULL,                                 /* next */
++  0,                                    /* static_pass_number */
++  TV_MACH_DEP_AFTER_RELOAD,             /* tv_id */
++  0,                                    /* properties_required */
++  0,                                    /* properties_provided */
++  0,                                    /* properties_destroyed */
++  0,                                    /* todo_flags_start */
++  TODO_dump_func,                       /* todo_flags_finish */
++  0                                     /* letter */
++};
+--- gcc/gcc/target-def.h	12 Oct 2005 20:54:48 -0000	1.134
++++ gcc/gcc/target-def.h	21 Oct 2005 11:22:40 -0000
+@@ -395,6 +395,7 @@ Foundation, 51 Franklin Street, Fifth Fl
+ 
+ #define TARGET_CC_MODES_COMPATIBLE default_cc_modes_compatible
+ 
++#define TARGET_MACHINE_DEPENDENT_AFTER_RELOAD 0
+ #define TARGET_MACHINE_DEPENDENT_REORG 0
+ 
+ #define TARGET_BUILD_BUILTIN_VA_LIST std_build_builtin_va_list
+@@ -587,6 +588,7 @@ Foundation, 51 Franklin Street, Fifth Fl
+   TARGET_DWARF_REGISTER_SPAN,                   \
+   TARGET_FIXED_CONDITION_CODE_REGS,		\
+   TARGET_CC_MODES_COMPATIBLE,			\
++  TARGET_MACHINE_DEPENDENT_AFTER_RELOAD,	\
+   TARGET_MACHINE_DEPENDENT_REORG,		\
+   TARGET_BUILD_BUILTIN_VA_LIST,			\
+   TARGET_GIMPLIFY_VA_ARG_EXPR,			\
+--- gcc/gcc/target.h	12 Oct 2005 20:54:48 -0000	1.145
++++ gcc/gcc/target.h	21 Oct 2005 11:22:40 -0000
+@@ -478,6 +478,10 @@ struct gcc_target
+   enum machine_mode (* cc_modes_compatible) (enum machine_mode,
+ 					     enum machine_mode);
+ 
++  /* Do machine-dependent post-reload pass.  Called after
++     flow2 pass.  */
++  void (* machine_dependent_postreload) (void);
++
+   /* Do machine-dependent code transformations.  Called just before
+      delayed-branch scheduling.  */
+   void (* machine_dependent_reorg) (void);
+--- gcc/gcc/timevar.def	1 Aug 2005 07:47:23 -0000	1.54
++++ gcc/gcc/timevar.def	21 Oct 2005 11:22:40 -0000
+@@ -148,8 +148,9 @@ DEFTIMEVAR (TV_SCHED                 , "
+ DEFTIMEVAR (TV_LOCAL_ALLOC           , "local alloc")
+ DEFTIMEVAR (TV_GLOBAL_ALLOC          , "global alloc")
+ DEFTIMEVAR (TV_RELOAD_CSE_REGS       , "reload CSE regs")
+-DEFTIMEVAR (TV_GCSE_AFTER_RELOAD      , "load CSE after reload")
++DEFTIMEVAR (TV_GCSE_AFTER_RELOAD     , "load CSE after reload")
+ DEFTIMEVAR (TV_FLOW2                 , "flow 2")
++DEFTIMEVAR (TV_MACH_DEP_AFTER_RELOAD , "mach-dep after reload")
+ DEFTIMEVAR (TV_IFCVT2		     , "if-conversion 2")
+ DEFTIMEVAR (TV_PEEPHOLE2             , "peephole 2")
+ DEFTIMEVAR (TV_RENAME_REGISTERS      , "rename registers")
+--- gcc/gcc/tree-pass.h	11 Oct 2005 19:18:24 -0000	2.59
++++ gcc/gcc/tree-pass.h	21 Oct 2005 11:22:40 -0000
+@@ -352,6 +352,7 @@ extern struct tree_opt_pass pass_remove_
+ extern struct tree_opt_pass pass_postreload_cse;
+ extern struct tree_opt_pass pass_gcse2;
+ extern struct tree_opt_pass pass_flow2;
++extern struct tree_opt_pass pass_machine_postreload;
+ extern struct tree_opt_pass pass_stack_adjustments;
+ extern struct tree_opt_pass pass_peephole2;
+ extern struct tree_opt_pass pass_if_after_reload;
+--- gcc/gcc/config/i386/i386.c	19 Oct 2005 02:13:37 -0000	1.864
++++ gcc/gcc/config/i386/i386.c	21 Oct 2005 11:22:43 -0000
+@@ -860,6 +860,7 @@ static void x86_output_mi_thunk (FILE *,
+ 				 HOST_WIDE_INT, tree);
+ static bool x86_can_output_mi_thunk (tree, HOST_WIDE_INT, HOST_WIDE_INT, tree);
+ static void x86_file_start (void);
++static void ix86_postreload (void);
+ static void ix86_reorg (void);
+ static bool ix86_expand_carry_flag_compare (enum rtx_code, rtx, rtx, rtx*);
+ static tree ix86_build_builtin_va_list (void);
+@@ -1062,6 +1063,9 @@ static void x86_64_elf_select_section (t
+ #undef TARGET_CC_MODES_COMPATIBLE
+ #define TARGET_CC_MODES_COMPATIBLE ix86_cc_modes_compatible
+ 
++#undef TARGET_MACHINE_DEPENDENT_AFTER_RELOAD
++#define TARGET_MACHINE_DEPENDENT_AFTER_RELOAD ix86_postreload
++
+ #undef TARGET_MACHINE_DEPENDENT_REORG
+ #define TARGET_MACHINE_DEPENDENT_REORG ix86_reorg
+ 
+@@ -16908,6 +16912,236 @@ min_insn_size (rtx insn)
+     return 2;
+ }
+ 
++/* Non-fcomi 387 FP compare sequences can not be CSE'd during cse1 pass.
++   This function implements elimination of redundant 387 FP compare
++   sequences.  We look for a sequence of:
++
++   fucom(p), fcom(p), ficom(p), fcompp, ftst
++   fnstsw %ax
++   sahf or test %ax
++   j<cc>
++
++   After the FP compare sequence has been found, redundant instructions in
++   successor blocks are deleted:
++
++   a) fcom/fnstsw combination iff compare arguments
++      and AX reg were not modified.
++   b) sahf (test %ax) and fcom/fnstsw iff compare arguments up to compare
++      insn and CC reg were not modified.
++
++   This code is partially based on code from cse_condition_code_reg () and 
++   cse_cc_succs () functions, as found in cse.c source file.  */
++
++static void
++ix86_cse_i387_compares (void)
++{
++  rtx cc_reg = gen_rtx_REG (CCmode, FLAGS_REG);
++  rtx ax_reg;
++  basic_block bb;
++
++  FOR_EACH_BB (bb)
++    {
++      rtx last_insn;
++      rtx insn;
++      rtx cc_src_insn;
++      rtx cc_src;
++      rtx ax_src_insn;
++      rtx ax_src;
++
++      bool cc_src_clobbered_pred;
++
++      edge e;
++      edge_iterator ei;
++
++      last_insn = BB_END (bb);
++      if (!JUMP_P (last_insn))
++	continue;
++
++      /* Find CC setting insn.  */
++      if (! reg_referenced_p (cc_reg, PATTERN (last_insn)))
++	continue;
++
++      cc_src_insn = NULL_RTX;
++      cc_src = NULL_RTX;
++      for (insn = PREV_INSN (last_insn);
++	   insn && insn != PREV_INSN (BB_HEAD (bb));
++	   insn = PREV_INSN (insn))
++	{
++	  rtx set;
++
++	  if (! INSN_P (insn))
++	    continue;
++
++	  set = single_set (insn);
++	  if (set
++	      && REG_P (SET_DEST (set))
++	      && REGNO (SET_DEST (set)) == REGNO (cc_reg))
++	    {
++	      cc_src_insn = insn;
++	      cc_src = SET_SRC (set);
++	      break;
++	    }
++	  else if (reg_set_p (cc_reg, insn))
++	    break;
++	}
++
++      if (! cc_src_insn)
++	continue;
++
++      /* Check if argument to CC setting insn (AX reg) has been
++	 modified between CC setting insn and jump insn.  */
++      cc_src_clobbered_pred
++	= modified_between_p (cc_src, cc_src_insn, NEXT_INSN (last_insn))
++	? true : false;
++
++      /* Find AX setting insn.  */
++      ax_reg = gen_rtx_REG (HImode, 0);
++
++      if (! reg_referenced_p (ax_reg, PATTERN (cc_src_insn)))
++	continue;
++
++      ax_src_insn = NULL_RTX;
++      ax_src = NULL_RTX;
++      for (insn = PREV_INSN (cc_src_insn);
++	   insn && insn != PREV_INSN (BB_HEAD (bb));
++	   insn = PREV_INSN (insn))
++	{
++	  rtx set;
++
++	  if (! INSN_P (insn))
++	    continue;
++
++	  set = single_set (insn);
++	  if (set
++	      && REG_P (SET_DEST (set))
++	      && REGNO (SET_DEST (set)) == REGNO (ax_reg))
++	    {
++	      ax_src_insn = insn;
++	      ax_src = SET_SRC (set);
++	      break;
++	    }
++	  else if (reg_set_p (ax_reg, insn))
++	    break;
++	}
++
++      if (! ax_src_insn)
++	continue;
++
++      if (! (GET_CODE (ax_src) == UNSPEC
++	     && XINT (ax_src, 1) == UNSPEC_FNSTSW))
++	continue;
++
++      /* Leave this BB if input arguments to AX setting insn (compare)
++	 have been modified between compare and jump insn.  */
++      if (modified_between_p (ax_src, ax_src_insn, NEXT_INSN (last_insn)))
++	continue;
++
++      /* FP compare sequence has been found. Check successor blocks
++	 for redundant insns.  */
++      FOR_EACH_EDGE (e, ei, bb->succs)
++	{
++	  rtx insn;
++	  rtx end;
++
++	  rtx delete_cc_src_insn = NULL_RTX;
++	  rtx delete_ax_src_insn = NULL_RTX;
++	  rtx maybe_delete_ax_src_insn = NULL_RTX;
++
++	  bool cc_src_clobbered;
++	  bool cc_reg_clobbered;
++
++	  if (e->flags & EDGE_COMPLEX)
++	    continue;
++
++	  if (EDGE_COUNT (e->dest->preds) != 1
++	      || e->dest == EXIT_BLOCK_PTR)
++	    continue;
++
++	  end = NEXT_INSN (BB_END (e->dest));
++
++	  cc_src_clobbered = cc_src_clobbered_pred;
++	  cc_reg_clobbered = false;
++
++	  for (insn = BB_HEAD (e->dest); insn != end; insn = NEXT_INSN (insn))
++	    {
++	      rtx set;
++
++	      if (! INSN_P (insn))
++		continue;
++
++	      /* If compare arguments are modified, we have to
++		 stop looking for a compare which uses it.  */
++	      if (modified_in_p (ax_src, insn)
++		  && maybe_delete_ax_src_insn == NULL_RTX)
++		break;
++
++	      set = single_set (insn);
++
++	      /* A compare insn can be deleted if it sets AX_REG
++		 from AX_SRC and where CC_SRC is not clobbered yet. */
++	      if (set
++		  && REG_P (SET_DEST (set))
++		  && REGNO (SET_DEST (set)) == REGNO (ax_reg)
++		  && rtx_equal_p (ax_src, SET_SRC (set)))
++		{
++		  maybe_delete_ax_src_insn = insn;
++		  if (!cc_src_clobbered)
++		    {
++		      delete_ax_src_insn = insn;
++		      continue;
++		    }
++		}
++
++	      /* A CC setting insn can be deleted if it sets
++		 CC_REG from CC_SRC, and CC is not clobbered yet.
++		 In this case, compare insn should also be deleted.  */
++	      if (set
++		  && REG_P (SET_DEST (set))
++		  && REGNO (SET_DEST (set)) == REGNO (cc_reg)
++		  && rtx_equal_p (cc_src, SET_SRC (set))
++		  && !cc_reg_clobbered
++		  /* There should be a compare insn present in front.  */
++		  && maybe_delete_ax_src_insn != NULL_RTX)
++		{
++		  delete_ax_src_insn = maybe_delete_ax_src_insn;
++		  delete_cc_src_insn = insn;
++		  break;
++		}
++
++	      if (modified_in_p (cc_src, insn))
++		cc_src_clobbered = true;
++
++	      if (modified_in_p (cc_reg, insn))
++		cc_reg_clobbered = true;
++
++	      /* No usable register remains unclobbered.  */
++	      if (cc_src_clobbered && cc_reg_clobbered)
++		break;
++	    }
++
++	  /* Delete comparison.  */
++	  if (delete_ax_src_insn)
++	    {
++	      gcc_assert (maybe_delete_ax_src_insn != NULL_RTX);
++	      delete_insn (delete_ax_src_insn);
++	    }
++
++	  /* Delete CC setting instruction.  */
++	  if (delete_cc_src_insn)
++	    delete_insn (delete_cc_src_insn);
++	}
++    }
++}
++
++/* Implement machine specific post-reload optimizations. */
++static void
++ix86_postreload (void)
++{
++  if (TARGET_80387 && !TARGET_CMOVE &&
++      !flag_trapping_math && flag_expensive_optimizations)
++    ix86_cse_i387_compares ();
++}
++
+ /* AMD K8 core mispredicts jumps when there are more than 3 jumps in 16 byte
+    window.  */
+ 
+--- gcc/gcc/doc/tm.texi	12 Oct 2005 20:54:49 -0000	1.447
++++ gcc/gcc/doc/tm.texi	21 Oct 2005 11:29:35 -0000
+@@ -9300,6 +9300,15 @@ added to the @code{struct ce_if_block} s
+ by the @code{IFCVT_INIT_EXTRA_FIELDS} macro.
+ @end defmac
+ 
++@deftypefn {Target Hook} void TARGET_MACHINE_DEPENDENT_AFTER_RELOAD ()
++If non-null, this hook performs a target-specific pass over the
++instruction stream.  The compiler will run it at all optimization levels,
++after instructions have been split in flow2 pass.
++
++You need not implement the hook if it has nothing to do.  The default
++definition is null.
++@end deftypefn
++
+ @deftypefn {Target Hook} void TARGET_MACHINE_DEPENDENT_REORG ()
+ If non-null, this hook performs a target-specific pass over the
+ instruction stream.  The compiler will run it at all optimization levels,
