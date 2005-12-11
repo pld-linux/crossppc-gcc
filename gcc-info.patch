@@ -78,7 +78,7 @@
 +@dircategory Programming Languages:
  @direntry
 -* @value{EDITION} User's Guide (@value{FILE}) @value{PLATFORM}
-+* @value{EDITION} User's Guide (@value{FILE}).	GNAT User's Guide
++* GNAT User's Guide (gnat_ugn_unw).     GNAT User's Guide
  @end direntry
  
  @include gcc-common.texi
