@@ -5,10 +5,10 @@
  
  @ifinfo
 -@dircategory Programming
-+@dircategory Programming Languages
++@dircategory Programming Languages:
  @direntry
 -* Cpp: (cpp).		       The GNU C preprocessor.
-+* Cpp: (cpp).				The GNU C preprocessor.
++* Cpp: (cpp).				The GNU C preprocessor
  @end direntry
  @end ifinfo
  
@@ -19,10 +19,10 @@
  
  @ifinfo
 -@dircategory Programming
-+@dircategory Programming Languages
++@dircategory Programming Languages:
  @direntry
 -* Cpplib: (cppinternals).      Cpplib internals.
-+* Cpplib: (cppinternals).			Cpplib internals.
++* Cpplib: (cppinternals).		Cpplib internals
  @end direntry
  @end ifinfo
  
@@ -61,27 +61,27 @@
  
  
 -@dircategory Programming
-+@dircategory Programming Languages
++@dircategory Programming Languages:
  @direntry
 -* gnat-style: (gnat-style).      GNAT Coding Style
 +* gnat-style: (gnat-style).		GNAT Coding Style
  @end direntry
  
  @macro syntax{element}
---- gcc-4.0-20040919.orig/gcc/ada/gnat_ugn.texi	2004-09-13 12:18:41.000000000 +0200
-+++ gcc-4.0-20040919/gcc/ada/gnat_ugn.texi	2004-09-26 10:58:58.509669296 +0200
-@@ -124,6 +124,11 @@
- ``GNU Free Documentation License''.
- @end copying
+--- gcc-4_1-branch/gcc/ada/gnat_ugn.texi.orig	2005-12-06 23:45:52.983574000 +0100
++++ gcc-4_1-branch/gcc/ada/gnat_ugn.texi	2005-12-11 02:35:45.580878360 +0100
+@@ -99,9 +99,9 @@
+ @end ifset
  
+ @settitle @value{EDITION} User's Guide @value{PLATFORM}
+-@dircategory GNU Ada tools
 +@dircategory Programming Languages:
-+@direntry
-+* gnat_ug: (gnat_ug).                   GNAT User's Guide
-+@end direntry
-+
- @titlepage
+ @direntry
+-* @value{EDITION} User's Guide (@value{FILE}) @value{PLATFORM}
++* @value{EDITION} User's Guide (@value{FILE}).	GNAT User's Guide
+ @end direntry
  
- @title @value{EDITION} User's Guide
+ @include gcc-common.texi
 --- gcc-4.0-20040919.orig/gcc/fortran/gfortran.texi	2004-09-16 15:13:39.000000000 +0200
 +++ gcc-4.0-20040919/gcc/fortran/gfortran.texi	2004-09-26 11:05:50.258074024 +0200
 @@ -62,9 +62,9 @@
@@ -92,7 +92,7 @@
 +@dircategory Programming Languages:
  @direntry
 -* gfortran: (gfortran).                  The GNU Fortran 95 Compiler.
-+* gfortran: (gfortran).			The GNU Fortran 95 Compiler.
++* gfortran: (gfortran).			The GNU Fortran 95 Compiler
  @end direntry
  This file documents the use and the internals of
  the GNU Fortran 95 compiler, (@command{gfortran}).
@@ -263,3 +263,80 @@
  @chapter Invoking grmiregistry
  
  @c man title grmiregistry Remote object registry
+--- gcc-4_1-branch/gcc/ada/gnat_rm.texi.orig	2005-11-30 12:12:06.000000000 +0100
++++ gcc-4_1-branch/gcc/ada/gnat_rm.texi	2005-12-11 02:36:14.863426736 +0100
+@@ -26,9 +26,9 @@
+ 
+ @include gcc-common.texi
+ 
+-@dircategory GNU Ada tools
++@dircategory Programming Languages:
+ @direntry
+-* GNAT Reference Manual: (gnat_rm).  Reference Manual for GNU Ada tools.
++* GNAT Reference Manual: (gnat_rm).	Reference Manual for GNU Ada tools
+ @end direntry
+ 
+ @copying
+--- gcc-4_1-branch/fastjar/fastjar.texi.orig	2005-11-30 12:19:45.000000000 +0100
++++ gcc-4_1-branch/fastjar/fastjar.texi	2005-12-11 02:41:00.190050496 +0100
+@@ -17,17 +17,11 @@
+ 
+ @ifinfo
+ @format
+-@dircategory Programming
++@dircategory Programming tools:
+ @direntry
+-* fastjar: (fastjar).       GNU jar utilities
+-@end direntry
+-
+-@dircategory Individual utilities
+-@direntry
+-* fastjar: (fastjar)Invoking fastjar.
+-                            An archive tool for Java archives
+-* grepjar: (fastjar)Invoking grepjar.
+-                            Search files in a jar file for a pattern
++* fastjar: (fastjar).			GNU jar utilities
++* fastjar: (fastjar)fastjar.		An archive tool for Java archives
++* grepjar: (fastjar)grepjar.		Search files in a jar file for a pattern
+ @end direntry
+ @end format
+ 
+@@ -77,12 +71,12 @@
+ This manual describes how to use @command{fastjar} and @command{grepjar}.
+ 
+ @menu
+-* Invoking fastjar::	Options supported by @command{fastjar}
+-* Invoking grepjar::    Options supported by @command{grepjar}
++* fastjar::             Options supported by @command{fastjar}
++* grepjar::             Options supported by @command{grepjar}
+ * Copying::		The GNU General Public License
+ @end menu
+ 
+-@node Invoking fastjar
++@node fastjar
+ @chapter Invoking fastjar
+ 
+ @c man title fastjar archive tool for Java archives
+@@ -172,7 +166,7 @@
+ 
+ @c man end
+ 
+-@node Invoking grepjar
++@node grepjar
+ @chapter Invoking grepjar
+ 
+ @c man title grepjar search files in a jar file for a pattern
+--- gcc-4_1-branch/gcc/doc/install.texi.orig	2005-11-30 12:02:42.000000000 +0100
++++ gcc-4_1-branch/gcc/doc/install.texi	2005-12-11 02:44:22.598279768 +0100
+@@ -87,9 +87,9 @@
+ @ifinfo
+ @insertcopying
+ @end ifinfo
+-@dircategory Programming
++@dircategory Programming Languages:
+ @direntry
+-* gccinstall: (gccinstall).    Installing the GNU Compiler Collection.
++* gccinstall: (gccinstall).		Installing the GNU Compiler Collection
+ @end direntry
+ 
+ @c Part 3 Titlepage and Copyright
