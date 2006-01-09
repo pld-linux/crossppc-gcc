@@ -6,21 +6,13 @@ Summary(pt_BR):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr):	GNU geliþtirme araçlarý - PPC gcc
 Name:		crossppc-gcc
 Version:	4.0.2
-Release:	1
+Release:	2
 Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
 # Source0-md5:	a659b8388cac9db2b13e056e574ceeb0
-%define		_llh_ver	2.6.12.0
-Source1:	http://ep09.pld-linux.org/~mmazur/linux-libc-headers/linux-libc-headers-%{_llh_ver}.tar.bz2
-# Source1-md5:	eae2f562afe224ad50f65a6acfb4252c
-%define		_glibc_ver	2.3.5
-Source2:	ftp://sources.redhat.com/pub/glibc/releases/glibc-%{_glibc_ver}.tar.bz2
-# Source2-md5:	93d9c51850e0513aa4846ac0ddcef639
-Source3:	ftp://sources.redhat.com/pub/glibc/releases/glibc-linuxthreads-%{_glibc_ver}.tar.bz2
-# Source3-md5:	77011b0898393c56b799bc011a0f37bf
-Patch0:		%{name}-libc-sysdeps-configure.patch
+Patch0:		gcc-pr25715.patch
 URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
 BuildRequires:	automake
@@ -66,37 +58,10 @@ This package adds C++ support to the GNU Compiler Collection for PPC.
 Ten pakiet dodaje obs³ugê C++ do kompilatora gcc dla PPC.
 
 %prep
-%setup -q -n gcc-%{version} -a1 -a2 -a3
-mv linuxthreads* glibc-%{_glibc_ver}
+%setup -q -n gcc-%{version}
 %patch0 -p1
 
 %build
-FAKE_ROOT=$PWD/fake-root
-
-rm -rf $FAKE_ROOT && install -d $FAKE_ROOT/usr/include
-cp -r linux-libc-headers-%{_llh_ver}/include/{asm-ppc,linux} $FAKE_ROOT/usr/include
-ln -s asm-ppc $FAKE_ROOT/usr/include/asm
-
-cd glibc-%{_glibc_ver}
-cp -f /usr/share/automake/config.* scripts
-rm -rf builddir && install -d builddir && cd builddir
-../configure \
-	--prefix=$FAKE_ROOT/usr \
-	--build=%{_target_platform} \
-	--host=%{target} \
-	--disable-nls \
-	--enable-add-ons=linuxthreads \
-	--with-headers=$FAKE_ROOT/usr/include \
-	--disable-sanity-checks \
-	--enable-hacker-mode
-
-%{__make} sysdeps/gnu/errlist.c
-%{__make} install-headers
-
-install bits/stdio_lim.h $FAKE_ROOT/usr/include/bits
-touch $FAKE_ROOT/usr/include/gnu/stubs.h
-cd ../..
-
 cp -f /usr/share/automake/config.* .
 rm -rf obj-%{target}
 install -d obj-%{target}
@@ -114,6 +79,7 @@ TEXCONFIG=false \
 	--libexecdir=%{_libdir} \
 	--disable-shared \
 	--disable-threads \
+	--without-headers \
 	--enable-languages="c,c++" \
 	--enable-c99 \
 	--enable-long-long \
@@ -123,7 +89,6 @@ TEXCONFIG=false \
 	--with-demangler-in-ld \
 	--with-system-zlib \
 	--disable-multilib \
-	--with-sysroot=$FAKE_ROOT \
 	--without-x \
 	--target=%{target} \
 	--host=%{_target_platform} \
