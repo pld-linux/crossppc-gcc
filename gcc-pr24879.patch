@@ -1,0 +1,188 @@
+--- gcc/config/i386/i386.c.sse3	2005-11-15 17:33:02.000000000 -0800
++++ gcc/config/i386/i386.c	2005-11-17 09:44:47.000000000 -0800
+@@ -14347,10 +14347,20 @@ ix86_init_mmx_sse_builtins (void)
+   tree void_ftype_unsigned_unsigned
+     = build_function_type_list (void_type_node, unsigned_type_node,
+ 				unsigned_type_node, NULL_TREE);
++  tree void_ftype_di_di
++    = build_function_type_list (void_type_node,
++				long_long_unsigned_type_node,
++				long_long_unsigned_type_node,
++				NULL_TREE);
+   tree void_ftype_pcvoid_unsigned_unsigned
+     = build_function_type_list (void_type_node, const_ptr_type_node,
+ 				unsigned_type_node, unsigned_type_node,
+ 				NULL_TREE);
++  tree void_ftype_pcvoid_di_di
++    = build_function_type_list (void_type_node, const_ptr_type_node,
++				long_long_unsigned_type_node,
++				long_long_unsigned_type_node,
++				NULL_TREE);
+   tree unsigned_ftype_void
+     = build_function_type (unsigned_type_node, void_list_node);
+   tree v2si_ftype_v4sf
+@@ -14811,12 +14821,24 @@ ix86_init_mmx_sse_builtins (void)
+   def_builtin (MASK_SSE2, "__builtin_ia32_pmaddwd128", v4si_ftype_v8hi_v8hi, IX86_BUILTIN_PMADDWD128);
+ 
+   /* Prescott New Instructions.  */
+-  def_builtin (MASK_SSE3, "__builtin_ia32_monitor",
+-	       void_ftype_pcvoid_unsigned_unsigned,
+-	       IX86_BUILTIN_MONITOR);
+-  def_builtin (MASK_SSE3, "__builtin_ia32_mwait",
+-	       void_ftype_unsigned_unsigned,
+-	       IX86_BUILTIN_MWAIT);
++  if (TARGET_64BIT)
++    {
++      def_builtin (MASK_SSE3, "__builtin_ia32_monitor",
++		   void_ftype_pcvoid_di_di,
++		   IX86_BUILTIN_MONITOR);
++      def_builtin (MASK_SSE3, "__builtin_ia32_mwait",
++		   void_ftype_di_di,
++		   IX86_BUILTIN_MWAIT);
++    }
++  else
++    {
++      def_builtin (MASK_SSE3, "__builtin_ia32_monitor",
++		   void_ftype_pcvoid_unsigned_unsigned,
++		   IX86_BUILTIN_MONITOR);
++      def_builtin (MASK_SSE3, "__builtin_ia32_mwait",
++		   void_ftype_unsigned_unsigned,
++		   IX86_BUILTIN_MWAIT);
++    }
+   def_builtin (MASK_SSE3, "__builtin_ia32_movshdup",
+ 	       v4sf_ftype_v4sf,
+ 	       IX86_BUILTIN_MOVSHDUP);
+@@ -15660,13 +15682,17 @@ ix86_expand_builtin (tree exp, rtx targe
+       op0 = expand_expr (arg0, NULL_RTX, VOIDmode, 0);
+       op1 = expand_expr (arg1, NULL_RTX, VOIDmode, 0);
+       op2 = expand_expr (arg2, NULL_RTX, VOIDmode, 0);
++      mode = TARGET_64BIT ? DImode : SImode;
+       if (!REG_P (op0))
+-	op0 = copy_to_mode_reg (SImode, op0);
++	op0 = copy_to_mode_reg (mode, op0);
+       if (!REG_P (op1))
+-	op1 = copy_to_mode_reg (SImode, op1);
++	op1 = copy_to_mode_reg (mode, op1);
+       if (!REG_P (op2))
+-	op2 = copy_to_mode_reg (SImode, op2);
+-      emit_insn (gen_sse3_monitor (op0, op1, op2));
++	op2 = copy_to_mode_reg (mode, op2);
++      if (TARGET_64BIT)
++	emit_insn (gen_sse3_monitor64 (op0, op1, op2));
++      else
++	emit_insn (gen_sse3_monitor (op0, op1, op2));
+       return 0;
+ 
+     case IX86_BUILTIN_MWAIT:
+@@ -15674,11 +15700,15 @@ ix86_expand_builtin (tree exp, rtx targe
+       arg1 = TREE_VALUE (TREE_CHAIN (arglist));
+       op0 = expand_expr (arg0, NULL_RTX, VOIDmode, 0);
+       op1 = expand_expr (arg1, NULL_RTX, VOIDmode, 0);
++      mode = TARGET_64BIT ? DImode : SImode;
+       if (!REG_P (op0))
+-	op0 = copy_to_mode_reg (SImode, op0);
++	op0 = copy_to_mode_reg (mode, op0);
+       if (!REG_P (op1))
+-	op1 = copy_to_mode_reg (SImode, op1);
+-      emit_insn (gen_sse3_mwait (op0, op1));
++	op1 = copy_to_mode_reg (mode, op1);
++      if (TARGET_64BIT)
++	emit_insn (gen_sse3_mwait64 (op0, op1));
++      else
++	emit_insn (gen_sse3_mwait (op0, op1));
+       return 0;
+ 
+     case IX86_BUILTIN_LDDQU:
+--- gcc/config/i386/pmmintrin.h.sse3	2005-11-04 14:13:48.000000000 -0800
++++ gcc/config/i386/pmmintrin.h	2005-11-15 22:44:02.000000000 -0800
+@@ -110,7 +110,6 @@ _mm_lddqu_si128 (__m128i const *__P)
+   return (__m128i) __builtin_ia32_lddqu ((char const *)__P);
+ }
+ 
+-#if 0
+ static __inline void __attribute__((__always_inline__))
+ _mm_monitor (void const * __P, unsigned int __E, unsigned int __H)
+ {
+@@ -122,10 +121,6 @@ _mm_mwait (unsigned int __E, unsigned in
+ {
+   __builtin_ia32_mwait (__E, __H);
+ }
+-#else
+-#define _mm_monitor(P, E, H)	__builtin_ia32_monitor ((P), (E), (H))
+-#define _mm_mwait(E, H)		__builtin_ia32_mwait ((E), (H))
+-#endif
+ 
+ #endif /* __SSE3__ */
+ 
+--- gcc/config/i386/sse.md.sse3	2005-11-04 14:13:48.000000000 -0800
++++ gcc/config/i386/sse.md	2005-11-17 09:25:31.000000000 -0800
+@@ -3890,15 +3890,36 @@
+   [(unspec_volatile [(match_operand:SI 0 "register_operand" "a")
+ 		     (match_operand:SI 1 "register_operand" "c")]
+ 		    UNSPECV_MWAIT)]
+-  "TARGET_SSE3"
++  "TARGET_SSE3 && !TARGET_64BIT"
+   "mwait\t%0, %1"
+   [(set_attr "length" "3")])
+ 
++(define_insn "sse3_mwait64"
++  [(unspec_volatile [(match_operand:DI 0 "register_operand" "a")
++		     (match_operand:DI 1 "register_operand" "c")]
++		    UNSPECV_MWAIT)]
++  "TARGET_SSE3 && TARGET_64BIT"
++;; Older assembler doesn't support "mwait %rax,%rcx".
++;;  "mwait\t%0, %1"
++  "mwait"
++  [(set_attr "length" "3")])
++
+ (define_insn "sse3_monitor"
+   [(unspec_volatile [(match_operand:SI 0 "register_operand" "a")
+ 		     (match_operand:SI 1 "register_operand" "c")
+ 		     (match_operand:SI 2 "register_operand" "d")]
+ 		    UNSPECV_MONITOR)]
+-  "TARGET_SSE3"
++  "TARGET_SSE3 && !TARGET_64BIT"
+   "monitor\t%0, %1, %2"
+   [(set_attr "length" "3")])
++
++(define_insn "sse3_monitor64"
++  [(unspec_volatile [(match_operand:DI 0 "register_operand" "a")
++		     (match_operand:DI 1 "register_operand" "c")
++		     (match_operand:DI 2 "register_operand" "d")]
++		    UNSPECV_MONITOR)]
++  "TARGET_SSE3 && TARGET_64BIT"
++;; Older assembler doesn't support "monitor %rax,%rcx,%rdx".
++;;  "monitor\t%0, %1, %2"
++  "monitor"
++  [(set_attr "length" "3")])
+--- gcc/testsuite/gcc.target/i386/monitor.c.sse3	2005-11-15 22:59:54.000000000 -0800
++++ gcc/testsuite/gcc.target/i386/monitor.c	2005-11-15 23:25:23.000000000 -0800
+@@ -0,0 +1,27 @@
++/* { dg-do compile { target i?86-*-* x86_64-*-* } } */
++/* { dg-options "-O2 -msse3" } */
++
++/* Verify that they work in both 32bit and 64bit.  */
++
++#include <pmmintrin.h>
++
++void
++foo (char *p, int x, int y, int z)
++{
++   _mm_monitor (p, y, x);
++   _mm_mwait (z, y);
++}
++
++void
++bar (char *p, long x, long y, long z)
++{
++   _mm_monitor (p, y, x);
++   _mm_mwait (z, y);
++}
++
++void
++foo1 (char *p)
++{
++   _mm_monitor (p, 0, 0);
++   _mm_mwait (0, 0);
++}
+
