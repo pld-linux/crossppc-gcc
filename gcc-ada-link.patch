@@ -39,8 +39,8 @@
   s-[a-o]*.adb s-[p-z]*.adb s-[a-o]*.ads s-[p-z]*.ads  
  
  LIBGNAT=../rts/libgnat.a 
--GCC_LINK="$(CC) -static-libgcc $(ADA_INCLUDES)"
-+GCC_LINK="$(CC) $(ADA_INCLUDES)"
+-GCC_LINK=$(CC) -static-libgcc $(ADA_INCLUDES)
++GCC_LINK=$(CC) $(ADA_INCLUDES)
  
  # when compiling the tools, the runtime has to be first on the path so that
  # it hides the runtime files lying with the rest of the sources
