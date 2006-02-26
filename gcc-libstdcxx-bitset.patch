@@ -1,0 +1,20 @@
+--- gcc/libstdc++-v3/include/std/std_bitset.h.orig	2006-02-24 13:56:49.490596250 +0100
++++ gcc/libstdc++-v3/include/std/std_bitset.h	2006-02-26 13:28:58.809510250 +0100
+@@ -1,6 +1,7 @@
+ // <bitset> -*- C++ -*-
+ 
+-// Copyright (C) 2001, 2002, 2003, 2004, 2005 Free Software Foundation, Inc.
++// Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006
++// Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -1157,7 +1158,7 @@
+ 	      case '0':
+ 		break;
+ 	      case '1':
+-		set(__i);
++		_Unchecked_set(__i);
+ 		break;
+ 	      default:
+ 		__throw_invalid_argument(__N("bitset::_M_copy_from_string"));
