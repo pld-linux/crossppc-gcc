@@ -85,12 +85,6 @@
  
 --- libstdc++-v3/src/locale.cc.jj	2006-02-02 16:38:25.000000000 +0100
 +++ libstdc++-v3/src/locale.cc	2006-02-10 14:57:26.000000000 +0100
-@@ -1,4 +1,4 @@
--// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005
-+// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006
- // Free Software Foundation, Inc.
- //
- // This file is part of the GNU ISO C++ Library.  This library is free
 @@ -41,6 +41,21 @@ namespace __gnu_internal
    static __glibcxx_mutex_define_initialized(locale_cache_mutex);
  }

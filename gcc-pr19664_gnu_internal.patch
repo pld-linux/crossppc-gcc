@@ -165,17 +165,6 @@
 *** gcc/libstdc++-v3/src/locale.cc	11 Oct 2005 06:19:13 -0000	1.112
 --- gcc/libstdc++-v3/src/locale.cc	28 Oct 2005 00:44:54 -0000
 ***************
-*** 1,4 ****
-! // Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004
-  // Free Software Foundation, Inc.
-  //
-  // This file is part of the GNU ISO C++ Library.  This library is free
---- 1,4 ----
-! // Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005
-  // Free Software Foundation, Inc.
-  //
-  // This file is part of the GNU ISO C++ Library.  This library is free
-***************
 *** 37,44 ****
 --- 37,48 ----
   
