@@ -1,7 +1,20 @@
-diff -uNrp gcc-4_1-branch/gcc.orig/config/elfos.h gcc-4_1-branch/gcc/config/elfos.h
---- gcc-4_1-branch/gcc.orig/config/elfos.h	2005-11-30 11:16:19.000000000 +0000
-+++ gcc-4_1-branch/gcc/config/elfos.h	2005-12-06 17:42:34.002991368 +0000
-@@ -487,3 +487,17 @@ Boston, MA 02110-1301, USA.  */
+
+ config/elfos.h            |   14 +++++++++
+ config/i386/i386-protos.h |    1 
+ config/i386/i386.c        |    7 ++++
+ config/i386/i386.h        |    2 -
+ config/rs6000/linux.h     |    3 +
+ config/rs6000/linux64.h   |    3 +
+ config/rs6000/rs6000.c    |    5 +--
+ output.h                  |    6 +++
+ tree.h                    |   11 +++++++
+ varasm.c                  |   70 ++++++++++++++++++++++++++++++++++++++++++++--
+ 10 files changed, 114 insertions(+), 8 deletions(-)
+
+diff -uNrp trunk/gcc.orig/config/elfos.h trunk/gcc/config/elfos.h
+--- trunk/gcc.orig/config/elfos.h	2006-03-22 00:17:54.000000000 +0100
++++ trunk/gcc/config/elfos.h	2006-03-22 14:28:10.000000000 +0100
+@@ -489,3 +489,17 @@ Boston, MA 02110-1301, USA.  */
          fprintf ((FILE), "\"\n");					\
      }									\
    while (0)
@@ -19,21 +32,10 @@ diff -uNrp gcc-4_1-branch/gcc.orig/config/elfos.h gcc-4_1-branch/gcc/config/elfo
 +#ifndef TARGET_ASM_FILE_END
 +#define TARGET_ASM_FILE_END default_elf_asm_file_end
 +#endif
-diff -uNrp gcc-4_1-branch/gcc.orig/config/i386/i386-protos.h gcc-4_1-branch/gcc/config/i386/i386-protos.h
---- gcc-4_1-branch/gcc.orig/config/i386/i386-protos.h	2005-11-30 11:15:19.000000000 +0000
-+++ gcc-4_1-branch/gcc/config/i386/i386-protos.h	2005-12-06 17:42:34.002991368 +0000
-@@ -28,6 +28,7 @@ extern int ix86_frame_pointer_required (
- extern void ix86_setup_frame_addresses (void);
- 
- extern void ix86_file_end (void);
-+extern void ix86_elf_file_end (void);
- extern HOST_WIDE_INT ix86_initial_elimination_offset (int, int);
- extern void ix86_expand_prologue (void);
- extern void ix86_expand_epilogue (int);
-diff -uNrp gcc-4_1-branch/gcc.orig/config/i386/i386.c gcc-4_1-branch/gcc/config/i386/i386.c
---- gcc-4_1-branch/gcc.orig/config/i386/i386.c	2005-12-06 17:39:59.080543160 +0000
-+++ gcc-4_1-branch/gcc/config/i386/i386.c	2005-12-06 17:42:34.010990152 +0000
-@@ -4417,6 +4417,13 @@ ix86_file_end (void)
+diff -uNrp trunk/gcc.orig/config/i386/i386.c trunk/gcc/config/i386/i386.c
+--- trunk/gcc.orig/config/i386/i386.c	2006-03-22 14:20:45.000000000 +0100
++++ trunk/gcc/config/i386/i386.c	2006-03-22 14:28:10.000000000 +0100
+@@ -4751,6 +4751,13 @@ ix86_file_end (void)
      file_end_indicate_exec_stack ();
  }
  
@@ -47,10 +49,10 @@ diff -uNrp gcc-4_1-branch/gcc.orig/config/i386/i386.c gcc-4_1-branch/gcc/config/
  /* Emit code for the SET_GOT patterns.  */
  
  const char *
-diff -uNrp gcc-4_1-branch/gcc.orig/config/i386/i386.h gcc-4_1-branch/gcc/config/i386/i386.h
---- gcc-4_1-branch/gcc.orig/config/i386/i386.h	2005-11-30 11:15:19.000000000 +0000
-+++ gcc-4_1-branch/gcc/config/i386/i386.h	2005-12-06 17:48:04.665722992 +0000
-@@ -1513,7 +1513,7 @@ typedef struct ix86_args {
+diff -uNrp trunk/gcc.orig/config/i386/i386.h trunk/gcc/config/i386/i386.h
+--- trunk/gcc.orig/config/i386/i386.h	2006-03-22 00:17:11.000000000 +0100
++++ trunk/gcc/config/i386/i386.h	2006-03-22 14:28:10.000000000 +0100
+@@ -1438,7 +1438,7 @@ typedef struct ix86_args {
  #define EXPAND_BUILTIN_VA_START(VALIST, NEXTARG) \
    ix86_va_start (VALIST, NEXTARG)
  
@@ -59,9 +61,33 @@ diff -uNrp gcc-4_1-branch/gcc.orig/config/i386/i386.h gcc-4_1-branch/gcc/config/
  #define NEED_INDICATE_EXEC_STACK 0
  
  /* Output assembler code to FILE to increment profiler label # LABELNO
-diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/linux.h gcc-4_1-branch/gcc/config/rs6000/linux.h
---- gcc-4_1-branch/gcc.orig/config/rs6000/linux.h	2005-11-30 11:15:31.000000000 +0000
-+++ gcc-4_1-branch/gcc/config/rs6000/linux.h	2005-12-06 20:02:14.949860336 +0000
+diff -uNrp trunk/gcc.orig/config/i386/i386-protos.h trunk/gcc/config/i386/i386-protos.h
+--- trunk/gcc.orig/config/i386/i386-protos.h	2006-03-22 00:17:11.000000000 +0100
++++ trunk/gcc/config/i386/i386-protos.h	2006-03-22 14:28:10.000000000 +0100
+@@ -29,6 +29,7 @@ extern int ix86_frame_pointer_required (
+ extern void ix86_setup_frame_addresses (void);
+ 
+ extern void ix86_file_end (void);
++extern void ix86_elf_file_end (void);
+ extern HOST_WIDE_INT ix86_initial_elimination_offset (int, int);
+ extern void ix86_expand_prologue (void);
+ extern void ix86_expand_epilogue (int);
+diff -uNrp trunk/gcc.orig/config/rs6000/linux64.h trunk/gcc/config/rs6000/linux64.h
+--- trunk/gcc.orig/config/rs6000/linux64.h	2006-03-22 00:17:37.000000000 +0100
++++ trunk/gcc/config/rs6000/linux64.h	2006-03-22 14:28:10.000000000 +0100
+@@ -563,7 +563,8 @@ while (0)
+ #undef DRAFT_V4_STRUCT_RET
+ #define DRAFT_V4_STRUCT_RET (!TARGET_64BIT)
+ 
+-#define TARGET_ASM_FILE_END rs6000_elf_end_indicate_exec_stack
++#undef TARGET_ASM_FILE_END
++#define TARGET_ASM_FILE_END rs6000_elf_file_end
+ 
+ #define TARGET_POSIX_IO
+ 
+diff -uNrp trunk/gcc.orig/config/rs6000/linux.h trunk/gcc/config/rs6000/linux.h
+--- trunk/gcc.orig/config/rs6000/linux.h	2006-03-22 00:17:37.000000000 +0100
++++ trunk/gcc/config/rs6000/linux.h	2006-03-22 14:28:10.000000000 +0100
 @@ -108,7 +108,8 @@
  #define RELOCATABLE_NEEDS_FIXUP \
    (target_flags & target_flags_explicit & MASK_RELOCATABLE)
@@ -72,32 +98,19 @@ diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/linux.h gcc-4_1-branch/gcc/conf
  
  #define TARGET_POSIX_IO
  
-diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/linux64.h gcc-4_1-branch/gcc/config/rs6000/linux64.h
---- gcc-4_1-branch/gcc.orig/config/rs6000/linux64.h	2005-11-30 11:15:31.000000000 +0000
-+++ gcc-4_1-branch/gcc/config/rs6000/linux64.h	2005-12-06 20:02:03.882542824 +0000
-@@ -543,7 +543,8 @@ while (0)
- #undef DRAFT_V4_STRUCT_RET
- #define DRAFT_V4_STRUCT_RET (!TARGET_64BIT)
- 
--#define TARGET_ASM_FILE_END rs6000_elf_end_indicate_exec_stack
-+#undef TARGET_ASM_FILE_END
-+#define TARGET_ASM_FILE_END rs6000_elf_file_end
- 
- #define TARGET_POSIX_IO
- 
-diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/rs6000.c gcc-4_1-branch/gcc/config/rs6000/rs6000.c
---- gcc-4_1-branch/gcc.orig/config/rs6000/rs6000.c	2005-11-30 11:15:31.000000000 +0000
-+++ gcc-4_1-branch/gcc/config/rs6000/rs6000.c	2005-12-06 20:17:39.014381176 +0000
-@@ -611,7 +611,7 @@ static void rs6000_file_start (void);
+diff -uNrp trunk/gcc.orig/config/rs6000/rs6000.c trunk/gcc/config/rs6000/rs6000.c
+--- trunk/gcc.orig/config/rs6000/rs6000.c	2006-03-22 00:17:37.000000000 +0100
++++ trunk/gcc/config/rs6000/rs6000.c	2006-03-22 14:28:10.000000000 +0100
+@@ -614,7 +614,7 @@ static void rs6000_file_start (void);
  static unsigned int rs6000_elf_section_type_flags (tree, const char *, int);
  static void rs6000_elf_asm_out_constructor (rtx, int);
  static void rs6000_elf_asm_out_destructor (rtx, int);
 -static void rs6000_elf_end_indicate_exec_stack (void) ATTRIBUTE_UNUSED;
 +static void rs6000_elf_file_end (void) ATTRIBUTE_UNUSED;
- static void rs6000_elf_select_section (tree, int, unsigned HOST_WIDE_INT);
+ static void rs6000_elf_asm_init_sections (void);
+ static section *rs6000_elf_select_section (tree, int, unsigned HOST_WIDE_INT);
  static void rs6000_elf_unique_section (tree, int);
- static void rs6000_elf_select_rtx_section (enum machine_mode, rtx,
-@@ -18060,10 +18060,11 @@ rs6000_elf_declare_function_name (FILE *
+@@ -18221,10 +18221,11 @@ rs6000_elf_declare_function_name (FILE *
  }
  
  static void
@@ -110,10 +123,10 @@ diff -uNrp gcc-4_1-branch/gcc.orig/config/rs6000/rs6000.c gcc-4_1-branch/gcc/con
  }
  #endif
  
-diff -uNrp gcc-4_1-branch/gcc.orig/output.h gcc-4_1-branch/gcc/output.h
---- gcc-4_1-branch/gcc.orig/output.h	2005-11-30 11:16:27.000000000 +0000
-+++ gcc-4_1-branch/gcc/output.h	2005-12-06 17:42:34.018988936 +0000
-@@ -586,6 +586,12 @@ extern void default_file_start (void);
+diff -uNrp trunk/gcc.orig/output.h trunk/gcc/output.h
+--- trunk/gcc.orig/output.h	2006-03-22 00:17:58.000000000 +0100
++++ trunk/gcc/output.h	2006-03-22 14:28:10.000000000 +0100
+@@ -608,6 +608,12 @@ extern void default_file_start (void);
  extern void file_end_indicate_exec_stack (void);
  extern bool default_valid_pointer_mode (enum machine_mode);
  
@@ -126,10 +139,10 @@ diff -uNrp gcc-4_1-branch/gcc.orig/output.h gcc-4_1-branch/gcc/output.h
  extern int default_address_cost (rtx);
  
  /* dbxout helper functions */
-diff -uNrp gcc-4_1-branch/gcc.orig/tree.h gcc-4_1-branch/gcc/tree.h
---- gcc-4_1-branch/gcc.orig/tree.h	2005-11-30 11:16:27.000000000 +0000
-+++ gcc-4_1-branch/gcc/tree.h	2005-12-06 17:42:34.022988328 +0000
-@@ -4070,6 +4070,17 @@ extern void process_pending_assemble_ext
+diff -uNrp trunk/gcc.orig/tree.h trunk/gcc/tree.h
+--- trunk/gcc.orig/tree.h	2006-03-22 00:17:58.000000000 +0100
++++ trunk/gcc/tree.h	2006-03-22 14:28:10.000000000 +0100
+@@ -4388,6 +4388,17 @@ extern void process_pending_assemble_ext
  extern void finish_aliases_1 (void);
  extern void finish_aliases_2 (void);
  
@@ -147,18 +160,18 @@ diff -uNrp gcc-4_1-branch/gcc.orig/tree.h gcc-4_1-branch/gcc/tree.h
  /* In stmt.c */
  extern void expand_computed_goto (tree);
  extern bool parse_output_constraint (const char **, int, int, int,
-diff -uNrp gcc-4_1-branch/gcc.orig/varasm.c gcc-4_1-branch/gcc/varasm.c
---- gcc-4_1-branch/gcc.orig/varasm.c	2005-11-30 11:16:27.000000000 +0000
-+++ gcc-4_1-branch/gcc/varasm.c	2005-12-06 17:42:34.026987720 +0000
+diff -uNrp trunk/gcc.orig/varasm.c trunk/gcc/varasm.c
+--- trunk/gcc.orig/varasm.c	2006-03-22 00:17:58.000000000 +0100
++++ trunk/gcc/varasm.c	2006-03-22 14:28:10.000000000 +0100
 @@ -126,7 +126,6 @@ static unsigned HOST_WIDE_INT array_size
  static unsigned min_align (unsigned, unsigned);
  static void output_constructor (tree, unsigned HOST_WIDE_INT, unsigned int);
  static void globalize_decl (tree);
 -static void maybe_assemble_visibility (tree);
- static int in_named_entry_eq (const void *, const void *);
- static hashval_t in_named_entry_hash (const void *);
- static void initialize_cold_section_name (void);
-@@ -4952,13 +4951,18 @@ default_assemble_visibility (tree decl, 
+ #ifdef BSS_SECTION_ASM_OP
+ #ifdef ASM_OUTPUT_BSS
+ static void asm_output_bss (FILE *, tree, const char *,
+@@ -5039,13 +5038,18 @@ default_assemble_visibility (tree decl, 
  
  /* A helper function to call assemble_visibility when needed for a decl.  */
  
@@ -179,8 +192,8 @@ diff -uNrp gcc-4_1-branch/gcc.orig/varasm.c gcc-4_1-branch/gcc/varasm.c
  }
  
  /* Returns 1 if the target configuration supports defining public symbols
-@@ -5725,4 +5729,64 @@ file_end_indicate_exec_stack (void)
-   named_section_flags (".note.GNU-stack", flags);
+@@ -6194,4 +6198,64 @@ output_object_blocks (void)
+   htab_traverse (object_block_htab, output_object_block_htab, NULL);
  }
  
 +struct extern_symbol_list *extern_symbol_head;
