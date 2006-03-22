@@ -1,27 +1,28 @@
---- gcc/gcc/Makefile.in	12 Oct 2005 12:38:00 -0000	1.1547
-+++ gcc/gcc/Makefile.in	21 Oct 2005 11:22:39 -0000
-@@ -2375,7 +2376,7 @@ postreload.o : postreload.c $(CONFIG_H) 
-    $(RTL_H) real.h $(FLAGS_H) $(EXPR_H) $(OPTABS_H) reload.h $(REGS_H) \
-    hard-reg-set.h insn-config.h $(BASIC_BLOCK_H) $(RECOG_H) output.h \
-    function.h toplev.h cselib.h $(TM_P_H) except.h $(TREE_H) $(MACHMODE_H) \
--   $(OBSTACK_H) timevar.h tree-pass.h
-+   $(TARGET_H) $(OBSTACK_H) timevar.h tree-pass.h
- postreload-gcse.o : postreload-gcse.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
-    $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h $(FLAGS_H) real.h insn-config.h \
-    $(RECOG_H) $(EXPR_H) $(BASIC_BLOCK_H) function.h output.h toplev.h \
---- gcc/gcc/passes.c	11 Oct 2005 19:18:24 -0000	2.117
-+++ gcc/gcc/passes.c	21 Oct 2005 11:22:40 -0000
-@@ -650,6 +650,7 @@ init_optimization_passes (void)
-   NEXT_PASS (pass_postreload_cse);
-   NEXT_PASS (pass_gcse2);
-   NEXT_PASS (pass_flow2);
-+  NEXT_PASS (pass_machine_postreload);
-   NEXT_PASS (pass_stack_adjustments);
-   NEXT_PASS (pass_peephole2);
-   NEXT_PASS (pass_if_after_reload);
---- gcc/gcc/postreload.c	5 Jul 2005 16:20:09 -0000	2.33
-+++ gcc/gcc/postreload.c	21 Oct 2005 11:22:40 -0000
-@@ -41,6 +41,7 @@ Software Foundation, 51 Franklin Street,
+Index: doc/tm.texi
+===================================================================
+--- gcc/gcc/doc/tm.texi	(revision 109809)
++++ gcc/gcc/doc/tm.texi	(working copy)
+@@ -9428,6 +9428,15 @@
+ by the @code{IFCVT_INIT_EXTRA_FIELDS} macro.
+ @end defmac
+ 
++@deftypefn {Target Hook} void TARGET_MACHINE_DEPENDENT_AFTER_RELOAD ()
++If non-null, this hook performs a target-specific pass over the
++instruction stream.  The compiler will run it at all optimization levels,
++after instructions have been split in flow2 pass.
++
++You need not implement the hook if it has nothing to do.  The default
++definition is null.
++@end deftypefn
++
+ @deftypefn {Target Hook} void TARGET_MACHINE_DEPENDENT_REORG ()
+ If non-null, this hook performs a target-specific pass over the
+ instruction stream.  The compiler will run it at all optimization levels,
+Index: postreload.c
+===================================================================
+--- gcc/gcc/postreload.c	(revision 109809)
++++ gcc/gcc/postreload.c	(working copy)
+@@ -41,6 +41,7 @@
  #include "output.h"
  #include "cselib.h"
  #include "real.h"
@@ -29,7 +30,7 @@
  #include "toplev.h"
  #include "except.h"
  #include "tree.h"
-@@ -1599,3 +1600,33 @@ struct tree_opt_pass pass_postreload_cse
+@@ -1600,3 +1601,33 @@
    'o'                                   /* letter */
  };
  
@@ -63,27 +64,23 @@
 +  TODO_dump_func,                       /* todo_flags_finish */
 +  0                                     /* letter */
 +};
---- gcc/gcc/target-def.h	12 Oct 2005 20:54:48 -0000	1.134
-+++ gcc/gcc/target-def.h	21 Oct 2005 11:22:40 -0000
-@@ -395,6 +395,7 @@ Foundation, 51 Franklin Street, Fifth Fl
- 
- #define TARGET_CC_MODES_COMPATIBLE default_cc_modes_compatible
- 
-+#define TARGET_MACHINE_DEPENDENT_AFTER_RELOAD 0
- #define TARGET_MACHINE_DEPENDENT_REORG 0
- 
- #define TARGET_BUILD_BUILTIN_VA_LIST std_build_builtin_va_list
-@@ -587,6 +588,7 @@ Foundation, 51 Franklin Street, Fifth Fl
-   TARGET_DWARF_REGISTER_SPAN,                   \
-   TARGET_FIXED_CONDITION_CODE_REGS,		\
-   TARGET_CC_MODES_COMPATIBLE,			\
-+  TARGET_MACHINE_DEPENDENT_AFTER_RELOAD,	\
-   TARGET_MACHINE_DEPENDENT_REORG,		\
-   TARGET_BUILD_BUILTIN_VA_LIST,			\
-   TARGET_GIMPLIFY_VA_ARG_EXPR,			\
---- gcc/gcc/target.h	12 Oct 2005 20:54:48 -0000	1.145
-+++ gcc/gcc/target.h	21 Oct 2005 11:22:40 -0000
-@@ -478,6 +478,10 @@ struct gcc_target
+Index: tree-pass.h
+===================================================================
+--- gcc/gcc/tree-pass.h	(revision 109809)
++++ gcc/gcc/tree-pass.h	(working copy)
+@@ -356,6 +356,7 @@
+ extern struct tree_opt_pass pass_postreload_cse;
+ extern struct tree_opt_pass pass_gcse2;
+ extern struct tree_opt_pass pass_flow2;
++extern struct tree_opt_pass pass_machine_postreload;
+ extern struct tree_opt_pass pass_stack_adjustments;
+ extern struct tree_opt_pass pass_peephole2;
+ extern struct tree_opt_pass pass_if_after_reload;
+Index: target.h
+===================================================================
+--- gcc/gcc/target.h	(revision 109809)
++++ gcc/gcc/target.h	(working copy)
+@@ -501,6 +501,10 @@
    enum machine_mode (* cc_modes_compatible) (enum machine_mode,
  					     enum machine_mode);
  
@@ -94,12 +91,14 @@
    /* Do machine-dependent code transformations.  Called just before
       delayed-branch scheduling.  */
    void (* machine_dependent_reorg) (void);
---- gcc/gcc/timevar.def	1 Aug 2005 07:47:23 -0000	1.54
-+++ gcc/gcc/timevar.def	21 Oct 2005 11:22:40 -0000
-@@ -148,8 +148,9 @@ DEFTIMEVAR (TV_SCHED                 , "
- DEFTIMEVAR (TV_LOCAL_ALLOC           , "local alloc")
+Index: timevar.def
+===================================================================
+--- gcc/gcc/timevar.def	(revision 109809)
++++ gcc/gcc/timevar.def	(working copy)
+@@ -150,8 +150,9 @@
  DEFTIMEVAR (TV_GLOBAL_ALLOC          , "global alloc")
  DEFTIMEVAR (TV_RELOAD_CSE_REGS       , "reload CSE regs")
+ DEFTIMEVAR (TV_SEQABSTR              , "sequence abstraction")
 -DEFTIMEVAR (TV_GCSE_AFTER_RELOAD      , "load CSE after reload")
 +DEFTIMEVAR (TV_GCSE_AFTER_RELOAD     , "load CSE after reload")
  DEFTIMEVAR (TV_FLOW2                 , "flow 2")
@@ -107,19 +106,56 @@
  DEFTIMEVAR (TV_IFCVT2		     , "if-conversion 2")
  DEFTIMEVAR (TV_PEEPHOLE2             , "peephole 2")
  DEFTIMEVAR (TV_RENAME_REGISTERS      , "rename registers")
---- gcc/gcc/tree-pass.h	11 Oct 2005 19:18:24 -0000	2.59
-+++ gcc/gcc/tree-pass.h	21 Oct 2005 11:22:40 -0000
-@@ -352,6 +352,7 @@ extern struct tree_opt_pass pass_remove_
- extern struct tree_opt_pass pass_postreload_cse;
- extern struct tree_opt_pass pass_gcse2;
- extern struct tree_opt_pass pass_flow2;
-+extern struct tree_opt_pass pass_machine_postreload;
- extern struct tree_opt_pass pass_stack_adjustments;
- extern struct tree_opt_pass pass_peephole2;
- extern struct tree_opt_pass pass_if_after_reload;
---- gcc/gcc/config/i386/i386.c	19 Oct 2005 02:13:37 -0000	1.864
-+++ gcc/gcc/config/i386/i386.c	21 Oct 2005 11:22:43 -0000
-@@ -860,6 +860,7 @@ static void x86_output_mi_thunk (FILE *,
+Index: target-def.h
+===================================================================
+--- gcc/gcc/target-def.h	(revision 109809)
++++ gcc/gcc/target-def.h	(working copy)
+@@ -403,6 +403,7 @@
+ 
+ #define TARGET_CC_MODES_COMPATIBLE default_cc_modes_compatible
+ 
++#define TARGET_MACHINE_DEPENDENT_AFTER_RELOAD 0
+ #define TARGET_MACHINE_DEPENDENT_REORG 0
+ 
+ #define TARGET_BUILD_BUILTIN_VA_LIST std_build_builtin_va_list
+@@ -603,6 +604,7 @@
+   TARGET_DWARF_REGISTER_SPAN,                   \
+   TARGET_FIXED_CONDITION_CODE_REGS,		\
+   TARGET_CC_MODES_COMPATIBLE,			\
++  TARGET_MACHINE_DEPENDENT_AFTER_RELOAD,	\
+   TARGET_MACHINE_DEPENDENT_REORG,		\
+   TARGET_BUILD_BUILTIN_VA_LIST,			\
+   TARGET_GIMPLIFY_VA_ARG_EXPR,			\
+Index: Makefile.in
+===================================================================
+--- gcc/gcc/Makefile.in	(revision 109809)
++++ gcc/gcc/Makefile.in	(working copy)
+@@ -2448,7 +2448,7 @@
+    $(RTL_H) real.h $(FLAGS_H) $(EXPR_H) $(OPTABS_H) reload.h $(REGS_H) \
+    hard-reg-set.h insn-config.h $(BASIC_BLOCK_H) $(RECOG_H) output.h \
+    $(FUNCTION_H) toplev.h cselib.h $(TM_P_H) except.h $(TREE_H) $(MACHMODE_H) \
+-   $(OBSTACK_H) timevar.h tree-pass.h
++   $(TARGET_H) $(OBSTACK_H) timevar.h tree-pass.h
+ postreload-gcse.o : postreload-gcse.c $(CONFIG_H) $(SYSTEM_H) coretypes.h \
+    $(TM_H) $(RTL_H) $(REGS_H) hard-reg-set.h $(FLAGS_H) real.h insn-config.h \
+    $(RECOG_H) $(EXPR_H) $(BASIC_BLOCK_H) $(FUNCTION_H) output.h toplev.h \
+Index: passes.c
+===================================================================
+--- gcc/gcc/passes.c	(revision 109809)
++++ gcc/gcc/passes.c	(working copy)
+@@ -667,6 +667,7 @@
+   NEXT_PASS (pass_postreload_cse);
+   NEXT_PASS (pass_gcse2);
+   NEXT_PASS (pass_flow2);
++  NEXT_PASS (pass_machine_postreload);
+   NEXT_PASS (pass_rtl_seqabstr);
+   NEXT_PASS (pass_stack_adjustments);
+   NEXT_PASS (pass_peephole2);
+Index: config/i386/i386.c
+===================================================================
+--- gcc/gcc/config/i386/i386.c	(revision 109809)
++++ gcc/gcc/config/i386/i386.c	(working copy)
+@@ -943,6 +943,7 @@
  				 HOST_WIDE_INT, tree);
  static bool x86_can_output_mi_thunk (tree, HOST_WIDE_INT, HOST_WIDE_INT, tree);
  static void x86_file_start (void);
@@ -127,7 +163,7 @@
  static void ix86_reorg (void);
  static bool ix86_expand_carry_flag_compare (enum rtx_code, rtx, rtx, rtx*);
  static tree ix86_build_builtin_va_list (void);
-@@ -1062,6 +1063,9 @@ static void x86_64_elf_select_section (t
+@@ -1147,6 +1148,9 @@
  #undef TARGET_CC_MODES_COMPATIBLE
  #define TARGET_CC_MODES_COMPATIBLE ix86_cc_modes_compatible
  
@@ -137,7 +173,7 @@
  #undef TARGET_MACHINE_DEPENDENT_REORG
  #define TARGET_MACHINE_DEPENDENT_REORG ix86_reorg
  
-@@ -16908,6 +16912,236 @@ min_insn_size (rtx insn)
+@@ -17149,6 +17153,236 @@
      return 2;
  }
  
@@ -374,21 +410,3 @@
  /* AMD K8 core mispredicts jumps when there are more than 3 jumps in 16 byte
     window.  */
  
---- gcc/gcc/doc/tm.texi	12 Oct 2005 20:54:49 -0000	1.447
-+++ gcc/gcc/doc/tm.texi	21 Oct 2005 11:29:35 -0000
-@@ -9300,6 +9300,15 @@ added to the @code{struct ce_if_block} s
- by the @code{IFCVT_INIT_EXTRA_FIELDS} macro.
- @end defmac
- 
-+@deftypefn {Target Hook} void TARGET_MACHINE_DEPENDENT_AFTER_RELOAD ()
-+If non-null, this hook performs a target-specific pass over the
-+instruction stream.  The compiler will run it at all optimization levels,
-+after instructions have been split in flow2 pass.
-+
-+You need not implement the hook if it has nothing to do.  The default
-+definition is null.
-+@end deftypefn
-+
- @deftypefn {Target Hook} void TARGET_MACHINE_DEPENDENT_REORG ()
- If non-null, this hook performs a target-specific pass over the
- instruction stream.  The compiler will run it at all optimization levels,
