@@ -1,0 +1,54 @@
+--- gcc-4.1.0-20060223/libjava/classpath/native/jni/qt-peer/componentevent.cpp.orig	2005-11-16 00:20:01.000000000 +0100
++++ gcc-4.1.0-20060223/libjava/classpath/native/jni/qt-peer/componentevent.cpp	2006-02-26 17:59:49.285101500 +0100
+@@ -39,6 +39,7 @@
+ #include <QWidget>
+ #include <QPoint>
+ 
++#include <assert.h>
+ #include "componentevent.h"
+   
+ AWTInitEvent::AWTInitEvent(JNIEnv *env, jobject obj) : AWTEvent()
+--- gcc-4.1.0-20060223/libjava/classpath/gnu/java/awt/peer/qt/QtToolkit.java.orig	2005-11-16 00:20:01.000000000 +0100
++++ gcc-4.1.0-20060223/libjava/classpath/gnu/java/awt/peer/qt/QtToolkit.java	2006-02-26 17:28:33.311860500 +0100
+@@ -137,7 +137,7 @@
+     eventQueue = new EventQueue();
+     repaintThread = new QtRepaintThread();
+     if (Configuration.INIT_LOAD_LIBRARY)
+-      System.loadLibrary("qtpeer");
++      System.loadLibrary("-gnu-java-awt-peer-qt");
+ 
+     String theme = null;
+     try 
+--- gcc-4.1.0-20060223/libjava/classpath/configure.ac.orig	2005-12-01 21:09:06.000000000 +0100
++++ gcc-4.1.0-20060223/libjava/classpath/configure.ac	2006-02-26 17:59:25.255599750 +0100
+@@ -372,6 +372,9 @@
+   if test "x${COMPILE_QT_PEER}" = xyes; then
+     PKG_CHECK_MODULES(QT, QtGui >= 4.0.1, HAVE_QT4="yes", HAVE_QT4="no")
+     if test "x$HAVE_QT4" = "xyes"; then
++      AC_ARG_WITH([qt4dir],
++        [AS_HELP_STRING([--with-qt4dir=DIR],[Qt4 installation directory.])],
++        [QT4DIR=$withval])
+       dnl Check needed because in some cases the QtGui includedir
+       dnl doesn't contain the subsystem dir.
+       QT_INCLUDE_DIR=$($PKG_CONFIG --variable=includedir QtGui)
+@@ -381,18 +384,13 @@
+       AC_CHECK_FILE([$EXTRA_QT_INCLUDE_DIR/QWidget],
+ 	QT_CFLAGS="$QT_CFLAGS -I$EXTRA_QT_INCLUDE_DIR",
+ 	AC_MSG_WARN([QWidget not found])))
+-	AC_CHECK_PROG(MOC, [moc], [moc])
++	AC_CHECK_PROG(MOC, [moc], [$QT4DIR/bin/moc], [], $QT4DIR/bin)
++      QT_CFLAGS="$QT_CFLAGS -I\$(top_srcdir)/../../builddir/\$(shell cat \$(top_srcdir)/../../builddir/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }')/libstdc++-v3/include -I\$(top_srcdir)/../../builddir/\$(shell cat \$(top_srcdir)/../../builddir/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }')/libstdc++-v3/include/\$(shell cat \$(top_srcdir)/../../builddir/Makefile |grep ^TARGET_SUBDIR |awk '{ print \$\$3; }') -I\$(top_srcdir)/../../libstdc++-v3/libsupc++ -I/usr/include/qt4/Qt"
+     fi
+     if test "x$HAVE_QT4" = "xno"; then
+       AC_MSG_NOTICE([Looking for QT_CFLAGS and QT_LIBS without pkg-config])
+       case "$host_os" in
+   	darwin*)
+-  	  AC_ARG_WITH([qt4dir],
+-  	    [AS_HELP_STRING([--with-qt4dir=DIR],
+-  	    [Qt4 installation directory used for OS-X.
+-  	    For other systems use pkg-config.])],
+-  	    [QT4DIR=$withval]
+-  	    )
+   	  if test x"$QT4DIR" = x ; then
+   	    AC_MSG_ERROR([*** No path for Qt4 --with-qt4dir option given])
+   	  fi

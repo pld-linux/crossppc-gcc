@@ -1,0 +1,43 @@
+--- gcc-3.4.5/gcc/cp/g++spec.c.orig	2004-09-29 04:18:58.000000000 +0200
++++ gcc-3.4.5/gcc/cp/g++spec.c	2005-12-09 04:26:21.215120000 +0100
+@@ -222,6 +222,11 @@ lang_specific_driver (int *in_argc, cons
+ 	    {
+ 	      if ((len <= 2 || strcmp (argv[i] + (len - 2), ".H") != 0)
+ 		  && (len <= 2 || strcmp (argv[i] + (len - 2), ".h") != 0)
++		  && (len <= 4 || strcmp (argv[i] + (len - 4), ".hpp") != 0)
++		  && (len <= 3 || strcmp (argv[i] + (len - 3), ".hp") != 0)
++		  && (len <= 4 || strcmp (argv[i] + (len - 4), ".hxx") != 0)
++		  && (len <= 4 || strcmp (argv[i] + (len - 4), ".h++") != 0)
++		  && (len <= 4 || strcmp (argv[i] + (len - 4), ".HPP") != 0)
+ 		  && (len <= 3 || strcmp (argv[i] + (len - 3), ".hh") != 0))
+ 		library = 1;
+ 	    }
+--- gcc-4_1-branch/gcc/cp/lang-specs.h.orig	2005-11-30 12:09:14.000000000 +0100
++++ gcc-4_1-branch/gcc/cp/lang-specs.h	2005-12-09 04:51:49.225120000 +0100
+@@ -34,6 +34,12 @@ Boston, MA 02110-1301, USA.  */
+   {".C",   "@c++", 0, 0, 0},
+   {".CPP", "@c++", 0, 0, 0},
+   {".H",   "@c++-header", 0, 0, 0},
++  {".hpp", "@c++-header", 0, 0, 0},
++  {".hp",  "@c++-header", 0, 0, 0},
++  {".hxx", "@c++-header", 0, 0, 0},
++  {".h++", "@c++-header", 0, 0, 0},
++  {".hpp", "@c++-header", 0, 0, 0},
++  {".HPP", "@c++-header", 0, 0, 0},
+   {".hh",  "@c++-header", 0, 0, 0},
+   {"@c++-header",
+     "%{E|M|MM:cc1plus -E %(cpp_options) %2 %(cpp_debug_options)}\
+--- gcc-3.4.5/gcc/doc/invoke.texi.orig	2005-10-08 02:22:20.000000000 +0200
++++ gcc-3.4.5/gcc/doc/invoke.texi	2005-12-09 04:24:19.085120000 +0100
+@@ -750,6 +750,11 @@ the last two letters must both be litera
+ @samp{.C} refers to a literal capital C@.
+ 
+ @item @var{file}.hh
++@itemx @var{file}.hp
++@itemx @var{file}.hxx
++@itemx @var{file}.hpp
++@itemx @var{file}.HPP
++@itemx @var{file}.h++
+ @itemx @var{file}.H
+ C++ header file to be turned into a precompiled header.
+ 
