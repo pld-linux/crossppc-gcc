@@ -4,7 +4,7 @@
  @set cppmanual
  
  @ifinfo
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* Cpp: (cpp).		       The GNU C preprocessor.
@@ -18,7 +18,7 @@
  @settitle The GNU C Preprocessor Internals
  
  @ifinfo
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* Cpplib: (cppinternals).      Cpplib internals.
@@ -32,7 +32,7 @@
       funds for GNU development.
  @end copying
  @ifnottex
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* gcc: (gcc).                  The GNU Compiler Collection.
@@ -46,7 +46,7 @@
       funds for GNU development.
  @end copying
  @ifnottex
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* gccint: (gccint).            Internals of the GNU Compiler Collection.
@@ -60,7 +60,7 @@
  @setchapternewpage odd
  
  
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* gnat-style: (gnat-style).      GNAT Coding Style
@@ -88,7 +88,7 @@
  @end copying
  
  @ifinfo
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* gfortran: (gfortran).                  The GNU Fortran 95 Compiler.
@@ -96,13 +96,13 @@
  @end direntry
  This file documents the use and the internals of
  the GNU Fortran 95 compiler, (@command{gfortran}).
---- gcc-4.0-20050507/gcc/java/gcj.texi.orig	2005-05-07 00:53:37.000000000 +0200
-+++ gcc-4.0-20050507/gcc/java/gcj.texi	2005-05-08 13:09:27.000000000 +0200
-@@ -50,30 +50,22 @@
+--- trunk/gcc/java/gcj.texi.orig	2006-07-02 15:30:47.000000000 +0200
++++ trunk/gcc/java/gcj.texi	2006-07-02 21:15:25.663463500 +0200
+@@ -57,30 +57,22 @@
  
  @ifinfo
  @format
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* Gcj: (gcj).               Ahead-of-time compiler for the Java language
@@ -141,7 +141,7 @@
  @end direntry
  @end format
  
-@@ -107,20 +99,20 @@
+@@ -114,20 +106,20 @@
  @file{.class} files.
  
  @menu
@@ -173,7 +173,7 @@
  * About CNI::           Description of the Compiled Native Interface
  * System properties::   Modifying runtime behavior of the libgcj library
  * Resources::		Where to look for more information
-@@ -132,7 +124,7 @@
+@@ -140,7 +132,7 @@
  @include fdl.texi
  
  
@@ -182,7 +182,18 @@
  @chapter Invoking gcj
  
  @c man title gcj Ahead-of-time compiler for the Java language
-@@ -659,7 +651,7 @@
+@@ -674,8 +666,8 @@
+ @code{-findirect-dispatch} then add them to the system-wide
+ classmap.db file using @code{gcj-dbtool}, they will be automatically
+ loaded by the @code{libgcj} system classloader.  This is the new,
+-preferred classname-to-library resolution mechanism.  @xref{Invoking
+-gcj-dbtool}, for more information on using the classmap database.
++preferred classname-to-library resolution mechanism.  @xref{gcj-dbtool},
++for more information on using the classmap database.
+ 
+ @item
+ The old classname-to-library lookup mechanism is still supported
+@@ -722,7 +714,7 @@
  @end itemize
  
  
@@ -191,7 +202,7 @@
  @chapter Invoking gcjh
  
  @c man title gcjh generate header files from Java class files
-@@ -775,7 +767,7 @@
+@@ -838,7 +830,7 @@
  
  @c man end
  
@@ -200,7 +211,7 @@
  @chapter Invoking gjnih
  
  @c man title gjnih generate JNI header files from Java class files
-@@ -889,7 +881,7 @@
+@@ -952,7 +944,7 @@
  
  @c man end
  
@@ -209,7 +220,7 @@
  @chapter Invoking jv-scan
  
  @c man title jv-scan print information about Java source file
-@@ -952,7 +944,7 @@
+@@ -1015,7 +1007,7 @@
  
  @c man end
  
@@ -218,7 +229,7 @@
  @chapter Invoking jcf-dump
  
  @c man title jcf-dump print information about Java class files
-@@ -1012,7 +1004,7 @@
+@@ -1075,7 +1067,7 @@
  
  @c man end
  
@@ -227,7 +238,7 @@
  @chapter Invoking gij
  
  @c man title gij GNU interpreter for Java bytecode
-@@ -1132,7 +1124,7 @@
+@@ -1204,7 +1196,7 @@
  
  @c man end
  
@@ -236,7 +247,7 @@
  @chapter Invoking gcj-dbtool.
  
  @c man title gcj-dbtool Manipulate class file mapping databases for libgcj
-@@ -1223,7 +1215,7 @@
+@@ -1295,7 +1287,7 @@
  
  @c man end
  
@@ -245,7 +256,7 @@
  @chapter Invoking jv-convert
  
  @c man title jv-convert Convert file from one encoding to another
-@@ -1282,7 +1274,7 @@
+@@ -1354,7 +1346,7 @@
  
  @c man end
  
@@ -254,7 +265,7 @@
  @chapter Invoking grmic
  
  @c man title grmic Generate stubs for Remote Method Invocation
-@@ -1361,7 +1353,7 @@
+@@ -1433,7 +1425,7 @@
  @c man end
  
  
@@ -277,62 +288,13 @@
  @end direntry
  
  @copying
---- gcc-4_1-branch/fastjar/fastjar.texi.orig	2005-11-30 12:19:45.000000000 +0100
-+++ gcc-4_1-branch/fastjar/fastjar.texi	2005-12-11 02:41:00.190050496 +0100
-@@ -17,17 +17,11 @@
- 
- @ifinfo
- @format
--@dircategory Programming
-+@dircategory Programming tools:
- @direntry
--* fastjar: (fastjar).       GNU jar utilities
--@end direntry
--
--@dircategory Individual utilities
--@direntry
--* fastjar: (fastjar)Invoking fastjar.
--                            An archive tool for Java archives
--* grepjar: (fastjar)Invoking grepjar.
--                            Search files in a jar file for a pattern
-+* fastjar: (fastjar).			GNU jar utilities
-+* fastjar: (fastjar)fastjar.		An archive tool for Java archives
-+* grepjar: (fastjar)grepjar.		Search files in a jar file for a pattern
- @end direntry
- @end format
- 
-@@ -77,12 +71,12 @@
- This manual describes how to use @command{fastjar} and @command{grepjar}.
- 
- @menu
--* Invoking fastjar::	Options supported by @command{fastjar}
--* Invoking grepjar::    Options supported by @command{grepjar}
-+* fastjar::             Options supported by @command{fastjar}
-+* grepjar::             Options supported by @command{grepjar}
- * Copying::		The GNU General Public License
- @end menu
- 
--@node Invoking fastjar
-+@node fastjar
- @chapter Invoking fastjar
- 
- @c man title fastjar archive tool for Java archives
-@@ -172,7 +166,7 @@
- 
- @c man end
- 
--@node Invoking grepjar
-+@node grepjar
- @chapter Invoking grepjar
- 
- @c man title grepjar search files in a jar file for a pattern
 --- gcc-4_1-branch/gcc/doc/install.texi.orig	2005-11-30 12:02:42.000000000 +0100
 +++ gcc-4_1-branch/gcc/doc/install.texi	2005-12-11 02:44:22.598279768 +0100
 @@ -87,9 +87,9 @@
  @ifinfo
  @insertcopying
  @end ifinfo
--@dircategory Programming
+-@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
 -* gccinstall: (gccinstall).    Installing the GNU Compiler Collection.
