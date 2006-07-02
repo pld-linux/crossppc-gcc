@@ -48,14 +48,3 @@
  #include "componentevent.h"
    
  AWTInitEvent::AWTInitEvent(JNIEnv *env, jobject obj) : AWTEvent()
---- trunk/libjava/classpath/gnu/java/awt/peer/qt/QtToolkit.java.orig	2006-07-02 15:31:57.000000000 +0200
-+++ trunk/libjava/classpath/gnu/java/awt/peer/qt/QtToolkit.java	2006-07-02 18:52:59.444756500 +0200
-@@ -136,7 +136,7 @@
-   {
-     eventQueue = new EventQueue();
-     repaintThread = new QtRepaintThread();
--    System.loadLibrary("qtpeer");
-+    System.loadLibrary("-gnu-java-awt-peer-qt");
- 
-     String theme = null;
-     try 
