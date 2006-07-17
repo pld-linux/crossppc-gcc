@@ -1,0 +1,201 @@
+diff -uNr trunk/libstdc++-v3.orig/config/abi/compatibility.h trunk/libstdc++-v3/config/abi/compatibility.h
+--- trunk/libstdc++-v3.orig/config/abi/compatibility.h	2005-11-30 11:40:19.000000000 +0100
++++ trunk/libstdc++-v3/config/abi/compatibility.h	2006-07-17 21:12:17.069452000 +0200
+@@ -37,7 +37,7 @@
+ _ZNSt19istreambuf_iteratorIcSt11char_traitsIcEEppEv
+ _ZNSt19istreambuf_iteratorIwSt11char_traitsIwEEppEv
+  */
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+ _GLIBCXX_APPLY_SYMVER(_ZNSt21istreambuf_iteratorXXIcSt11char_traitsIcEEppEv,
+ 		      _ZNSt19istreambuf_iteratorIcSt11char_traitsIcEEppEv)
+@@ -77,7 +77,7 @@
+ _ZNSt11char_traitsIcE2eqERKcS2_
+ _ZNSt11char_traitsIwE2eqERKwS2_
+  */
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+ _GLIBCXX_APPLY_SYMVER(_ZNSt11char_traitsIcE4eqXXERKcS2_,
+ 		      _ZNSt11char_traitsIcE2eqERKcS2_)
+diff -uNr trunk/libstdc++-v3.orig/config/cpu/generic/atomicity_mutex/atomicity.h trunk/libstdc++-v3/config/cpu/generic/atomicity_mutex/atomicity.h
+--- trunk/libstdc++-v3.orig/config/cpu/generic/atomicity_mutex/atomicity.h	2006-07-16 23:17:16.000000000 +0200
++++ trunk/libstdc++-v3/config/cpu/generic/atomicity_mutex/atomicity.h	2006-07-17 21:11:24.858189000 +0200
+@@ -31,7 +31,7 @@
+ #include <bits/atomicity.h>
+ #include <bits/concurrence.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   __glibcxx_mutex_define_initialized(atomic_mutex);
+ } // namespace __gnu_internal
+diff -uNr trunk/libstdc++-v3.orig/config/cpu/sh/atomicity.h trunk/libstdc++-v3/config/cpu/sh/atomicity.h
+--- trunk/libstdc++-v3.orig/config/cpu/sh/atomicity.h	2006-03-22 10:41:01.000000000 +0100
++++ trunk/libstdc++-v3/config/cpu/sh/atomicity.h	2006-07-17 21:09:51.844376000 +0200
+@@ -77,7 +77,7 @@
+ #include <bits/atomicity.h>
+ #include <bits/concurrence.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   __glibcxx_mutex_define_initialized(atomic_mutex);
+ } // namespace __gnu_internal
+diff -uNr trunk/libstdc++-v3.orig/config/io/basic_file_stdio.cc trunk/libstdc++-v3/config/io/basic_file_stdio.cc
+--- trunk/libstdc++-v3.orig/config/io/basic_file_stdio.cc	2006-03-22 10:41:01.000000000 +0100
++++ trunk/libstdc++-v3/config/io/basic_file_stdio.cc	2006-07-17 21:11:55.404098000 +0200
+@@ -70,7 +70,7 @@
+ 
+ #include <limits> // For <off_t>::max() and min() and <streamsize>::max()
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   // Map ios_base::openmode flags to a string for use in fopen().
+   // Table of valid combinations as given in [lib.filebuf.members]/2.
+diff -uNr trunk/libstdc++-v3.orig/include/bits/cpp_type_traits.h trunk/libstdc++-v3/include/bits/cpp_type_traits.h
+--- trunk/libstdc++-v3.orig/include/bits/cpp_type_traits.h	2006-03-22 10:40:54.000000000 +0100
++++ trunk/libstdc++-v3/include/bits/cpp_type_traits.h	2006-07-17 21:12:42.387034250 +0200
+@@ -72,7 +72,7 @@
+ 
+ // NB: g++ can not compile these if declared within the class
+ // __is_pod itself.
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   typedef char __one;
+   typedef char __two[2];
+diff -uNr trunk/libstdc++-v3.orig/include/tr1/cmath trunk/libstdc++-v3/include/tr1/cmath
+--- trunk/libstdc++-v3.orig/include/tr1/cmath	2006-03-22 10:40:55.000000000 +0100
++++ trunk/libstdc++-v3/include/tr1/cmath	2006-07-17 21:14:00.131893000 +0200
+@@ -147,7 +147,7 @@
+ #undef truncl
+ 
+ // Workaround for c++/21682.
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   template<typename _Tp, typename _Up>
+     inline typename
+diff -uNr trunk/libstdc++-v3.orig/libsupc++/eh_globals.cc trunk/libstdc++-v3/libsupc++/eh_globals.cc
+--- trunk/libstdc++-v3.orig/libsupc++/eh_globals.cc	2006-07-16 23:17:16.000000000 +0200
++++ trunk/libstdc++-v3/libsupc++/eh_globals.cc	2006-07-17 21:14:27.629611500 +0200
+@@ -49,7 +49,7 @@
+ 
+ #if _GLIBCXX_HAVE_TLS
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   using namespace abi;
+   using namespace std;
+diff -uNr trunk/libstdc++-v3.orig/src/debug.cc trunk/libstdc++-v3/src/debug.cc
+--- trunk/libstdc++-v3.orig/src/debug.cc	2006-03-22 10:40:57.000000000 +0100
++++ trunk/libstdc++-v3/src/debug.cc	2006-07-17 21:16:34.933567500 +0200
+@@ -39,7 +39,7 @@
+ 
+ using namespace std;
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   static __glibcxx_mutex_define_initialized(iterator_base_mutex);
+ } // namespace __gnu_internal
+diff -uNr trunk/libstdc++-v3.orig/src/ext-inst.cc trunk/libstdc++-v3/src/ext-inst.cc
+--- trunk/libstdc++-v3.orig/src/ext-inst.cc	2006-03-22 10:40:57.000000000 +0100
++++ trunk/libstdc++-v3/src/ext-inst.cc	2006-07-17 21:16:09.611985000 +0200
+@@ -34,7 +34,7 @@
+ #include <ext/rope>
+ #include <ext/stdio_filebuf.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   const int min_len = __gnu_cxx::_Rope_constants::_S_max_rope_depth + 1;
+ }
+diff -uNr trunk/libstdc++-v3.orig/src/globals_io.cc trunk/libstdc++-v3/src/globals_io.cc
+--- trunk/libstdc++-v3.orig/src/globals_io.cc	2006-03-22 10:40:57.000000000 +0100
++++ trunk/libstdc++-v3/src/globals_io.cc	2006-07-17 21:15:55.995134000 +0200
+@@ -75,7 +75,7 @@
+ 
+ _GLIBCXX_END_NAMESPACE
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   using namespace std;
+   using namespace __gnu_cxx;
+diff -uNr trunk/libstdc++-v3.orig/src/globals_locale.cc trunk/libstdc++-v3/src/globals_locale.cc
+--- trunk/libstdc++-v3.orig/src/globals_locale.cc	2005-11-30 11:38:29.000000000 +0100
++++ trunk/libstdc++-v3/src/globals_locale.cc	2006-07-17 21:14:48.446912500 +0200
+@@ -43,7 +43,7 @@
+ // In macro form:
+ // _GLIBCXX_ASM_SYMVER(currentname, oldname, GLIBCXX_3.2)
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   using namespace std;
+ 
+diff -uNr trunk/libstdc++-v3.orig/src/ios_init.cc trunk/libstdc++-v3/src/ios_init.cc
+--- trunk/libstdc++-v3.orig/src/ios_init.cc	2006-05-30 12:19:02.000000000 +0200
++++ trunk/libstdc++-v3/src/ios_init.cc	2006-07-17 21:16:21.916754000 +0200
+@@ -40,7 +40,7 @@
+ #include <ext/stdio_filebuf.h>
+ #include <ext/stdio_sync_filebuf.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   using namespace __gnu_cxx;
+ 
+diff -uNr trunk/libstdc++-v3.orig/src/locale.cc trunk/libstdc++-v3/src/locale.cc
+--- trunk/libstdc++-v3.orig/src/locale.cc	2006-05-30 12:19:02.000000000 +0200
++++ trunk/libstdc++-v3/src/locale.cc	2006-07-17 21:15:26.933317750 +0200
+@@ -35,7 +35,7 @@
+ #include <bits/atomicity.h>
+ #include <bits/concurrence.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   // Mutex object for cache access
+   static __glibcxx_mutex_define_initialized(locale_cache_mutex);
+diff -uNr trunk/libstdc++-v3.orig/src/locale_init.cc trunk/libstdc++-v3/src/locale_init.cc
+--- trunk/libstdc++-v3.orig/src/locale_init.cc	2006-03-22 10:40:57.000000000 +0100
++++ trunk/libstdc++-v3/src/locale_init.cc	2006-07-17 21:15:23.845124750 +0200
+@@ -35,7 +35,7 @@
+ #include <bits/atomicity.h>
+ #include <bits/concurrence.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   // Defined in globals.cc.
+   extern std::locale 		c_locale;
+diff -uNr trunk/libstdc++-v3.orig/src/mt_allocator.cc trunk/libstdc++-v3/src/mt_allocator.cc
+--- trunk/libstdc++-v3.orig/src/mt_allocator.cc	2006-03-22 10:40:57.000000000 +0100
++++ trunk/libstdc++-v3/src/mt_allocator.cc	2006-07-17 21:15:05.643987250 +0200
+@@ -35,7 +35,7 @@
+ #include <bits/concurrence.h>
+ #include <ext/mt_allocator.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+ #ifdef __GTHREADS
+   struct __freelist
+diff -uNr trunk/libstdc++-v3.orig/src/pool_allocator.cc trunk/libstdc++-v3/src/pool_allocator.cc
+--- trunk/libstdc++-v3.orig/src/pool_allocator.cc	2006-03-22 10:40:57.000000000 +0100
++++ trunk/libstdc++-v3/src/pool_allocator.cc	2006-07-17 21:15:01.427723750 +0200
+@@ -35,7 +35,7 @@
+ #include <cstdlib>
+ #include <ext/pool_allocator.h>
+ 
+-namespace __gnu_internal
++namespace __gnu_internal __attribute__((visibility("hidden")))
+ {
+   static __glibcxx_mutex_define_initialized(palloc_init_mutex);
+ }
