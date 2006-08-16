@@ -1,0 +1,30 @@
+--- gcc-4_1-branch/gcc/config/i386/i386.md.orig	2006-08-16 22:50:41.692366000 +0200
++++ gcc-4_1-branch/gcc/config/i386/i386.md	2006-08-16 22:53:01.677114500 +0200
+@@ -20220,7 +20220,12 @@
+    (set (match_scratch:DI 2 "=&r") (const_int 0))
+    (clobber (reg:CC FLAGS_REG))]
+   "TARGET_64BIT"
+-  "mov{q}\t{%%fs:%P1, %2|%2, QWORD PTR %%fs:%P1}\;mov{q}\t{%2, %0|%0, %2}\;xor{l}\t%k2, %k2"
++  {  
++     if (ix86_cmodel != CM_KERNEL)
++        return "mov{q}\t{%%fs:%P1, %2|%2, QWORD PTR %%fs:%P1}\;mov{q}\t{%2, %0|%0, %2}\;xor{l}\t%k2, %k2";
++     else 
++        return "mov{q}\t{%%gs:%P1, %2|%2, QWORD PTR %%gs:%P1}\;mov{q}\t{%2, %0|%0, %2}\;xor{l}\t%k2, %k2";
++  }
+   [(set_attr "type" "multi")])
+ 
+ (define_expand "stack_protect_test"
+@@ -20288,7 +20293,12 @@
+ 		    UNSPEC_SP_TLS_TEST))
+    (clobber (match_scratch:DI 3 "=r"))]
+   "TARGET_64BIT"
+-  "mov{q}\t{%1, %3|%3, %1}\;xor{q}\t{%%fs:%P2, %3|%3, QWORD PTR %%fs:%P2}"
++  {
++     if (ix86_cmodel != CM_KERNEL)
++        return "mov{q}\t{%1, %3|%3, %1}\;xor{q}\t{%%fs:%P2, %3|%3, QWORD PTR %%fs:%P2}";
++     else
++        return "mov{q}\t{%1, %3|%3, %1}\;xor{q}\t{%%gs:%P2, %3|%3, QWORD PTR %%gs:%P2}";
++  }
+   [(set_attr "type" "multi")])
+ 
+ (include "sse.md")
