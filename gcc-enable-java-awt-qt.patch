@@ -1,15 +1,15 @@
 --- trunk/libjava/classpath/configure.ac.orig	2006-07-02 15:32:04.000000000 +0200
 +++ trunk/libjava/classpath/configure.ac	2006-07-02 19:18:28.913906000 +0200
-@@ -445,7 +445,8 @@
+@@ -502,7 +502,8 @@
        AC_CHECK_FILE([$EXTRA_QT_INCLUDE_DIR/QWidget],
  	QT_CFLAGS="$QT_CFLAGS -I$EXTRA_QT_INCLUDE_DIR",
  	AC_MSG_WARN([QWidget not found])))
 -	AC_CHECK_PROG(MOC, [moc], [moc])
-+      QT4DIR=`$PKG_CONFIG --variable=prefix QtGui`
-+      AC_CHECK_PROG(MOC, [moc], [$QT4DIR/bin/moc], [], $QT4DIR/bin)
++	QT4DIR=`$PKG_CONFIG --variable=prefix QtGui`
++	AC_CHECK_PROG(MOC, [moc], [$QT4DIR/bin/moc], [], $QT4DIR/bin)
+ 	AC_CHECK_PROG(MOC, [moc-qt4], [moc-qt4])
      fi
      if test "x$HAVE_QT4" = "xno"; then
-       AC_MSG_NOTICE([Looking for QT_CFLAGS and QT_LIBS without pkg-config])
 --- trunk/libjava/classpath/native/jni/qt-peer/Makefile.am.orig	2006-07-02 15:31:56.000000000 +0200
 +++ trunk/libjava/classpath/native/jni/qt-peer/Makefile.am	2006-07-02 19:55:57.446430500 +0200
 @@ -8,7 +8,10 @@
