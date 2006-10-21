@@ -91,11 +91,11 @@
 -@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
--* gfortran: (gfortran).                  The GNU Fortran 95 Compiler.
-+* gfortran: (gfortran).			The GNU Fortran 95 Compiler
+-* gfortran: (gfortran).                  The GNU Fortran Compiler.
++* gfortran: (gfortran).			The GNU Fortran Compiler
  @end direntry
  This file documents the use and the internals of
- the GNU Fortran 95 compiler, (@command{gfortran}).
+ the GNU Fortran compiler, (@command{gfortran}).
 --- trunk/gcc/java/gcj.texi.orig	2006-07-02 15:30:47.000000000 +0200
 +++ trunk/gcc/java/gcj.texi	2006-07-02 21:15:25.663463500 +0200
 @@ -57,30 +57,22 @@
