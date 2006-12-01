@@ -1,6 +1,6 @@
---- trunk/gcc/config/i386/i386.c	(wersja 117926)
-+++ trunk/gcc/config/i386/i386.c	(wersja 117927)
-@@ -2951,32 +2951,6 @@
+--- gcc-4_1-branch/gcc/config/i386/i386.c.orig	2006-12-01 14:53:49.723600000 +0100
++++ gcc-4_1-branch/gcc/config/i386/i386.c	2006-12-01 14:54:46.239132000 +0100
+@@ -2625,32 +2625,6 @@ classify_argument (enum machine_mode mod
        switch (TREE_CODE (type))
  	{
  	case RECORD_TYPE:
@@ -33,7 +33,7 @@
  	  /* And now merge the fields of structure.  */
  	  for (field = TYPE_FIELDS (type); field; field = TREE_CHAIN (field))
  	    {
-@@ -3044,10 +3018,6 @@
+@@ -2718,10 +2692,6 @@ classify_argument (enum machine_mode mod
  	case QUAL_UNION_TYPE:
  	  /* Unions are similar to RECORD_TYPE but offset is always 0.
  	     */
@@ -44,15 +44,15 @@
  	  for (field = TYPE_FIELDS (type); field; field = TREE_CHAIN (field))
  	    {
  	      if (TREE_CODE (field) == FIELD_DECL)
-@@ -3735,18 +3705,7 @@
+@@ -3401,18 +3371,7 @@ contains_128bit_aligned_vector_p (tree t
  	  {
  	    tree field;
- 
+ 	    
 -	    if (TYPE_BINFO (type))
 -	      {
 -		tree binfo, base_binfo;
 -		int i;
--
+-		
 -		for (binfo = TYPE_BINFO (type), i = 0;
 -		     BINFO_BASE_ITERATE (binfo, i, base_binfo); i++)
 -		  if (contains_128bit_aligned_vector_p
