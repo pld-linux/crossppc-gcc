@@ -22,3 +22,33 @@
  # It may not be safe to run linking tests in AC_PROG_CC/AC_PROG_CXX.
  GCC_NO_EXECUTABLES
  
+--- gcc-4_2-branch/libjava/classpath/ltconfig.orig	2006-10-21 14:45:42.000000000 +0000
++++ gcc-4_2-branch/libjava/classpath/ltconfig	2006-12-29 18:28:13.000000000 +0000
+@@ -1272,6 +1272,27 @@
+   # people can always --disable-shared, the test was removed, and we
+   # assume the GNU/Linux dynamic linker is in use.
+   dynamic_linker='GNU/Linux ld.so'
++
++
++  # Find out which ABI we are using (multilib Linux x86_64 hack).
++  libsuff=
++  case "$host_cpu" in
++  x86_64*|s390x*|powerpc64*|sparc64*)
++    echo '#line 1281 "ltconfig"' > conftest.$ac_ext
++    if (eval $ac_compile) && test -s conftest.$objext; then
++      case `/usr/bin/file conftest.$objext` in
++      *64-bit*)
++        libsuff=64
++        ;;
++      esac
++    fi
++    rm -rf conftest*
++    ;;
++  *)
++    ;;
++  esac
++  sys_lib_dlsearch_path_spec="/lib${libsuff} /usr/lib${libsuff}"
++  sys_lib_search_path_spec="/lib${libsuff} /usr/lib${libsuff} /usr/local/lib${libsuff}"
+   ;;
+ 
+ netbsd*)
