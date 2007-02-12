@@ -1,0 +1,35 @@
+--- gcc-4_1-branch/gcc/ada/erroutc.adb~	2005-11-30 12:12:07.000000000 +0100
++++ gcc-4_1-branch/gcc/ada/erroutc.adb	2007-02-08 19:47:25.000000000 +0100
+@@ -39,7 +39,6 @@
+ with Sinput;   use Sinput;
+ with Snames;   use Snames;
+ with Targparm; use Targparm;
+-with Table;
+ with Uintp;    use Uintp;
+ 
+ package body Erroutc is
+--- /dev/null	2007-01-04 19:59:32.080403511 +0100
++++ gcc-4_1-branch/gcc/ada/s-wchcon.adb	2007-02-08 19:59:59.000000000 +0100
+@@ -0,0 +1,2 @@
++package body System.WCh_Con is
++end System.WCh_Con;
+--- gcc-4_1-branch/gcc/ada/s-wchcon.ads~	2007-02-08 19:59:57.000000000 +0100
++++ gcc-4_1-branch/gcc/ada/s-wchcon.ads	2007-02-08 20:07:21.000000000 +0100
+@@ -39,6 +39,7 @@
+ --  an appropriate WITH, and the interface can be expected to remain stable.
+ 
+ package System.WCh_Con is
++   pragma Elaborate_Body;
+    pragma Pure;
+ 
+    -------------------------------------
+--- gcc-4_1-branch/gcc/ada/sem_attr.adb~	2005-11-30 12:12:07.000000000 +0100
++++ gcc-4_1-branch/gcc/ada/sem_attr.adb	2007-02-08 20:11:24.000000000 +0100
+@@ -56,7 +56,6 @@
+ with Stand;    use Stand;
+ with Sinfo;    use Sinfo;
+ with Sinput;   use Sinput;
+-with Stand;
+ with Stringt;  use Stringt;
+ with Targparm; use Targparm;
+ with Ttypes;   use Ttypes;
