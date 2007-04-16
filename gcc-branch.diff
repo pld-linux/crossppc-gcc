@@ -1,0 +1,5024 @@
+Index: gcc-4_2-branch/libgomp/configure
+===================================================================
+--- gcc-4_2-branch/libgomp/configure	(revision 123014)
++++ gcc-4_2-branch/libgomp/configure	(revision 123843)
+@@ -9315,7 +9315,7 @@
+   # does some of this, but throws away the result.
+ 
+   ldver=`$LD --version 2>/dev/null | head -1 | \
+-         sed -e 's/GNU ld version \([0-9.][0-9.]*\).*/\1/'`
++         sed -e 's/GNU ld \(version \)\{0,1\}\(([^)]*) \)\{0,1\}\([0-9.][0-9.]*\).*/\3/'`
+ 
+   libgomp_gnu_ld_version=`echo $ldver | \
+          $AWK -F. '{ if (NF<3) $3=0; print ($1*100+$2)*100+$3 }'`
+Index: gcc-4_2-branch/libgomp/ChangeLog
+===================================================================
+--- gcc-4_2-branch/libgomp/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/libgomp/ChangeLog	(revision 123843)
+@@ -1,3 +1,9 @@
++2007-03-18  Andreas Schwab  <schwab@suse.de>
++
++	* acinclude.m4: Adjust regular expression for ld version
++	extraction.
++	* configure: Regenerate.
++
+ 2007-02-07  Jakub Jelinek  <jakub@redhat.com>
+ 
+ 	PR c++/30703
+Index: gcc-4_2-branch/libgomp/acinclude.m4
+===================================================================
+--- gcc-4_2-branch/libgomp/acinclude.m4	(revision 123014)
++++ gcc-4_2-branch/libgomp/acinclude.m4	(revision 123843)
+@@ -148,7 +148,7 @@
+   # does some of this, but throws away the result.
+   changequote(,)
+   ldver=`$LD --version 2>/dev/null | head -1 | \
+-         sed -e 's/GNU ld version \([0-9.][0-9.]*\).*/\1/'`
++         sed -e 's/GNU ld \(version \)\{0,1\}\(([^)]*) \)\{0,1\}\([0-9.][0-9.]*\).*/\3/'`
+   changequote([,])
+   libgomp_gnu_ld_version=`echo $ldver | \
+          $AWK -F. '{ if (NF<3) [$]3=0; print ([$]1*100+[$]2)*100+[$]3 }'`
+Index: gcc-4_2-branch/gcc/tree-vrp.c
+===================================================================
+--- gcc-4_2-branch/gcc/tree-vrp.c	(revision 123014)
++++ gcc-4_2-branch/gcc/tree-vrp.c	(revision 123843)
+@@ -1892,10 +1892,18 @@
+       return;
+     }
+ 
++  /* We punt if:
++     1) [-INF, +INF]
++     2) [-INF, +-INF(OVF)]
++     3) [+-INF(OVF), +INF]
++     4) [+-INF(OVF), +-INF(OVF)]
++     We learn nothing when we have INF and INF(OVF) on both sides.
++     Note that we do accept [-INF, -INF] and [+INF, +INF] without
++     overflow.  */
+   if ((min == TYPE_MIN_VALUE (TREE_TYPE (min))
+-       || is_negative_overflow_infinity (min))
++       || is_overflow_infinity (min))
+       && (max == TYPE_MAX_VALUE (TREE_TYPE (max))
+-	  || is_positive_overflow_infinity (max)))
++	  || is_overflow_infinity (max)))
+     {
+       set_value_range_to_varying (vr);
+       return;
+Index: gcc-4_2-branch/gcc/doc/invoke.texi
+===================================================================
+--- gcc-4_2-branch/gcc/doc/invoke.texi	(revision 123014)
++++ gcc-4_2-branch/gcc/doc/invoke.texi	(revision 123843)
+@@ -695,9 +695,11 @@
+ -mwarn-framesize  -mwarn-dynamicstack  -mstack-size -mstack-guard}
+ 
+ @emph{Score Options}
+-@gccoptlist{-mel -mel @gol
++@gccoptlist{-meb -mel @gol
++-mnhwloop @gol
++-muls @gol
+ -mmac @gol
+--mscore5u -mscore7}
++-mscore5 -mscore5u -mscore7 -mscore7d}
+  
+ @emph{SH Options}
+ @gccoptlist{-m1  -m2  -m2e  -m3  -m3e @gol
+@@ -4673,7 +4675,7 @@
+ arithmetic on them.  This produces better code by making all memory
+ references potential common subexpressions.  When they are not common
+ subexpressions, instruction combination should eliminate the separate
+-register-load. This option is now a nop and will be removed in 4.2.
++register-load. This option is now a nop and will be removed in 4.3.
+ 
+ @item -fforce-addr
+ @opindex fforce-addr
+@@ -9759,7 +9761,9 @@
+ The 32-bit environment sets int, long and pointer to 32 bits and
+ generates code that runs on any i386 system.
+ The 64-bit environment sets int to 32 bits and long and pointer
+-to 64 bits and generates code for AMD's x86-64 architecture.
++to 64 bits and generates code for AMD's x86-64 architecture. For
++darwin only the -m64 option turns off the @option{-fno-pic} and
++@option{-mdynamic-no-pic} options.
+ 
+ @item -mno-red-zone
+ @opindex no-red-zone
+@@ -12273,25 +12277,41 @@
+ These options are defined for Score implementations:
+ 
+ @table @gcctabopt
++@item -meb
++@opindex meb
++Compile code for big endian mode.  This is the default.
++
+ @item -mel
+ @opindex -mel
+ Compile code for little endian mode. 
+ 
+-@item -meb
+-@opindex meb
+-Compile code for big endian mode.  This is the default.
++@item -mnhwloop
++@opindex -mnhwloop
++Disable generate bcnz instruction.
+ 
++@item -muls
++@opindex -muls
++Enable generate unaligned load and store instruction.
++
+ @item -mmac
+ @opindex mmac
+ Enable the use of multiply-accumulate instructions. Disabled by default. 
+ 
++@item -mscore5
++@opindex mscore5
++Specify the SCORE5 as the target architecture.
++
+ @item -mscore5u
+ @opindex mscore5u
+ Specify the SCORE5U of the target architecture.
+ 
+ @item -mscore7
+ @opindex mscore7
+-Specify the SCORE7 of the target architecture. This is the default.
++Specify the SCORE7 as the target architecture. This is the default.
++
++@item -mscore7d
++@opindex mscore7d
++Specify the SCORE7D as the target architecture.
+ @end table
+ 
+ @node SH Options
+Index: gcc-4_2-branch/gcc/doc/md.texi
+===================================================================
+--- gcc-4_2-branch/gcc/doc/md.texi	(revision 123014)
++++ gcc-4_2-branch/gcc/doc/md.texi	(revision 123843)
+@@ -2814,7 +2814,7 @@
+ cp1 + cp2 + cp3 registers.
+ 
+ @item I
+-Unsigned 15 bit integer (in the range 0 to 32767).
++High 16-bit constant (32-bit constant with 16 LSBs zero).
+ 
+ @item J
+ Unsigned 5 bit integer (in the range 0 to 31).
+@@ -2831,18 +2831,6 @@
+ @item N
+ Signed 14 bit integer (in the range @minus{}8192 to 8191).
+ 
+-@item O
+-Signed 15 bit integer (in the range @minus{}16384 to 16383).
+-
+-@item P
+-Signed 12 bit integer (in the range @minus{}2048 to 2047).
+-
+-@item J
+-An integer constant with exactly a single bit set.
+-
+-@item Q
+-An integer constant.
+-
+ @item Z
+ Any SYMBOL_REF.
+ @end table
+Index: gcc-4_2-branch/gcc/DATESTAMP
+===================================================================
+--- gcc-4_2-branch/gcc/DATESTAMP	(revision 123014)
++++ gcc-4_2-branch/gcc/DATESTAMP	(revision 123843)
+@@ -1 +1 @@
+-20070317
++20070415
+Index: gcc-4_2-branch/gcc/builtins.c
+===================================================================
+--- gcc-4_2-branch/gcc/builtins.c	(revision 123014)
++++ gcc-4_2-branch/gcc/builtins.c	(revision 123843)
+@@ -5492,14 +5492,19 @@
+ 			       rtx target, bool ignore)
+ {
+   rtx val, mem;
++  enum machine_mode old_mode;
+ 
+   /* Expand the operands.  */
+   mem = get_builtin_sync_mem (TREE_VALUE (arglist), mode);
+ 
+   arglist = TREE_CHAIN (arglist);
+   val = expand_expr (TREE_VALUE (arglist), NULL, mode, EXPAND_NORMAL);
+-  /* If VAL is promoted to a wider mode, convert it back to MODE.  */
+-  val = convert_to_mode (mode, val, 1);
++  /* If VAL is promoted to a wider mode, convert it back to MODE.  Take care
++     of CONST_INTs, where we know the old_mode only from the call argument.  */
++  old_mode = GET_MODE (val);
++  if (old_mode == VOIDmode)
++    old_mode = TYPE_MODE (TREE_TYPE (TREE_VALUE (arglist)));
++  val = convert_modes (mode, old_mode, val, 1);
+ 
+   if (ignore)
+     return expand_sync_operation (mem, val, code);
+@@ -5517,19 +5522,28 @@
+ 				 bool is_bool, rtx target)
+ {
+   rtx old_val, new_val, mem;
++  enum machine_mode old_mode;
+ 
+   /* Expand the operands.  */
+   mem = get_builtin_sync_mem (TREE_VALUE (arglist), mode);
+ 
+   arglist = TREE_CHAIN (arglist);
+   old_val = expand_expr (TREE_VALUE (arglist), NULL, mode, EXPAND_NORMAL);
+-  /* If OLD_VAL is promoted to a wider mode, convert it back to MODE.  */
+-  old_val = convert_to_mode (mode, old_val, 1);
++  /* If VAL is promoted to a wider mode, convert it back to MODE.  Take care
++     of CONST_INTs, where we know the old_mode only from the call argument.  */
++  old_mode = GET_MODE (old_val);
++  if (old_mode == VOIDmode)
++    old_mode = TYPE_MODE (TREE_TYPE (TREE_VALUE (arglist)));
++  old_val = convert_modes (mode, old_mode, old_val, 1);
+ 
+   arglist = TREE_CHAIN (arglist);
+   new_val = expand_expr (TREE_VALUE (arglist), NULL, mode, EXPAND_NORMAL);
+-  /* If NEW_VAL is promoted to a wider mode, convert it back to MODE.  */
+-  new_val = convert_to_mode (mode, new_val, 1);
++  /* If VAL is promoted to a wider mode, convert it back to MODE.  Take care
++     of CONST_INTs, where we know the old_mode only from the call argument.  */
++  old_mode = GET_MODE (new_val);
++  if (old_mode == VOIDmode)
++    old_mode = TYPE_MODE (TREE_TYPE (TREE_VALUE (arglist)));
++  new_val = convert_modes (mode, old_mode, new_val, 1);
+ 
+   if (is_bool)
+     return expand_bool_compare_and_swap (mem, old_val, new_val, target);
+@@ -5548,14 +5562,19 @@
+ 				  rtx target)
+ {
+   rtx val, mem;
++  enum machine_mode old_mode;
+ 
+   /* Expand the operands.  */
+   mem = get_builtin_sync_mem (TREE_VALUE (arglist), mode);
+ 
+   arglist = TREE_CHAIN (arglist);
+   val = expand_expr (TREE_VALUE (arglist), NULL, mode, EXPAND_NORMAL);
+-  /* If VAL is promoted to a wider mode, convert it back to MODE.  */
+-  val = convert_to_mode (mode, val, 1);
++  /* If VAL is promoted to a wider mode, convert it back to MODE.  Take care
++     of CONST_INTs, where we know the old_mode only from the call argument.  */
++  old_mode = GET_MODE (val);
++  if (old_mode == VOIDmode)
++    old_mode = TYPE_MODE (TREE_TYPE (TREE_VALUE (arglist)));
++  val = convert_modes (mode, old_mode, val, 1);
+ 
+   return expand_sync_lock_test_and_set (mem, val, target);
+ }
+Index: gcc-4_2-branch/gcc/fold-const.c
+===================================================================
+--- gcc-4_2-branch/gcc/fold-const.c	(revision 123014)
++++ gcc-4_2-branch/gcc/fold-const.c	(revision 123843)
+@@ -7052,7 +7052,7 @@
+ {
+   tree type = TREE_TYPE (expr);
+   int total_bytes = GET_MODE_SIZE (TYPE_MODE (type));
+-  int byte, offset, word, words;
++  int byte, offset, word, words, bitpos;
+   unsigned char value;
+ 
+   /* There are always 32 bits in each long, no matter the size of
+@@ -7062,19 +7062,20 @@
+ 
+   if (total_bytes > len)
+     return 0;
+-  words = total_bytes / UNITS_PER_WORD;
++  words = 32 / UNITS_PER_WORD;
+ 
+   real_to_target (tmp, TREE_REAL_CST_PTR (expr), TYPE_MODE (type));
+ 
+-  for (byte = 0; byte < total_bytes; byte++)
++  for (bitpos = 0; bitpos < total_bytes * BITS_PER_UNIT;
++       bitpos += BITS_PER_UNIT)
+     {
+-      int bitpos = byte * BITS_PER_UNIT;
++      byte = (bitpos / BITS_PER_UNIT) & 3;
+       value = (unsigned char) (tmp[bitpos / 32] >> (bitpos & 31));
+ 
+-      if (total_bytes > UNITS_PER_WORD)
++      if (UNITS_PER_WORD < 4)
+ 	{
+ 	  word = byte / UNITS_PER_WORD;
+-	  if (FLOAT_WORDS_BIG_ENDIAN)
++	  if (WORDS_BIG_ENDIAN)
+ 	    word = (words - 1) - word;
+ 	  offset = word * UNITS_PER_WORD;
+ 	  if (BYTES_BIG_ENDIAN)
+@@ -7083,8 +7084,8 @@
+ 	    offset += byte % UNITS_PER_WORD;
+ 	}
+       else
+-	offset = BYTES_BIG_ENDIAN ? (total_bytes - 1) - byte : byte;
+-      ptr[offset] = value;
++	offset = BYTES_BIG_ENDIAN ? 3 - byte : byte;
++      ptr[offset + ((bitpos / BITS_PER_UNIT) & ~3)] = value;
+     }
+   return total_bytes;
+ }
+@@ -7241,7 +7242,7 @@
+ {
+   enum machine_mode mode = TYPE_MODE (type);
+   int total_bytes = GET_MODE_SIZE (mode);
+-  int byte, offset, word, words;
++  int byte, offset, word, words, bitpos;
+   unsigned char value;
+   /* There are always 32 bits in each long, no matter the size of
+      the hosts long.  We handle floating point representations with
+@@ -7252,16 +7253,17 @@
+   total_bytes = GET_MODE_SIZE (TYPE_MODE (type));
+   if (total_bytes > len || total_bytes > 24)
+     return NULL_TREE;
+-  words = total_bytes / UNITS_PER_WORD;
++  words = 32 / UNITS_PER_WORD;
+ 
+   memset (tmp, 0, sizeof (tmp));
+-  for (byte = 0; byte < total_bytes; byte++)
++  for (bitpos = 0; bitpos < total_bytes * BITS_PER_UNIT;
++       bitpos += BITS_PER_UNIT)
+     {
+-      int bitpos = byte * BITS_PER_UNIT;
+-      if (total_bytes > UNITS_PER_WORD)
++      byte = (bitpos / BITS_PER_UNIT) & 3;
++      if (UNITS_PER_WORD < 4)
+ 	{
+ 	  word = byte / UNITS_PER_WORD;
+-	  if (FLOAT_WORDS_BIG_ENDIAN)
++	  if (WORDS_BIG_ENDIAN)
+ 	    word = (words - 1) - word;
+ 	  offset = word * UNITS_PER_WORD;
+ 	  if (BYTES_BIG_ENDIAN)
+@@ -7270,8 +7272,8 @@
+ 	    offset += byte % UNITS_PER_WORD;
+ 	}
+       else
+-	offset = BYTES_BIG_ENDIAN ? (total_bytes - 1) - byte : byte;
+-      value = ptr[offset];
++	offset = BYTES_BIG_ENDIAN ? 3 - byte : byte;
++      value = ptr[offset + ((bitpos / BITS_PER_UNIT) & ~3)];
+ 
+       tmp[bitpos / 32] |= (unsigned long)value << (bitpos & 31);
+     }
+Index: gcc-4_2-branch/gcc/omp-low.c
+===================================================================
+--- gcc-4_2-branch/gcc/omp-low.c	(revision 123014)
++++ gcc-4_2-branch/gcc/omp-low.c	(revision 123843)
+@@ -2421,6 +2421,7 @@
+   block_stmt_iterator si;
+   tree entry_stmt;
+   edge e;
++  bool do_cleanup_cfg = false;
+ 
+   entry_stmt = last_stmt (region->entry);
+   child_fn = OMP_PARALLEL_FN (entry_stmt);
+@@ -2456,6 +2457,7 @@
+ 	  exit_succ_e = single_succ_edge (exit_bb);
+ 	  make_edge (new_bb, exit_succ_e->dest, EDGE_FALLTHRU);
+ 	}
++      do_cleanup_cfg = true;
+     }
+   else
+     {
+@@ -2546,6 +2548,14 @@
+ 
+   /* Emit a library call to launch the children threads.  */
+   expand_parallel_call (region, new_bb, entry_stmt, ws_args);
++
++  if (do_cleanup_cfg)
++    {
++      /* Clean up the unreachable sub-graph we created above.  */
++      free_dominance_info (CDI_DOMINATORS);
++      free_dominance_info (CDI_POST_DOMINATORS);
++      cleanup_tree_cfg ();
++    }
+ }
+ 
+ 
+Index: gcc-4_2-branch/gcc/objc/objc-act.c
+===================================================================
+--- gcc-4_2-branch/gcc/objc/objc-act.c	(revision 123014)
++++ gcc-4_2-branch/gcc/objc/objc-act.c	(revision 123843)
+@@ -3632,7 +3632,7 @@
+ 
+ 	{
+ 	  struct _objc_exception_data _stack;
+-	  id volatile _rethrow = 0;
++	  id _rethrow = 0;
+ 	  try
+ 	    {
+ 	      objc_exception_try_enter (&_stack);
+@@ -3676,7 +3676,6 @@
+ 
+   rethrow_decl = objc_create_temporary_var (objc_object_type);
+   cur_try_context->rethrow_decl = rethrow_decl;
+-  TREE_THIS_VOLATILE (rethrow_decl) = 1;
+   TREE_CHAIN (rethrow_decl) = stack_decl;
+ 
+   /* Build the outermost variable binding level.  */
+Index: gcc-4_2-branch/gcc/ChangeLog
+===================================================================
+--- gcc-4_2-branch/gcc/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/gcc/ChangeLog	(revision 123843)
+@@ -1,3 +1,169 @@
++2007-04-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
++
++	PR c/31520
++        * c-del.c (finish_decl): Grab the type of the decl after the call
++	to store_init_value.
++
++2007-04-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/25874
++	* omp-low.c (expand_omp_parallel): If child_cfun->cfg, free dominators,
++	post dominators and cleanup cfg before returning.
++
++2007-04-11  John David Anglin  <dave.anglin@nrc-cnrc.gc.ca>
++
++	* pa.c (pa_som_asm_init_sections): Ensure that cfun->machine is not
++	null before emitting a .nsubspa directive.
++
++2007-04-08  Anatoly Sokolov <aesok@post.ru>
++
++	PR target/29932
++	* config/avr/predicates.md (io_address_operand): Delete predicate.
++	(low_io_address_operand): Don't use 'mode' argument.
++	(higth_io_address_operand): Rename ...
++	(high_io_address_operand): ... to this. Don't use 'mode' argument.
++	* config/avr/avr.md (*sbix_branch_tmp, *sbix_branch_tmp_bit7): Adjust
++	for above change.
++
++2007-04-07  Anatoly Sokolov <aesok@post.ru>
++
++	PR target/30289
++	* config/avr/avr.md (*clrmemqi, *clrmemhi): Mark operand 4 as 
++	earlyclobber.
++
++2007-04-05  Anatoly Sokolov <aesok@post.ru>
++
++	PR target/25448
++	* config/avr/avr.c (avr_handle_fndecl_attribute): Use the 
++	DECL_ASSEMBLER_NAME, not the DECL_NAME.
++
++2007-04-04  Richard Henderson  <rth@redhat.com>
++
++	PR target/31361
++	* config/i386/i386.c (ix86_init_mmx_sse_builtins): Remove
++	v8hi_ftype_v8hi_v2di, v4si_ftype_v4si_v2di.  Use like-types for
++	the variable shift builtins.
++	(ix86_expand_builtin): Properly expand the variable shift builtins.
++	* config/i386/sse.md (ashr<mode>3, lshr<mode>3, ashl<mode>3): Make
++	operand 2 be TImode.
++	* config/i386/emmintrin.h (_mm_slli_epi16, _mm_slli_epi32,
++	_mm_slli_epi64, _mm_srai_epi16, _mm_srai_epi32, _mm_srli_epi16,
++	_mm_srli_epi32, _mm_srli_epi64): Turn into macros.
++	(_mm_srli_si128, _mm_srli_si128): Fix disabled inline versions.
++	(_mm_sll_epi16, _mm_sll_epi32, _mm_sll_epi64, _mm_sra_epi16,
++	_mm_sra_epi32, _mm_srl_epi16, _mm_srl_epi32, _mm_srl_epi64): Use
++	two-vector shift builtins.
++
++2007-04-04  Chen liqin  <liqin@sunnorth.com.cn>
++
++	* config/score/crti.asm: Change _bss_start to __bss_start.
++	* config/score/score.h (CONDITIONAL_REGISTER_USAGE): Added.
++	(OUTGOING_REG_PARM_STACK_SPACE) update.
++	* config/score/score.opt: add options to make backend support
++	score5, score5u, score7 and score7d.
++	* config/score/score.md: Likewise.
++	* config/score/misc.md: Likewise.
++	* config/score/mac.md: Likewise.
++	* doc/invoke.texi: Likewise.
++	* doc/md.texi: update constraints define.
++
++2007-04-03  Stuart Hastings  <stuart@apple.com>
++
++	PR 31281
++	* objc/objc-act.c (next_sjlj_build_catch_list): Delete volatile from rethrow decl.
++	* cse.c (record_jump_equiv): Bail out on CCmode comparisons.
++
++2007-04-03  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/30704
++	* fold-const.c (native_encode_real): Encode real.c provided longs
++	as a series of 32-bit native integers.
++	(native_interpret_real): Interpret buffer as a series of 32-bit
++	native integers.
++
++2007-04-02  Eric Christopher  <echristo@apple.com>
++
++	* doc/invoke.texi (i386 and x86-64 Options): Document -m64
++	limitations on darwin.
++
++2007-04-02  Anatoly Sokolov <aesok@post.ru>
++
++	PR target/31137
++	* config/avr/avr.c (avr_rtx_costs): Add missing 'break' statements.
++
++2007-04-02  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* Backport from mainline:
++	2007-03-28  Grigory Zagorodnev <grigory_zagorodnev@linux.intel.com>
++
++	PR target/31380
++	* config/i386/sse.md (uminv16qi3): Use UMIN instead of UMAX.
++
++2007-03-30  Anatoly Sokolov <aesok@post.ru>
++
++	* config/avr/avr.c (avr_override_options): Clear
++	'flag_delete_null_pointer_checks'.
++
++2007-03-29  Michael Matz  <matz@suse.de>
++
++	* builtins.c (expand_builtin_sync_operation,
++	expand_builtin_compare_and_swap,
++	expand_builtin_lock_test_and_set): Care for extending CONST_INTs
++	correctly.
++
++	* config/i386/sync.md (sync_double_compare_and_swapdi_pic,
++	sync_double_compare_and_swap_ccdi_pic): Use "SD" as constraint
++	for operand 3.
++
++2007-03-28  Mike Stump  <mrs@apple.com>
++
++	* config/darwin9.h (ASM_OUTPUT_ALIGNED_COMMON): Add.
++	* config/darwin.h (MAX_OFILE_ALIGNMENT): Fix.
++	* config/rs6000/darwin.h (ASM_OUTPUT_ALIGNED_COMMON): Removed #undef.
++
++2007-03-27  Anatoly Sokolov <aesok@post.ru>
++
++	* config/avr/avr.c (avr_mcu_types): Move at90usb82 device to 'avr4'
++	architecture.
++
++2007-03-26  Ian Lance Taylor  <iant@google.com>
++
++	PR tree-optimization/31345
++	* tree-vrp.c (extract_range_from_binary_expr): Turn ranges like
++	[+INF, +INF(OVF)] into VARYING.
++
++2007-03-23  Martin Michlmayr  <tbm@cyrius.com>
++
++	* doc/invoke.texi (-fforce-mem): Update documentation to reflect
++	that this option will be removed in 4.3 rather than 4.2.
++	* opts.c (common_handle_option): Likewise.
++
++2007-03-21  Mike Stump  <mrs@apple.com>
++
++	* c.opt: Fixup for Objective-C/C++.
++
++2007-03-21  Richard Henderson  <rth@redhat.com>
++
++	PR target/31245
++	* config/i386/emmintrin.h (__m128i, __m128d): Mark may_alias.
++	* config/i386/mmintrin.h (__m64): Likewise.
++	* config/i386/xmmintrin.h (__m128): Likewise.
++
++2007-03-20  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/30762
++	* c-typeck.c (convert_for_assignment): Call comptypes for
++	RECORD_TYPE or UNION_TYPE.
++
++	PR inline-asm/30505
++	* reload1.c (reload): Do invalid ASM checking after
++	cleanup_subreg_operands.
++
++2007-03-19  Jeff Law  <law@redhat.com>
++
++	* tree-cfg.c (find_taken_edge): Tighten conditions for
++	optimizing computed gotos.
++
+ 2007-03-16  John David Anglin  <dave.anglin@nrc-cnrc.gc.ca>
+ 
+ 	* pa.c (attr_length_call): Partially revert change of 2007-03-09.
+@@ -24,7 +190,7 @@
+ 	PR target/31123
+ 	* pa.md (vdepi_ior): Don't allow zero length deposit.  Likewise for
+ 	two unamed patterns.
+-	
++
+ 2007-03-12  Brooks Moses  <brooks.moses@codesourcery.com>
+ 
+ 	* doc/extend.texi: Edit "gnu_inline" documentation.
+@@ -37,7 +203,7 @@
+ 	* doc/passes.texi: Fix gcc.info cross-reference.
+ 
+ 2007-03-12  Daniel Berlin  <dberlin@dberlin.org>
+-	
++
+ 	Fix PR tree-optimization/28544
+ 	* tree-ssa-operands.c (add_virtual_operand):
+ 	Move assert triggering on aliasing violations into
+@@ -415,7 +581,7 @@
+ 2007-03-09  Andrew Pinski  <andrew_pinski@playstation.sony.com>
+ 
+ 	PR tree-opt/28624
+-	* tree-ssa-dom.c (eliminate_degenerate_phis): Use a temporary 
++	* tree-ssa-dom.c (eliminate_degenerate_phis): Use a temporary
+ 	bitmap for EXECUTE_IF_SET_IN_BITMAP.
+ 
+ 2006-03-09  Mark Shinwell  <shinwell@codesourcery.com>
+@@ -436,7 +602,7 @@
+ 	* builtins.def (lceil, lceilf, lceill, lfloor, lfloorf, lfloorl,
+ 	llceil, llceilf, llceill, llfloor, llfloorf, llfloorl): Mark with
+ 	ATTR_CONST_NOTHROW_LIST.
+-	
++
+ 	* fold-const.c (tree_expr_nonnegative_p): Handle FIX_TRUNC_EXPR.
+ 
+ 2007-03-08 Andrew Pinski <andrew_pinski@playstation.sony.com>
+@@ -484,11 +650,11 @@
+ 	* doc/invoke.texi (Warning Options): Replace -Werror- with
+ 	-Werror=.
+ 	* opts.c (common_handle_option): Likewise.
+-	
++
+ 2007-03-06  Anatoly Sokolov <aesok@post.ru>
+ 
+ 	* config/avr/avr.c (avr_mcu_types): Add support for ATmega325P,
+-	ATmega3250P, ATmega329P, ATmega3290P, AT90USB82 and AT90USB162 
++	ATmega3250P, ATmega329P, ATmega3290P, AT90USB82 and AT90USB162
+ 	devices.
+ 	* config/avr/avr.h (LINK_SPEC, CRT_BINUTILS_SPECS): (Ditto.).
+ 	* config/avr/t-avr (MULTILIB_MATCHES): (Ditto.).
+@@ -509,7 +675,7 @@
+ 	in soft-float DFmode pattern.
+ 	(movdf): Fail if operand1 is a CONST_DOUBLE and operand0 is a hard
+ 	floating register.
+-	(movsf): Likewise. 
++	(movsf): Likewise.
+ 
+ 2007-03-05  Kaveh R. Ghazi  <ghazi@caip.rutgers.edu>
+ 
+@@ -618,7 +784,7 @@
+ 2007-03-01  Manuel Lopez-Ibanez  <manu@gcc.gnu.org>
+ 
+ 	* doc/invoke.texi (Wextra): Delete outdated paragraph.
+-	
++
+ 2007-02-27  John David Anglin  <dave.anglin@nrc-cnrc.gc.ca>
+ 
+ 	* pa/predicates.md (move_src_operand): Allow zero for mode.
+@@ -706,7 +872,7 @@
+ 2007-02-18 Ira Rosen  <irar@il.ibm.com>
+ 
+ 	* tree-ssa-alias.c (may_aliases_intersect): New function.
+-	* tree-data-ref.c (ptr_ptr_may_alias_p): Call may_aliases_intersect 
++	* tree-data-ref.c (ptr_ptr_may_alias_p): Call may_aliases_intersect
+ 	for different tags.
+ 	* tree-flow.h (may_aliases_intersect): Add function declaration.
+ 
+@@ -764,7 +930,7 @@
+ 
+ 2007-02-06  Rask Ingemann Lamberisen  <rask@sygehus.dk>
+ 
+-	PR 30370 
++	PR 30370
+ 	* config/rs6000/t-ppccomm: Correct Makefile typo.
+ 
+ 2007-02-06  Roger Sayle  <roger@eyesopen.com>
+@@ -788,7 +954,7 @@
+ 2007-02-05  Bob Wilson  <bob.wilson@acm.org>
+ 
+ 	* config/xtensa/xtensa.c (constantpool_mem_p): Skip over SUBREGs.
+-	
++
+ 2007-02-02  Maxim Kuvyrkov  <mkuvyrkov@ispras.ru>
+ 
+ 	PR target/29682
+@@ -817,7 +983,7 @@
+ 
+ 	Revert for x86 darwin:
+ 	2005-06-19  Uros Bizjak  <uros@kss-loka.si>
+-	
++
+ 	* config/i386/i386.c (ix86_function_arg_regno_p): Put back the
+ 	code before the following patch under TARGET_MACHO.
+ 	(ix86_function_value_regno_p): Likewise.
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c	(revision 123843)
+@@ -0,0 +1,57 @@
++/* PR middle-end/30704 */
++
++typedef __SIZE_TYPE__ size_t;
++extern void abort (void);
++extern int memcmp (const void *, const void *, size_t);
++extern void *memcpy (void *, const void *, size_t);
++
++long long
++__attribute__((noinline))
++f1 (void)
++{
++  long long t;
++  double d = 0x0.fffffffffffff000p-1022;
++  memcpy (&t, &d, sizeof (long long));
++  return t;
++}
++
++double
++__attribute__((noinline))
++f2 (void)
++{
++  long long t = 0x000fedcba9876543LL;
++  double d;
++  memcpy (&d, &t, sizeof (long long));
++  return d;
++}
++
++int
++main ()
++{
++  union
++  {
++    long long ll;
++    double d;
++  } u;
++
++  if (sizeof (long long) != sizeof (double) || __DBL_MIN_EXP__ != -1021)
++    return 0;
++
++  u.ll = f1 ();
++  if (u.d != 0x0.fffffffffffff000p-1022)
++    abort ();
++
++  u.d = f2 ();
++  if (u.ll != 0x000fedcba9876543LL)
++    abort ();
++
++  double b = 234.0;
++  long long c;
++  double d = b;
++  memcpy (&c, &b, sizeof (double));
++  long long e = c;
++  if (memcmp (&e, &d, sizeof (double)) != 0)
++    abort ();
++
++  return 0;
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x	(revision 123843)
+@@ -0,0 +1,10 @@
++set torture_eval_before_compile {
++    set compiler_conditional_xfail_data {
++        "PR 28834" \
++        { "*-*-*" } \
++        { "-O3 -g" } \
++        { "" }
++    }
++}
++
++return 0
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c	(revision 123843)
+@@ -0,0 +1,24 @@
++/* PR tree-optimization/31345
++   This caused a crash in VRP when dealing with overflow infinities.  */
++
++void
++dpsnaffle (const char *kbuf)
++{
++  int hash, thash, head[2], off;
++    {
++      int _DP_i;
++      (hash) = 19780211;
++        {
++          (hash) = (hash) + (kbuf)[_DP_i];
++        }
++      (hash) = ((hash) * 43321879) & 0x7FFFFFFF;
++    }
++  while (off != 0)
++    {
++      if (hash > thash) {}
++      else if (hash < thash)
++        {
++          off = head[2];
++        }
++    }
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c	(revision 123843)
+@@ -0,0 +1,7 @@
++int fs_exec(int ino)
++{
++ void *src = 0;
++ if (ino)
++   src = (void*)0xe000;
++ goto *src;
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c	(revision 123843)
+@@ -0,0 +1,21 @@
++/* { dg-do run } */
++/* { dg-options "-O" } */
++
++#include <stdlib.h>
++
++void __attribute__((noinline)) 
++bar(int a, int b)
++{
++  if (a != 43 || b != 42)
++    abort();
++}
++
++int main(void)
++{
++    register int r0 asm("r0") = 42;
++    register int r1 asm("r1") = 43;
++    asm volatile("": "+r" (r0), "+r" (r1));
++    bar(r1, r0);
++    return 0;
++}
++
+Index: gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c	(revision 123843)
+@@ -0,0 +1,19 @@
++/* PR inline-asm/30505 */
++/* { dg-do compile { target ilp32 } } */
++/* { dg-options "-O2" } */
++
++unsigned long long a, c;
++unsigned int b, d;
++
++void
++test ()
++{
++  unsigned int e, f;
++
++  __asm__ ("divl %5;movl %1, %0;movl %4, %1;divl %5"
++	   : "=&rm" (e), "=a" (f), "=d" (d)
++	   : "1" ((unsigned int) (a >> 32)), "g" ((unsigned int) a),
++	     "rm" (b), "2" (0)
++	   : "cc");
++  c = (unsigned long long) e << 32 | f;
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c	(revision 123843)
+@@ -1,3 +1,5 @@
++/* { dg-options "-O -fopenmp" } */
++
+ void foo();
+ 
+ inline void bar()
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c	(revision 123843)
+@@ -0,0 +1,9 @@
++/* PR c/30762 */
++/* { dg-do compile } */
++
++typedef struct { int i; } D;
++
++void
++foo (D x)
++{
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c	(revision 123843)
+@@ -14,5 +14,5 @@
+   e = *a;
+   return d + e;
+ }
+-/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre"} } */
++/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre" { xfail *-*-* } } } */
+ /* { dg-final { cleanup-tree-dump "pre" } } */
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c	(revision 123843)
+@@ -15,5 +15,5 @@
+   e = (*a)[0];
+   return d + e;
+ }
+-/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre"} } */
++/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre" { xfail *-*-* } } } */
+ /* { dg-final { cleanup-tree-dump "pre" } } */
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c	(revision 123843)
+@@ -15,5 +15,5 @@
+   e = (*a)[t];
+   return d + e;
+ }
+-/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre"} } */
++/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre" { xfail *-*-* } } } */
+ /* { dg-final { cleanup-tree-dump "pre" } } */
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c	(revision 123843)
+@@ -0,0 +1,12 @@
++/* Test for GNU extensions to compound literals are giving the correct array bounds */
++/* { dg-do run } */
++/* { dg-options "-std=gnu89 -W -Wall -O2" } */
++
++int a[] = (int[4]){1, 1, 2};
++int f(void)
++{
++  int sum = 0; int i;
++  for(i = 0;i<4;i++)
++    sum = a[i];
++  return sum;
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c	(revision 123843)
+@@ -0,0 +1,4 @@
++/* { dg-do compile { target *-*-darwin9* } } */
++/* { dg-final { scan-assembler ".comm _foo,1,15" } } */
++
++char foo __attribute__ ((aligned(32768)));
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c	(revision 123843)
+@@ -0,0 +1,15 @@
++/* PR c/30762 */
++/* { dg-do compile } */
++/* { dg-options "--combine -O3" } */
++/* { dg-additional-sources pr30762-2.c } */
++
++typedef struct { int i; } D;
++extern void foo (D);
++
++void
++bar (void)
++{
++  D d;
++  d.i = 1;
++  foo (d);
++}
+Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/ChangeLog	(revision 123843)
+@@ -1,3 +1,106 @@
++2007-04-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
++
++	PR C/31520
++	* testsuite/gcc.dg/gnu89-init-4.c: New testcase.
++
++2007-04-14  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/25874
++	* gcc.dg/gomp/pr25874.c: Add dg-options.
++	* g++.dg/gomp/pr25874.C: Add dg-options.
++
++2007-04-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/31074
++	* conv3.C: New test.
++
++2007-04-13  Joseph Myers  <joseph@codesourcery.com>
++
++	PR tree-optimization/29598
++	* gcc.dg/tree-ssa/loadpre1.c, gcc.dg/tree-ssa/loadpre14.c,
++	gcc.dg/tree-ssa/loadpre15.c: XFAIL.
++
++2007-04-10  Mike Stump  <mrs@apple.com>
++
++	* g++.dg/tree-ssa/pr29585.C: Don't die on an expected warning.
++
++2007-04-09  Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/31449
++	* g++.dg/init/const5.C: New test.
++
++2007-04-03  Eric Christopher  <echristo@apple.com>
++
++	* g++.dg/tree-ssa/pr29902.C: Require ilp32.
++
++2007-04-03  Stuart Hastings  <stuart@apple.com>
++
++	PR 31281
++	* testsuite/objc/execute/exceptions/pr31281.m: New.
++
++2007-04-03  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/30847
++	* g++.dg/parse/cond3.C: New test.
++
++	PR middle-end/30704
++	* gcc.c-torture/execute/ieee/pr30704.c: New test.
++
++2007-04-02  Jason Merrill  <jason@redhat.com>
++
++	PR c++/31187
++	* g++.dg/ext/visibility/anon3.C: New test.
++
++2007-03-31  Diego Novillo  <dnovillo@redhat.com>
++
++	PR 29585
++	* g++.dg/tree-ssa/pr29585.C: New test.
++
++2007-03-30  Kazu Hirata  <kazu@codesourcery.com>
++
++	* gcc.c-torture/execute/mayalias-2.x: New.
++
++2007-03-28  Mike Stump  <mrs@apple.com>
++
++	* gcc.dg/darwin-comm.c: Add.
++
++2007-03-26  Ian Lance Taylor  <iant@google.com>
++
++	PR tree-optimization/31345
++	* gcc.c-torture/compile/pr31345-1.c: New test.
++
++2007-03-22  Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/30863
++	* g++.dg/template/error24.C: New test.
++	* g++.dg/parse/tmpl-outside1.C: Tweak error markers.
++
++	PR c++/31273
++	* g++.dg/expr/bitfield7.C: New test.
++
++2007-03-20  Seongbae Park <seongbae.park@gmail.com>
++
++	PR tree-optimization/30590
++	* g++.dg/opt/pr30590.C: New testcase.
++
++2007-03-20  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/30762
++	* gcc.dg/pr30762-1.c: New test.
++	* gcc.dg/pr30762-2.c: New test.
++
++	PR inline-asm/30505
++	* gcc.target/i386/pr30505.c: New test.
++
++2007-03-19  Mark Shinwell  <shinwell@codesourcery.com>
++
++	* gcc.target/arm/register-variables.c: New.
++
++2007-03-19  Jeff Law  <law@redhat.com>
++
++	* PR tree-optimization/30984
++	* gcc.c-torture/pr30984.c: New test.
++
+ 2007-03-16  Alexandre Oliva  <aoliva@redhat.com>
+ 
+ 	PR debug/29906
+@@ -123,12 +226,12 @@
+ 	PR rtl-optimization/30643
+ 	* gcc.dg/pr30643.c: New.
+ 
+-2007-03-09  Andrew Pinski  <andrew_pinski@playstation.sony.com> 
++2007-03-09  Andrew Pinski  <andrew_pinski@playstation.sony.com>
+ 
+ 	PR tree-opt/30045
+ 	* gcc.dg/pr30045.c: New test.
+ 
+-2007-03-09  Andrew Pinski  <andrew_pinski@playstation.sony.com> 
++2007-03-09  Andrew Pinski  <andrew_pinski@playstation.sony.com>
+ 
+ 	PR middle-end/30729
+ 	* gcc.dg/Wunused-value-2.c: New testcase.
+@@ -163,7 +266,7 @@
+ 2007-03-08  Brooks Moses  <brooks.moses@codesourcery.com>
+ 
+ 	Backport from trunk.
+-	* gfortran.dg/gomp/reduction1.f90: Add -fmax-errors=100 to 
++	* gfortran.dg/gomp/reduction1.f90: Add -fmax-errors=100 to
+ 	dg-options.
+ 
+ 2007-03-08  Paul Thomas  <pault@gcc.gnu.org>
+@@ -216,7 +319,7 @@
+ 	* gcc.dg/Wstring-literal-comparison-4.c: Likewise.
+ 	* g++.dg/warn/Wstring-literal-comparison-1.C: Likewise.
+ 	* g++.dg/warn/Wstring-literal-comparison-4.c: Likewise.
+-	
++
+ 2007-03-06  Roger Sayle  <roger@eyesopen.com>
+ 
+ 	PR middle-end/30744
+@@ -315,7 +418,7 @@
+ 
+ 2007-02-23  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+ 
+-	PR libgfortran/30910	
++	PR libgfortran/30910
+ 	* gfortran.dg/fmt_zero_precision.f90: Update test.
+ 
+ 2007-02-23  Tobias Burnus  <burnus@net-b.de>
+@@ -480,7 +583,7 @@
+ 
+ 2007-02-07  Hans-Peter Nilsson  <hp@axis.com>
+ 
+-	* lib/target-supports.exp (check_effective_target_simulator): New. 
++	* lib/target-supports.exp (check_effective_target_simulator): New.
+ 
+ 2007-02-05  Alexandre Oliva  <aoliva@redhat.com>
+ 
+@@ -614,7 +717,7 @@
+ 
+ 	PR fortran/30532
+ 	* gfortran.dg/ctrl-z.f90:  New test.
+-	
++
+ 2007-01-26  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+ 
+ 	PR fortran/30481
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C	(revision 123843)
+@@ -0,0 +1,15 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -w" } */
++
++class ios_base{};
++struct basic_ostream : virtual ios_base{};
++namespace
++{
++  struct Nullostream : basic_ostream{};
++}
++class  In
++{
++  In ();
++  Nullostream  nullout;
++};
++In::In (){}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C	(revision 123843)
+@@ -1,5 +1,6 @@
+ /* { dg-do compile { target i?86-*-* } } */
+ /* { dg-options "-O1 -fprefetch-loop-arrays -march=athlon" } */
++/* { dg-require-effective-target ilp32 } */
+ 
+ int length1();
+ int g(int);
+@@ -16,4 +17,3 @@
+       for (int i = 1; i < capacity_; i++){old_storage[i] = 0;}
+   }
+ }
+-
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C	(revision 123843)
+@@ -0,0 +1,16 @@
++// PR c++/31187
++// Bug: the repeated declaration was confusing the compiler into
++// thinking that foo1 had language internal linkage.
++
++class foo { };
++
++namespace
++{
++  extern foo foo1;
++  foo foo1;
++}
++
++template< foo * >
++class bar { };
++
++bar< &foo1 > bar1;
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C	(revision 123843)
+@@ -0,0 +1,31 @@
++// PR 31074
++// Bug: The reference cast wasn't finding the desired static_cast followed by
++// const_cast interpretation.
++
++struct Shape
++{
++  Shape() {}
++  virtual ~Shape() {}
++};
++
++struct Loop
++{
++  Loop() {}
++  virtual ~Loop() {}
++  virtual void func() {}
++};
++
++struct Rect :
++  public Shape,
++  public Loop
++{
++  Rect() {}
++  virtual ~Rect() {}
++};
++
++int main ()
++{
++  const Rect* rect = new Rect();
++  Loop &l = ((Loop&)(*rect));
++  return (&l != (const Loop *)rect);
++}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C	(revision 123843)
+@@ -1,3 +1,5 @@
++// { dg-options "-O -fopenmp" }
++
+ int foo();
+ 
+ struct wigner_d
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C	(revision 123843)
+@@ -0,0 +1,40 @@
++/* { dg-do run } */
++/* { dg-options "-O" } */
++struct test
++{
++  int type;
++  char buffer[4242]; /* should trigger pass-by-reference */
++};
++
++int flag = 0;
++
++struct test
++reset (void)
++{
++  struct test retval;
++  retval.type = 1;
++  return retval;
++}
++
++struct test
++test (void)
++{
++  struct test result;
++  result.type = 0;
++
++  for (int i = 0; i < 2; ++i)
++    {
++      struct test candidate = reset ();
++      if (flag)
++        result = candidate;
++    }
++
++  return result;
++}
++
++int
++main (void)
++{
++  struct test result = test ();
++  return result.type;
++}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C	(revision 123843)
+@@ -0,0 +1,11 @@
++// PR c++/31449
++
++class Foo {};
++class Bar : public Foo {};
++static const Foo *foo = 0;
++
++static Bar *bar = static_cast<const Bar*>(foo); // { dg-error "conversion" }
++
++void func(const Foo *foo) {
++  Bar *bar = static_cast<const Bar*>(foo);  // { dg-error "conversion" }
++}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C	(revision 123843)
+@@ -0,0 +1,15 @@
++// PR c++/30847
++// { dg-do compile }
++// { dg-options "" }
++
++int j, k, l;
++extern void baz ();
++
++void
++foo (int i)
++{
++  (i ? j : k) = ({ l++; (void) l; });	// { dg-error "void value not ignored" }
++  (i ? j : k) += ({ l++; (void) l; });	// { dg-error "void value not ignored" }
++  (i ? j : k) = baz ();			// { dg-error "void value not ignored" }
++  (i ? j : k) *= baz ();		// { dg-error "void value not ignored" }
++}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C	(revision 123014)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C	(revision 123843)
+@@ -7,5 +7,4 @@
+    template <int i> struct Y {};
+ };
+ 
+-typedef X::template Y<0> y; // { dg-error "template" }
+-// { dg-bogus "with no type" "" { xfail *-*-* } 10 }
++typedef X::template Y<0> y; // { dg-error "template|invalid" }
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C	(revision 123843)
+@@ -0,0 +1,8 @@
++// PR c++/30863
++
++template <typename T>
++struct s {};
++
++void f() {
++  unsigned s<int> x; // { dg-error "invalid" }
++}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C	(revision 123843)
+@@ -0,0 +1,8 @@
++// PR c++/31273
++
++enum E { e };
++struct S {
++  E v:5;
++};
++S s;
++int main() { if (!s.v) return 0; }
+Index: gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m	(revision 123843)
+@@ -0,0 +1,27 @@
++/* From PR31281.  */
++extern void abort (void);
++int __attribute__((noinline))
++f(unsigned int i)
++{
++  int j, k;
++  @try { } @catch(id) { return 13; }
++  for (j=0; j<i; j++)
++    for (k=0; k<i; k++)
++      {
++        @try {
++          if (i)
++            break;
++        } @catch(id) { }
++        return 9;
++      }
++  return 0;
++}
++
++
++int
++main()
++{
++  if (f(1))
++    abort ();
++  return 0 ;
++}
+Index: gcc-4_2-branch/gcc/cp/typeck.c
+===================================================================
+--- gcc-4_2-branch/gcc/cp/typeck.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/typeck.c	(revision 123843)
+@@ -5614,6 +5614,12 @@
+ 	tree cond;
+ 	tree preeval = NULL_TREE;
+ 
++	if (VOID_TYPE_P (TREE_TYPE (rhs)))
++	  {
++	    error ("void value not ignored as it ought to be");
++	    return error_mark_node;
++	  }
++
+ 	rhs = stabilize_expr (rhs, &preeval);
+ 
+ 	/* Check this here to avoid odd errors when trying to convert
+@@ -6795,6 +6801,16 @@
+   return TYPE_QUALS (type);
+ }
+ 
++/* Returns nonzero if the TYPE is const from a C++ perspective: look inside
++   arrays.  */
++
++bool
++cp_type_readonly (tree type)
++{
++  type = strip_array_types (type);
++  return TYPE_READONLY (type);
++}
++
+ /* Returns nonzero if the TYPE contains a mutable member.  */
+ 
+ bool
+Index: gcc-4_2-branch/gcc/cp/class.c
+===================================================================
+--- gcc-4_2-branch/gcc/cp/class.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/class.c	(revision 123843)
+@@ -302,7 +302,18 @@
+ 	 field, because other parts of the compiler know that such
+ 	 expressions are always non-NULL.  */
+       if (!virtual_access && integer_zerop (offset))
+-	return build_nop (build_pointer_type (target_type), expr);
++	{
++	  tree class_type;
++	  /* TARGET_TYPE has been extracted from BINFO, and, is
++	     therefore always cv-unqualified.  Extract the
++	     cv-qualifiers from EXPR so that the expression returned
++	     matches the input.  */
++	  class_type = TREE_TYPE (TREE_TYPE (expr));
++	  target_type
++	    = cp_build_qualified_type (target_type,
++				       cp_type_quals (class_type));
++	  return build_nop (build_pointer_type (target_type), expr);
++	}
+       null_test = error_mark_node;
+     }
+ 
+@@ -7101,7 +7112,13 @@
+ 
+       /* Figure out the position to which the VPTR should point.  */
+       vtbl = TREE_PURPOSE (l);
+-      vtbl = build1 (ADDR_EXPR, vtbl_ptr_type_node, vtbl);
++      vtbl = build_address (vtbl);
++      /* ??? We should call fold_convert to convert the address to
++	 vtbl_ptr_type_node, which is the type of elements in the
++	 vtable.  However, the resulting NOP_EXPRs confuse other parts
++	 of the C++ front end.  */
++      gcc_assert (TREE_CODE (vtbl) == ADDR_EXPR);
++      TREE_TYPE (vtbl) = vtbl_ptr_type_node;
+       index = size_binop (PLUS_EXPR,
+ 			  size_int (non_fn_entries),
+ 			  size_int (list_length (TREE_VALUE (l))));
+Index: gcc-4_2-branch/gcc/cp/decl.c
+===================================================================
+--- gcc-4_2-branch/gcc/cp/decl.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/decl.c	(revision 123843)
+@@ -3815,6 +3815,7 @@
+   tree decl;
+   tree type, tem;
+   tree context;
++  bool was_public;
+ 
+   *pushed_scope_p = NULL_TREE;
+ 
+@@ -3969,6 +3970,8 @@
+ 		 decl);
+     }
+ 
++  was_public = TREE_PUBLIC (decl);
++
+   /* Enter this declaration into the symbol table.  */
+   tem = maybe_push_decl (decl);
+ 
+@@ -3989,6 +3992,17 @@
+       && !have_global_bss_p ())
+     DECL_COMMON (tem) = 1;
+ 
++  if (TREE_CODE (tem) == VAR_DECL
++      && DECL_NAMESPACE_SCOPE_P (tem) && !TREE_PUBLIC (tem) && !was_public
++      && !DECL_THIS_STATIC (tem) && !DECL_ARTIFICIAL (tem))
++    {
++      /* This is a const variable with implicit 'static'.  Set
++	 DECL_THIS_STATIC so we can tell it from variables that are
++	 !TREE_PUBLIC because of the anonymous namespace.  */
++      gcc_assert (cp_type_readonly (TREE_TYPE (tem)));
++      DECL_THIS_STATIC (tem) = 1;
++    }
++
+   if (!processing_template_decl && TREE_CODE (tem) == VAR_DECL)
+     start_decl_1 (tem, initialized);
+ 
+@@ -5301,14 +5315,6 @@
+ 	{
+ 	  layout_var_decl (decl);
+ 	  maybe_commonize_var (decl);
+-	  if (DECL_NAMESPACE_SCOPE_P (decl) && !TREE_PUBLIC (decl)
+-	      && !DECL_THIS_STATIC (decl) && !DECL_ARTIFICIAL (decl))
+-	    {
+-	      /* This is a const variable with implicit 'static'.  Set
+-		 DECL_THIS_STATIC so we can tell it from variables that are
+-		 !TREE_PUBLIC because of the anonymous namespace.  */
+-	      DECL_THIS_STATIC (decl) = 1;
+-	    }
+ 	}
+ 
+       make_rtl_for_nonlocal_decl (decl, init, asmspec);
+Index: gcc-4_2-branch/gcc/cp/call.c
+===================================================================
+--- gcc-4_2-branch/gcc/cp/call.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/call.c	(revision 123843)
+@@ -171,7 +171,7 @@
+ 	(struct z_candidate **, tree, tree, tree, tree, tree, int);
+ static conversion *implicit_conversion (tree, tree, tree, bool, int);
+ static conversion *standard_conversion (tree, tree, tree, bool, int);
+-static conversion *reference_binding (tree, tree, tree, int);
++static conversion *reference_binding (tree, tree, tree, bool, int);
+ static conversion *build_conv (conversion_kind, tree, conversion *);
+ static bool is_subseq (conversion *, conversion *);
+ static tree maybe_handle_ref_bind (conversion **);
+@@ -613,18 +613,12 @@
+   tcode = TREE_CODE (to);
+ 
+   conv = build_identity_conv (from, expr);
+-  if (fcode == FUNCTION_TYPE)
++  if (fcode == FUNCTION_TYPE || fcode == ARRAY_TYPE)
+     {
+-      from = build_pointer_type (from);
++      from = type_decays_to (from);
+       fcode = TREE_CODE (from);
+       conv = build_conv (ck_lvalue, from, conv);
+     }
+-  else if (fcode == ARRAY_TYPE)
+-    {
+-      from = build_pointer_type (TREE_TYPE (from));
+-      fcode = TREE_CODE (from);
+-      conv = build_conv (ck_lvalue, from, conv);
+-    }
+   else if (fromref || (expr && lvalue_p (expr)))
+     {
+       if (expr)
+@@ -632,7 +626,10 @@
+ 	  tree bitfield_type;
+ 	  bitfield_type = is_bitfield_expr_with_lowered_type (expr);
+ 	  if (bitfield_type)
+-	    from = strip_top_quals (bitfield_type);
++	    {
++	      from = strip_top_quals (bitfield_type);
++	      fcode = TREE_CODE (from);
++	    }
+ 	}
+       conv = build_conv (ck_rvalue, from, conv);
+     }
+@@ -1085,10 +1082,11 @@
+    purposes of reference binding.  For lvalue binding, either pass a
+    reference type to FROM or an lvalue expression to EXPR.  If the
+    reference will be bound to a temporary, NEED_TEMPORARY_P is set for
+-   the conversion returned.  */
++   the conversion returned.  If C_CAST_P is true, this
++   conversion is coming from a C-style cast.  */
+ 
+ static conversion *
+-reference_binding (tree rto, tree rfrom, tree expr, int flags)
++reference_binding (tree rto, tree rfrom, tree expr, bool c_cast_p, int flags)
+ {
+   conversion *conv = NULL;
+   tree to = TREE_TYPE (rto);
+@@ -1118,6 +1116,11 @@
+      reference compatible.  We have do do this after stripping
+      references from FROM.  */
+   related_p = reference_related_p (to, from);
++  /* If this is a C cast, first convert to an appropriately qualified
++     type, so that we can later do a const_cast to the desired type.  */
++  if (related_p && c_cast_p
++      && !at_least_as_qualified_p (to, from))
++    to = build_qualified_type (to, cp_type_quals (from));
+   compatible_p = reference_compatible_p (to, from);
+ 
+   if (lvalue_p && compatible_p)
+@@ -1227,7 +1230,7 @@
+   if (related_p && !at_least_as_qualified_p (to, from))
+     return NULL;
+ 
+-  conv = implicit_conversion (to, from, expr, /*c_cast_p=*/false,
++  conv = implicit_conversion (to, from, expr, c_cast_p,
+ 			      flags);
+   if (!conv)
+     return NULL;
+@@ -1257,7 +1260,7 @@
+     return NULL;
+ 
+   if (TREE_CODE (to) == REFERENCE_TYPE)
+-    conv = reference_binding (to, from, expr, flags);
++    conv = reference_binding (to, from, expr, c_cast_p, flags);
+   else
+     conv = standard_conversion (to, from, expr, c_cast_p, flags);
+ 
+@@ -6564,7 +6567,8 @@
+   /* Get the high-water mark for the CONVERSION_OBSTACK.  */
+   p = conversion_obstack_alloc (0);
+ 
+-  conv = reference_binding (type, TREE_TYPE (expr), expr, LOOKUP_NORMAL);
++  conv = reference_binding (type, TREE_TYPE (expr), expr, /*c_cast_p=*/false,
++			    LOOKUP_NORMAL);
+   if (!conv || conv->bad_p)
+     {
+       if (!(TYPE_QUALS (TREE_TYPE (type)) & TYPE_QUAL_CONST)
+Index: gcc-4_2-branch/gcc/cp/cp-tree.h
+===================================================================
+--- gcc-4_2-branch/gcc/cp/cp-tree.h	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/cp-tree.h	(revision 123843)
+@@ -4471,6 +4471,7 @@
+ extern int ptr_reasonably_similar		(tree, tree);
+ extern tree build_ptrmemfunc			(tree, tree, int, bool);
+ extern int cp_type_quals			(tree);
++extern bool cp_type_readonly			(tree);
+ extern bool cp_has_mutable_p			(tree);
+ extern bool at_least_as_qualified_p		(tree, tree);
+ extern void cp_apply_type_quals_to_decl		(int, tree);
+Index: gcc-4_2-branch/gcc/cp/ChangeLog
+===================================================================
+--- gcc-4_2-branch/gcc/cp/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/ChangeLog	(revision 123843)
+@@ -1,3 +1,54 @@
++2007-04-13  Jason Merrill  <jason@redhat.com>
++
++	PR c++/31074
++	* call.c (reference_binding): Add c_cast_p parm.  If true,
++	add quals to TO as needed to make it reference-compatible.
++
++2007-04-10  Mike Stump  <mrs@apple.com>
++
++	* class.c (dfs_accumulate_vtbl_inits): Slam the vtbl type back to
++	vtbl_ptr_type_node to ensure the mode is correct.
++
++2007-04-09  Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/31449
++	* class.c (build_base_path): Ensure that the converted pointer has
++	the same cv-qualification as the input.
++
++2007-04-03  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/30847
++	* typeck.c (build_modify_expr): For COND_EXPR on LHS, if RHS has void
++	type issue error and return early.
++
++2007-03-30  Jason Merrill  <jason@redhat.com>
++
++	PR c++/31187
++	* typeck.c (cp_type_readonly): New fn.
++	* cp-tree.h: Declare it.
++	* decl.c (start_decl): Set implicit DECL_THIS_STATIC here.
++	(cp_finish_decl): Not here.
++
++2007-03-31  Diego Novillo  <dnovillo@redhat.com>
++	    Mark Mitchell  <mark@codesourcery.com>
++
++	PR 29585
++	* class.c (dfs_accumulate_vtbl_inits): Use build_address
++	to build the vtbl entry.
++
++2007-03-22  Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/30863
++	* parser.c (cp_parser_parse_and_diagnose_invalid_type_name): Do
++	not consume tokens when failing.
++
++2007-03-22  Jim Wilson  <wilson@specifix.com>
++	    Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/31273
++	* call.c (standard_conversion): Use type_decays_to.  Keep FCODE
++	consistent with FROM.
++
+ 2007-03-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
+ 
+ 	PR c++/31165
+Index: gcc-4_2-branch/gcc/cp/parser.c
+===================================================================
+--- gcc-4_2-branch/gcc/cp/parser.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/parser.c	(revision 123843)
+@@ -2281,12 +2281,13 @@
+      the scope is dependent, we cannot do much.  */
+   if (!cp_lexer_next_token_is (parser->lexer, CPP_NAME)
+       || (parser->scope && TYPE_P (parser->scope)
+-	  && dependent_type_p (parser->scope)))
++	  && dependent_type_p (parser->scope))
++      || TREE_CODE (id) == TYPE_DECL)
+     {
+       cp_parser_abort_tentative_parse (parser);
+       return false;
+     }
+-  if (!cp_parser_parse_definitely (parser) || TREE_CODE (id) == TYPE_DECL)
++  if (!cp_parser_parse_definitely (parser))
+     return false;
+ 
+   /* Emit a diagnostic for the invalid type.  */
+Index: gcc-4_2-branch/gcc/cse.c
+===================================================================
+--- gcc-4_2-branch/gcc/cse.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cse.c	(revision 123843)
+@@ -4542,6 +4542,14 @@
+   op1 = fold_rtx (XEXP (XEXP (SET_SRC (set), 0), 1), insn);
+ 
+   code = find_comparison_args (code, &op0, &op1, &mode0, &mode1);
++
++  /* If the mode is a MODE_CC mode, we don't know what kinds of things
++     are being compared, so we can't do anything with this
++     comparison.  */
++
++  if (GET_MODE_CLASS (mode0) == MODE_CC)
++    return;
++
+   if (! cond_known_true)
+     {
+       code = reversed_comparison_code_parts (code, op0, op1, insn);
+Index: gcc-4_2-branch/gcc/opts.c
+===================================================================
+--- gcc-4_2-branch/gcc/opts.c	(revision 123014)
++++ gcc-4_2-branch/gcc/opts.c	(revision 123843)
+@@ -1010,7 +1010,7 @@
+       break;
+ 
+     case OPT_fforce_mem:
+-      warning (0, "-f[no-]force-mem is nop and option will be removed in 4.2");
++      warning (0, "-f[no-]force-mem is nop and option will be removed in 4.3");
+       break;
+ 
+     case OPT_floop_optimize:
+Index: gcc-4_2-branch/gcc/c-decl.c
+===================================================================
+--- gcc-4_2-branch/gcc/c-decl.c	(revision 123014)
++++ gcc-4_2-branch/gcc/c-decl.c	(revision 123843)
+@@ -3337,7 +3337,7 @@
+ void
+ finish_decl (tree decl, tree init, tree asmspec_tree)
+ {
+-  tree type = TREE_TYPE (decl);
++  tree type;
+   int was_incomplete = (DECL_SIZE (decl) == 0);
+   const char *asmspec = 0;
+ 
+@@ -3364,6 +3364,8 @@
+ 			    || TREE_CODE (decl) == FIELD_DECL))
+     objc_check_decl (decl);
+ 
++  type = TREE_TYPE (decl);
++
+   /* Deduce size of array from initialization, if not already known.  */
+   if (TREE_CODE (type) == ARRAY_TYPE
+       && TYPE_DOMAIN (type) == 0
+Index: gcc-4_2-branch/gcc/fortran/ChangeLog
+===================================================================
+--- gcc-4_2-branch/gcc/fortran/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/gcc/fortran/ChangeLog	(revision 123843)
+@@ -1,3 +1,20 @@
++2007-04-12  Daniel Franke  <franke.daniel@gmail.com>
++
++	PR fortran/31234
++	* intrinsic.texi (RANDOM_SEED, RANDOM_NUMBER): New.
++
++2007-03-23  Brooks Moses  <brooks.moses@codesourcery.com>
++
++	* invoke.texi: Misc. small typo fixes.
++	(-Wcharacter-truncation): Add.
++	(-Wnonstd-intrinsics): Correct spelling.
++	(-std=): Edit.
++
++2007-03-17  Francois-Xavier Coudert  <coudert@clipper.ens.fr>
++
++	PR fortran/31184
++	* invoke.texi: Fix typo.
++
+ 2007-03-14  Jakub Jelinek  <jakub@redhat.com>
+ 
+ 	* module.c (mio_typespec): Don't look at ts->cl if not BT_CHARACTER.
+Index: gcc-4_2-branch/gcc/fortran/invoke.texi
+===================================================================
+--- gcc-4_2-branch/gcc/fortran/invoke.texi	(revision 123014)
++++ gcc-4_2-branch/gcc/fortran/invoke.texi	(revision 123843)
+@@ -128,9 +128,9 @@
+ and Warnings}.
+ @gccoptlist{-fmax-errors=@var{n} @gol
+ -fsyntax-only  -pedantic  -pedantic-errors @gol
+--w  -Wall  -Waliasing  -Wampersand  -Wconversion  -Wimplicit-interface @gol
+--Wtabs -Wnonstd-intrinsics -Wsurprising -Wunderflow @gol
+--Wline-truncation -W}
++-w  -Wall  -Waliasing  -Wampersand  -Wcharacter-truncation  -Wconversion @gol
++-Wimplicit-interface  -Wline-truncation  -Wnonstd-intrinsics  -Wsurprising @gol
++-Wno-tabs  -Wunderflow  -W}
+ 
+ @item Debugging Options
+ @xref{Debugging Options,,Options for Debugging Your Program or GCC}.
+@@ -138,11 +138,12 @@
+ 
+ @item Directory Options
+ @xref{Directory Options,,Options for Directory Search}.
+-@gccoptlist{-I@var{dir}  -M@var{dir}}
++@gccoptlist{-I@var{dir}  -J@var{dir}  -M@var{dir}}
+ 
+ @item Runtime Options
+ @xref{Runtime Options,,Options for influencing runtime behavior}.
+-@gccoptlist{-fconvert=@var{conversion} -frecord-marker=@var{length}}
++@gccoptlist{-fconvert=@var{conversion}  -frecord-marker=@var{length} @gol
++-fmax-subrecord-length=@var{length}}
+ 
+ @item Code Generation Options
+ @xref{Code Gen Options,,Options for Code Generation Conventions}.
+@@ -198,7 +199,7 @@
+ @command{gfortran} will ignore @option{-Wnonstd-intrinsics}.
+ 
+ @item -fd-lines-as-code
+-@item -fd-lines-as-comment
++@item -fd-lines-as-comments
+ @cindex @code{-fd-lines-as-code}, option
+ @cindex option, @code{-fd-lines-as-code}
+ @cindex @code{-fd-lines-as-comments}, option
+@@ -325,12 +326,19 @@
+ @item -std=@var{std}
+ @cindex @code{-std=}@var{std} option
+ @cindex option, @code{-std=}@var{std}
+-Conform to the specified standard.  The default value for @var{std} is
+-@samp{gnu}; a superset of the Fortran 95 standard which includes all
+-of the GNU extensions recommended for use in new code.  The @samp{legacy}
+-value also includes obsolete extensions that may be required for old 
+-non-standard programs.  Strict conformance to the Fortran 95 and Fortran 2003
+-standards is specified by @samp{f95} and @samp{f2003}, respectively.
++Specify the standard to which the program is expected to conform, which
++may be one of @samp{f95}, @samp{f2003}, @samp{gnu}, or @samp{legacy}.
++The default value for @var{std} is @samp{gnu}, which specifies a
++superset of the Fortran 95 standard that includes all of the extensions
++supported by GNU Fortran, although warnings will be given for obsolete
++extensions not recommended for use in new code.  The @samp{legacy} value
++is equivalent but without the warnings for obsolete extensions, and may
++be useful for old non-standard programs.  The @samp{f95} and
++@samp{f2003} values specify strict conformance to the Fortran 95 and
++Fortran 2003 standards, respectively; errors are given for all
++extensions beyond the relevant language standard, and warnings are given
++for the Fortran 77 features that are permitted but obsolescent in later
++standards.
+ 
+ @end table
+ 
+@@ -420,7 +428,7 @@
+ Enables commonly used warning options pertaining to usage that
+ we recommend avoiding and that we believe are easy to avoid.
+ This currently includes @option{-Waliasing},
+-@option{-Wampersand}, @option{-Wsurprising}, @option{-Wnonstd-intrinsic},
++@option{-Wampersand}, @option{-Wsurprising}, @option{-Wnonstd-intrinsics},
+ @option{-Wno-tabs}, and @option{-Wline-truncation}.
+ 
+ @item -Waliasing
+@@ -455,6 +463,11 @@
+ constant, GNU Fortran assumes continuation at the first non-comment,
+ non-whitespace character after the ampersand that initiated the continuation.
+ 
++@item -Wcharacter-truncation
++@cindex @code{-Wcharacter-truncation} option
++@cindex option, @code{-Wcharacter-truncation}
++Warn when a character assignment will truncate the assigned string.
++
+ @item -Wconversion
+ @cindex @code{-Wconversion} option
+ @cindex option, @code{-Wconversion}
+@@ -468,11 +481,11 @@
+ Note this only checks that an explicit interface is present.  It does not
+ check that the declared interfaces are consistent across program units.
+ 
+-@item -Wnonstd-intrinsic
+-@cindex @code{-Wnonstd-intrinsic} option
+-@cindex option, @code{-Wnonstd-intrinsic}
++@item -Wnonstd-intrinsics
++@cindex @code{-Wnonstd-intrinsics} option
++@cindex option, @code{-Wnonstd-intrinsics}
+ Warn if the user tries to use an intrinsic that does not belong to the 
+-standard the user has chosen via the -std option.
++standard the user has chosen via the @option{-std} option.
+ 
+ @item -Wsurprising
+ @cindex @code{-Wsurprising} option
+@@ -608,9 +621,11 @@
+ @item -M@var{dir}
+ @item -J@var{dir}
+ @cindex @code{-M}@var{dir} option
+-@cindex option, -@code{-M}@var{dir}
++@cindex option, @code{-M}@var{dir}
+ @cindex @code{-J}@var{dir} option
+-@cindex option, -@code{-J}@var{dir}
++@cindex option, @code{-J}@var{dir}
++@cindex paths, search
++@cindex module search path
+ This option specifies where to put @file{.mod} files for compiled modules.
+ It is also added to the list of directories to searched by an @code{USE}
+ statement.
+Index: gcc-4_2-branch/gcc/fortran/intrinsic.texi
+===================================================================
+--- gcc-4_2-branch/gcc/fortran/intrinsic.texi	(revision 123014)
++++ gcc-4_2-branch/gcc/fortran/intrinsic.texi	(revision 123843)
+@@ -7614,10 +7614,11 @@
+ @cindex @code{RANDOM_NUMBER} intrinsic
+ @cindex random numbers
+ 
+-Intrinsic implemented, documentation pending.
+-
+ @table @asis
+ @item @emph{Description}:
++Returns a single pseudorandom number or an array of pseudorandom numbers
++from the uniform distribution over the range @math{ 0 \leq x < 1}.
++
+ @item @emph{Standard}:
+ F95 and later
+ 
+@@ -7625,9 +7626,31 @@
+ Elemental subroutine
+ 
+ @item @emph{Syntax}:
++@code{RANDOM_NUMBER(HARVEST)}
++
+ @item @emph{Arguments}:
+-@item @emph{Return value}:
++@multitable @columnfractions .15 .70
++@item @var{HARVEST} @tab Shall be a scalar or an array of type @code{REAL(*)}.
++@end multitable
++
+ @item @emph{Example}:
++@smallexample
++program test_random_number
++  REAL :: r(5,5)
++  CALL init_random_seed()         ! see example of RANDOM_SEED
++  CALL RANDOM_NUMBER(r)
++end program
++@end smallexample
++
++@item @emph{Note}:
++The implemented random number generator is thread safe if used within
++OpenMP directives, i. e. its state will be consistent while called from
++multiple threads. Please note that the currently implemented KISS generator 
++does not create random numbers in parallel from multiple sources, but in
++sequence from a single source. If your OpenMP-enabled application heavily
++relies on random numbers, you should consider employing a dedicated parallel
++random number generator instead.
++
+ @item @emph{See also}:
+ @ref{RANDOM_SEED}
+ @end table
+@@ -7639,10 +7662,15 @@
+ @cindex @code{RANDOM_SEED} intrinsic
+ @cindex random numbers
+ 
+-Intrinsic implemented, documentation pending.
+-
+ @table @asis
+ @item @emph{Description}:
++Restarts or queries the state of the pseudorandom number generator used by 
++@code{RANDOM_NUMBER}.
++
++If @code{RANDOM_SEED} is called without arguments, it is initialized to
++a default state. The example below shows how to initialize the random 
++seed based on the system's time.
++
+ @item @emph{Standard}:
+ F95 and later
+ 
+@@ -7650,9 +7678,41 @@
+ Subroutine
+ 
+ @item @emph{Syntax}:
++@code{CALL RANDOM_SEED(SIZE, PUT, GET)}
++
+ @item @emph{Arguments}:
+-@item @emph{Return value}:
++@multitable @columnfractions .15 .70
++@item @var{SIZE} @tab (Optional) Shall be a scalar and of type default 
++@code{INTEGER}, with @code{INTENT(OUT)}. It specifies the minimum size 
++of the arrays used with the @var{PUT} and @var{GET} arguments.
++@item @var{PUT}  @tab (Optional) Shall be an array of type default 
++@code{INTEGER} and rank one. It is @code{INTENT(IN)} and the size of 
++the array must be larger than or equal to the number returned by the 
++@var{SIZE} argument.
++@item @var{GET}  @tab (Optional) Shall be an array of type default 
++@code{INTEGER} and rank one. It is @code{INTENT(OUT)} and the size 
++of the array must be larger than or equal to the number returned by 
++the @var{SIZE} argument.
++@end multitable
++
+ @item @emph{Example}:
++@smallexample
++SUBROUTINE init_random_seed()
++  INTEGER :: i, n, clock
++  INTEGER, DIMENSION(:), ALLOCATABLE :: seed
++
++  CALL RANDOM_SEED(size = n)
++  ALLOCATE(seed(n))
++
++  CALL SYSTEM_CLOCK(COUNT=clock)
++
++  seed = clock + 37 * (/ (i - 1, i = 1, n) /)
++  CALL RANDOM_SEED(PUT = seed)
++
++  DEALLOCATE(seed)
++END SUBROUTINE
++@end smallexample
++
+ @item @emph{See also}:
+ @ref{RANDOM_NUMBER}
+ @end table
+Index: gcc-4_2-branch/gcc/c.opt
+===================================================================
+--- gcc-4_2-branch/gcc/c.opt	(revision 123014)
++++ gcc-4_2-branch/gcc/c.opt	(revision 123843)
+@@ -133,7 +133,7 @@
+ Warn about casting functions to incompatible types
+ 
+ Wc++-compat
+-C Var(warn_cxx_compat)
++C ObjC Var(warn_cxx_compat)
+ Warn about C constructs that are not in the common subset of C and C++
+ 
+ 
+@@ -170,7 +170,7 @@
+ Warn about deprecated compiler features
+ 
+ Wdiv-by-zero
+-C ObjC C++ Var(warn_div_by_zero) Init(1)
++C ObjC C++ ObjC++ Var(warn_div_by_zero) Init(1)
+ Warn about compile-time integer division by zero
+ 
+ Weffc++
+@@ -532,7 +532,7 @@
+ Generate code for GNU runtime environment
+ 
+ fgnu89-inline
+-C Var(flag_gnu89_inline) Init(-1)
++C ObjC Var(flag_gnu89_inline) Init(-1)
+ Use traditional GNU semantics for inline functions
+ 
+ fguiding-decls
+@@ -565,7 +565,7 @@
+ Emit implicit instantiations of templates
+ 
+ ffriend-injection
+-C++ Var(flag_friend_injection)
++C++ ObjC++ Var(flag_friend_injection)
+ Inject friend functions into enclosing namespace
+ 
+ flabels-ok
+Index: gcc-4_2-branch/gcc/c-typeck.c
+===================================================================
+--- gcc-4_2-branch/gcc/c-typeck.c	(revision 123014)
++++ gcc-4_2-branch/gcc/c-typeck.c	(revision 123843)
+@@ -3940,10 +3940,16 @@
+ 	       || coder == BOOLEAN_TYPE))
+     return convert_and_check (type, rhs);
+ 
++  /* Aggregates in different TUs might need conversion.  */
++  if ((codel == RECORD_TYPE || codel == UNION_TYPE)
++      && codel == coder
++      && comptypes (type, rhstype))
++    return convert_and_check (type, rhs);
++
+   /* Conversion to a transparent union from its member types.
+      This applies only to function arguments.  */
+-  else if (codel == UNION_TYPE && TYPE_TRANSPARENT_UNION (type)
+-	   && (errtype == ic_argpass || errtype == ic_argpass_nonproto))
++  if (codel == UNION_TYPE && TYPE_TRANSPARENT_UNION (type)
++      && (errtype == ic_argpass || errtype == ic_argpass_nonproto))
+     {
+       tree memb, marginal_memb = NULL_TREE;
+ 
+Index: gcc-4_2-branch/gcc/tree-cfg.c
+===================================================================
+--- gcc-4_2-branch/gcc/tree-cfg.c	(revision 123014)
++++ gcc-4_2-branch/gcc/tree-cfg.c	(revision 123843)
+@@ -2121,8 +2121,19 @@
+     return find_taken_edge_switch_expr (bb, val);
+ 
+   if (computed_goto_p (stmt))
+-    return find_taken_edge_computed_goto (bb, TREE_OPERAND( val, 0));
++    {
++      /* Only optimize if the argument is a label, if the argument is
++	 not a label then we can not construct a proper CFG.
+ 
++         It may be the case that we only need to allow the LABEL_REF to
++         appear inside an ADDR_EXPR, but we also allow the LABEL_REF to
++         appear inside a LABEL_EXPR just to be safe.  */
++      if ((TREE_CODE (val) == ADDR_EXPR || TREE_CODE (val) == LABEL_EXPR)
++	  && TREE_CODE (TREE_OPERAND (val, 0)) == LABEL_DECL)
++	return find_taken_edge_computed_goto (bb, TREE_OPERAND (val, 0));
++      return NULL;
++    }
++
+   gcc_unreachable ();
+ }
+ 
+Index: gcc-4_2-branch/gcc/config/i386/mmintrin.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/i386/mmintrin.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/i386/mmintrin.h	(revision 123843)
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2002, 2003, 2004, 2005, 2006
++/* Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007
+    Free Software Foundation, Inc.
+ 
+    This file is part of GCC.
+@@ -34,8 +34,9 @@
+ #ifndef __MMX__
+ # error "MMX instruction set not enabled"
+ #else
+-/* The data type intended for user use.  */
+-typedef int __m64 __attribute__ ((__vector_size__ (8)));
++/* The Intel API is flexible enough that we must allow aliasing with other
++   vector types, and their scalar components.  */
++typedef int __m64 __attribute__ ((__vector_size__ (8), __may_alias__));
+ 
+ /* Internal data types for implementing the intrinsics.  */
+ typedef int __v2si __attribute__ ((__vector_size__ (8)));
+Index: gcc-4_2-branch/gcc/config/i386/xmmintrin.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/i386/xmmintrin.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/i386/xmmintrin.h	(revision 123843)
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2002, 2003, 2004, 2005, 2006
++/* Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007
+    Free Software Foundation, Inc.
+ 
+    This file is part of GCC.
+@@ -41,8 +41,9 @@
+ /* Get _mm_malloc () and _mm_free ().  */
+ #include <mm_malloc.h>
+ 
+-/* The data type intended for user use.  */
+-typedef float __m128 __attribute__ ((__vector_size__ (16)));
++/* The Intel API is flexible enough that we must allow aliasing with other
++   vector types, and their scalar components.  */
++typedef float __m128 __attribute__ ((__vector_size__ (16), __may_alias__));
+ 
+ /* Internal data types for implementing the intrinsics.  */
+ typedef float __v4sf __attribute__ ((__vector_size__ (16)));
+Index: gcc-4_2-branch/gcc/config/i386/sse.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/i386/sse.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/i386/sse.md	(revision 123843)
+@@ -2778,7 +2778,7 @@
+   [(set (match_operand:SSEMODE24 0 "register_operand" "=x")
+ 	(ashiftrt:SSEMODE24
+ 	  (match_operand:SSEMODE24 1 "register_operand" "0")
+-	  (match_operand:SI 2 "nonmemory_operand" "xi")))]
++	  (match_operand:TI 2 "nonmemory_operand" "xn")))]
+   "TARGET_SSE2"
+   "psra<ssevecsize>\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseishft")
+@@ -2788,7 +2788,7 @@
+   [(set (match_operand:SSEMODE248 0 "register_operand" "=x")
+ 	(lshiftrt:SSEMODE248
+ 	  (match_operand:SSEMODE248 1 "register_operand" "0")
+-	  (match_operand:SI 2 "nonmemory_operand" "xi")))]
++	  (match_operand:TI 2 "nonmemory_operand" "xn")))]
+   "TARGET_SSE2"
+   "psrl<ssevecsize>\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseishft")
+@@ -2798,7 +2798,7 @@
+   [(set (match_operand:SSEMODE248 0 "register_operand" "=x")
+ 	(ashift:SSEMODE248
+ 	  (match_operand:SSEMODE248 1 "register_operand" "0")
+-	  (match_operand:SI 2 "nonmemory_operand" "xi")))]
++	  (match_operand:TI 2 "nonmemory_operand" "xn")))]
+   "TARGET_SSE2"
+   "psll<ssevecsize>\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseishft")
+@@ -2942,7 +2942,7 @@
+ 	(umin:V16QI (match_operand:V16QI 1 "nonimmediate_operand" "")
+ 		    (match_operand:V16QI 2 "nonimmediate_operand" "")))]
+   "TARGET_SSE2"
+-  "ix86_fixup_binary_operands_no_copy (UMAX, V16QImode, operands);")
++  "ix86_fixup_binary_operands_no_copy (UMIN, V16QImode, operands);")
+ 
+ (define_insn "*uminv16qi3"
+   [(set (match_operand:V16QI 0 "register_operand" "=x")
+Index: gcc-4_2-branch/gcc/config/i386/emmintrin.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/i386/emmintrin.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/i386/emmintrin.h	(revision 123843)
+@@ -1,4 +1,4 @@
+-/* Copyright (C) 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
++/* Copyright (C) 2003, 2004, 2005, 2006, 2007 Free Software Foundation, Inc.
+ 
+    This file is part of GCC.
+ 
+@@ -40,8 +40,10 @@
+ typedef short __v8hi __attribute__ ((__vector_size__ (16)));
+ typedef char __v16qi __attribute__ ((__vector_size__ (16)));
+ 
+-typedef __v2di __m128i;
+-typedef __v2df __m128d;
++/* The Intel API is flexible enough that we must allow aliasing with other
++   vector types, and their scalar components.  */
++typedef long long __m128i __attribute__ ((__vector_size__ (16), __may_alias__));
++typedef double __m128d __attribute__ ((__vector_size__ (16), __may_alias__));
+ 
+ /* Create a selector for use with the SHUFPD instruction.  */
+ #define _MM_SHUFFLE2(fp1,fp0) \
+@@ -1098,6 +1100,7 @@
+   return (__m128i)__builtin_ia32_pmuludq128 ((__v4si)__A, (__v4si)__B);
+ }
+ 
++#if 0
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_slli_epi16 (__m128i __A, int __B)
+ {
+@@ -1115,7 +1118,16 @@
+ {
+   return (__m128i)__builtin_ia32_psllqi128 ((__v2di)__A, __B);
+ }
++#else
++#define _mm_slli_epi16(__A, __B) \
++  ((__m128i)__builtin_ia32_psllwi128 ((__v8hi)(__A), __B))
++#define _mm_slli_epi32(__A, __B) \
++  ((__m128i)__builtin_ia32_pslldi128 ((__v8hi)(__A), __B))
++#define _mm_slli_epi64(__A, __B) \
++  ((__m128i)__builtin_ia32_psllqi128 ((__v8hi)(__A), __B))
++#endif
+ 
++#if 0
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_srai_epi16 (__m128i __A, int __B)
+ {
+@@ -1127,18 +1139,24 @@
+ {
+   return (__m128i)__builtin_ia32_psradi128 ((__v4si)__A, __B);
+ }
++#else
++#define _mm_srai_epi16(__A, __B) \
++  ((__m128i)__builtin_ia32_psrawi128 ((__v8hi)(__A), __B))
++#define _mm_srai_epi32(__A, __B) \
++  ((__m128i)__builtin_ia32_psradi128 ((__v8hi)(__A), __B))
++#endif
+ 
+ #if 0
+ static __m128i __attribute__((__always_inline__))
+-_mm_srli_si128 (__m128i __A, const int __B)
++_mm_srli_si128 (__m128i __A, int __B)
+ {
+-  return ((__m128i)__builtin_ia32_psrldqi128 (__A, __B))
++  return ((__m128i)__builtin_ia32_psrldqi128 (__A, __B * 8));
+ }
+ 
+ static __m128i __attribute__((__always_inline__))
+-_mm_srli_si128 (__m128i __A, const int __B)
++_mm_srli_si128 (__m128i __A, int __B)
+ {
+-  return ((__m128i)__builtin_ia32_pslldqi128 (__A, __B))
++  return ((__m128i)__builtin_ia32_pslldqi128 (__A, __B * 8));
+ }
+ #else
+ #define _mm_srli_si128(__A, __B) \
+@@ -1147,6 +1165,7 @@
+   ((__m128i)__builtin_ia32_pslldqi128 (__A, (__B) * 8))
+ #endif
+ 
++#if 0
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_srli_epi16 (__m128i __A, int __B)
+ {
+@@ -1164,53 +1183,61 @@
+ {
+   return (__m128i)__builtin_ia32_psrlqi128 ((__v2di)__A, __B);
+ }
++#else
++#define _mm_srli_epi16(__A, __B) \
++  ((__m128i)__builtin_ia32_psrlwi128 ((__v8hi)(__A), __B))
++#define _mm_srli_epi32(__A, __B) \
++  ((__m128i)__builtin_ia32_psrldi128 ((__v4si)(__A), __B))
++#define _mm_srli_epi64(__A, __B) \
++  ((__m128i)__builtin_ia32_psrlqi128 ((__v4si)(__A), __B))
++#endif
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_sll_epi16 (__m128i __A, __m128i __B)
+ {
+-  return _mm_slli_epi16 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psllw128((__v8hi)__A, (__v8hi)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_sll_epi32 (__m128i __A, __m128i __B)
+ {
+-  return _mm_slli_epi32 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_pslld128((__v4si)__A, (__v4si)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_sll_epi64 (__m128i __A, __m128i __B)
+ {
+-  return _mm_slli_epi64 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psllq128((__v2di)__A, (__v2di)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_sra_epi16 (__m128i __A, __m128i __B)
+ {
+-  return _mm_srai_epi16 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psraw128 ((__v8hi)__A, (__v8hi)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_sra_epi32 (__m128i __A, __m128i __B)
+ {
+-  return _mm_srai_epi32 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psrad128 ((__v4si)__A, (__v4si)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_srl_epi16 (__m128i __A, __m128i __B)
+ {
+-  return _mm_srli_epi16 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psrlw128 ((__v8hi)__A, (__v8hi)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_srl_epi32 (__m128i __A, __m128i __B)
+ {
+-  return _mm_srli_epi32 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psrld128 ((__v4si)__A, (__v4si)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+ _mm_srl_epi64 (__m128i __A, __m128i __B)
+ {
+-  return _mm_srli_epi64 (__A, _mm_cvtsi128_si32 (__B));
++  return (__m128i)__builtin_ia32_psrlq128 ((__v2di)__A, (__v2di)__B);
+ }
+ 
+ static __inline __m128i __attribute__((__always_inline__))
+Index: gcc-4_2-branch/gcc/config/i386/sync.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/i386/sync.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/i386/sync.md	(revision 123843)
+@@ -98,6 +98,15 @@
+   ""
+   "lock\;cmpxchg<doublemodesuffix>b\t%1")
+ 
++;; Theoretically we'd like to use constraint "r" (any reg) for operand
++;; 3, but that includes ecx.  If operand 3 and 4 are the same (like when
++;; the input is -1LL) GCC might chose to allocate operand 3 to ecx, like
++;; operand 4.  This breaks, as the xchg will move the PIC register contents
++;; to %ecx then --> boom.  Operands 3 and 4 really need to be different
++;; registers, which in this case means operand 3 must not be ecx.
++;; Instead of playing tricks with fake early clobbers or the like we
++;; just enumerate all regs possible here, which (as this is !TARGET_64BIT)
++;; are just esi and edi.
+ (define_insn "*sync_double_compare_and_swapdi_pic"
+   [(set (match_operand:DI 0 "register_operand" "=A")
+ 	(match_operand:DI 1 "memory_operand" "+m"))
+@@ -105,7 +114,7 @@
+ 	(unspec_volatile:DI
+ 	  [(match_dup 1)
+ 	   (match_operand:DI 2 "register_operand" "A")
+-	   (match_operand:SI 3 "register_operand" "r")
++	   (match_operand:SI 3 "register_operand" "SD")
+ 	   (match_operand:SI 4 "register_operand" "c")]
+ 	  UNSPECV_CMPXCHG_1))
+    (clobber (reg:CC FLAGS_REG))]
+@@ -189,6 +198,8 @@
+   ""
+   "lock\;cmpxchg<doublemodesuffix>b\t%1")
+ 
++;; See above for the explanation of using the constraint "SD" for
++;; operand 3.
+ (define_insn "*sync_double_compare_and_swap_ccdi_pic"
+   [(set (match_operand:DI 0 "register_operand" "=A")
+ 	(match_operand:DI 1 "memory_operand" "+m"))
+@@ -196,7 +207,7 @@
+ 	(unspec_volatile:DI
+ 	  [(match_dup 1)
+ 	   (match_operand:DI 2 "register_operand" "A")
+-	   (match_operand:SI 3 "register_operand" "r")
++	   (match_operand:SI 3 "register_operand" "SD")
+ 	   (match_operand:SI 4 "register_operand" "c")]
+ 	  UNSPECV_CMPXCHG_1))
+    (set (reg:CCZ FLAGS_REG)
+Index: gcc-4_2-branch/gcc/config/i386/i386.c
+===================================================================
+--- gcc-4_2-branch/gcc/config/i386/i386.c	(revision 123014)
++++ gcc-4_2-branch/gcc/config/i386/i386.c	(revision 123843)
+@@ -15206,12 +15206,6 @@
+   tree v8hi_ftype_v8hi_int
+     = build_function_type_list (V8HI_type_node,
+ 				V8HI_type_node, integer_type_node, NULL_TREE);
+-  tree v8hi_ftype_v8hi_v2di
+-    = build_function_type_list (V8HI_type_node,
+-				V8HI_type_node, V2DI_type_node, NULL_TREE);
+-  tree v4si_ftype_v4si_v2di
+-    = build_function_type_list (V4SI_type_node,
+-				V4SI_type_node, V2DI_type_node, NULL_TREE);
+   tree v4si_ftype_v8hi_v8hi
+     = build_function_type_list (V4SI_type_node,
+ 				V8HI_type_node, V8HI_type_node, NULL_TREE);
+@@ -15479,16 +15473,16 @@
+   def_builtin (MASK_SSE2, "__builtin_ia32_pmuludq", di_ftype_v2si_v2si, IX86_BUILTIN_PMULUDQ);
+   def_builtin (MASK_SSE2, "__builtin_ia32_pmuludq128", v2di_ftype_v4si_v4si, IX86_BUILTIN_PMULUDQ128);
+ 
+-  def_builtin (MASK_SSE2, "__builtin_ia32_psllw128", v8hi_ftype_v8hi_v2di, IX86_BUILTIN_PSLLW128);
+-  def_builtin (MASK_SSE2, "__builtin_ia32_pslld128", v4si_ftype_v4si_v2di, IX86_BUILTIN_PSLLD128);
++  def_builtin (MASK_SSE2, "__builtin_ia32_psllw128", v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_PSLLW128);
++  def_builtin (MASK_SSE2, "__builtin_ia32_pslld128", v4si_ftype_v4si_v4si, IX86_BUILTIN_PSLLD128);
+   def_builtin (MASK_SSE2, "__builtin_ia32_psllq128", v2di_ftype_v2di_v2di, IX86_BUILTIN_PSLLQ128);
+ 
+-  def_builtin (MASK_SSE2, "__builtin_ia32_psrlw128", v8hi_ftype_v8hi_v2di, IX86_BUILTIN_PSRLW128);
+-  def_builtin (MASK_SSE2, "__builtin_ia32_psrld128", v4si_ftype_v4si_v2di, IX86_BUILTIN_PSRLD128);
++  def_builtin (MASK_SSE2, "__builtin_ia32_psrlw128", v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_PSRLW128);
++  def_builtin (MASK_SSE2, "__builtin_ia32_psrld128", v4si_ftype_v4si_v4si, IX86_BUILTIN_PSRLD128);
+   def_builtin (MASK_SSE2, "__builtin_ia32_psrlq128", v2di_ftype_v2di_v2di, IX86_BUILTIN_PSRLQ128);
+ 
+-  def_builtin (MASK_SSE2, "__builtin_ia32_psraw128", v8hi_ftype_v8hi_v2di, IX86_BUILTIN_PSRAW128);
+-  def_builtin (MASK_SSE2, "__builtin_ia32_psrad128", v4si_ftype_v4si_v2di, IX86_BUILTIN_PSRAD128);
++  def_builtin (MASK_SSE2, "__builtin_ia32_psraw128", v8hi_ftype_v8hi_v8hi, IX86_BUILTIN_PSRAW128);
++  def_builtin (MASK_SSE2, "__builtin_ia32_psrad128", v4si_ftype_v4si_v4si, IX86_BUILTIN_PSRAD128);
+ 
+   def_builtin (MASK_SSE2, "__builtin_ia32_pslldqi128", v2di_ftype_v2di_int, IX86_BUILTIN_PSLLDQI128);
+   def_builtin (MASK_SSE2, "__builtin_ia32_psllwi128", v8hi_ftype_v8hi_int, IX86_BUILTIN_PSLLWI128);
+@@ -16204,9 +16198,106 @@
+       emit_insn (pat);
+       return target;
+ 
++    case IX86_BUILTIN_PSLLWI128:
++      icode = CODE_FOR_ashlv8hi3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSLLDI128:
++      icode = CODE_FOR_ashlv4si3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSLLQI128:
++      icode = CODE_FOR_ashlv2di3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSRAWI128:
++      icode = CODE_FOR_ashrv8hi3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSRADI128:
++      icode = CODE_FOR_ashrv4si3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSRLWI128:
++      icode = CODE_FOR_lshrv8hi3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSRLDI128:
++      icode = CODE_FOR_lshrv4si3;
++      goto do_pshifti;
++    case IX86_BUILTIN_PSRLQI128:
++      icode = CODE_FOR_lshrv2di3;
++      goto do_pshifti;
++    do_pshifti:
++      arg0 = TREE_VALUE (arglist);
++      arg1 = TREE_VALUE (TREE_CHAIN (arglist));
++      op0 = expand_expr (arg0, NULL_RTX, VOIDmode, 0);
++      op1 = expand_expr (arg1, NULL_RTX, VOIDmode, 0);
++
++      if (GET_CODE (op1) != CONST_INT)
++	{
++	  error ("shift must be an immediate");
++	  return const0_rtx;
++	}
++      if (INTVAL (op1) < 0 || INTVAL (op1) > 255)
++	op1 = GEN_INT (255);
++
++      tmode = insn_data[icode].operand[0].mode;
++      mode1 = insn_data[icode].operand[1].mode;
++      if (! (*insn_data[icode].operand[1].predicate) (op0, mode1))
++	op0 = copy_to_reg (op0);
++
++      target = gen_reg_rtx (tmode);
++      pat = GEN_FCN (icode) (target, op0, op1);
++      if (!pat)
++	return 0;
++      emit_insn (pat);
++      return target;
++
++    case IX86_BUILTIN_PSLLW128:
++      icode = CODE_FOR_ashlv8hi3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSLLD128:
++      icode = CODE_FOR_ashlv4si3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSLLQ128:
++      icode = CODE_FOR_ashlv2di3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSRAW128:
++      icode = CODE_FOR_ashrv8hi3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSRAD128:
++      icode = CODE_FOR_ashrv4si3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSRLW128:
++      icode = CODE_FOR_lshrv8hi3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSRLD128:
++      icode = CODE_FOR_lshrv4si3;
++      goto do_pshift;
++    case IX86_BUILTIN_PSRLQ128:
++      icode = CODE_FOR_lshrv2di3;
++      goto do_pshift;
++    do_pshift:
++      arg0 = TREE_VALUE (arglist);
++      arg1 = TREE_VALUE (TREE_CHAIN (arglist));
++      op0 = expand_expr (arg0, NULL_RTX, VOIDmode, 0);
++      op1 = expand_expr (arg1, NULL_RTX, VOIDmode, 0);
++
++      tmode = insn_data[icode].operand[0].mode;
++      mode1 = insn_data[icode].operand[1].mode;
++
++      if (! (*insn_data[icode].operand[1].predicate) (op0, mode1))
++	op0 = copy_to_reg (op0);
++
++      op1 = simplify_gen_subreg (TImode, op1, GET_MODE (op1), 0);
++      if (! (*insn_data[icode].operand[2].predicate) (op1, TImode))
++	op1 = copy_to_reg (op1);
++
++      target = gen_reg_rtx (tmode);
++      pat = GEN_FCN (icode) (target, op0, op1);
++      if (!pat)
++	return 0;
++      emit_insn (pat);
++      return target;
++
+     case IX86_BUILTIN_PSLLDQI128:
+     case IX86_BUILTIN_PSRLDQI128:
+-      icode = (  fcode == IX86_BUILTIN_PSLLDQI128 ? CODE_FOR_sse2_ashlti3
++      icode = (fcode == IX86_BUILTIN_PSLLDQI128 ? CODE_FOR_sse2_ashlti3
+ 	       : CODE_FOR_sse2_lshrti3);
+       arg0 = TREE_VALUE (arglist);
+       arg1 = TREE_VALUE (TREE_CHAIN (arglist));
+@@ -16227,7 +16318,8 @@
+ 	  return const0_rtx;
+ 	}
+       target = gen_reg_rtx (V2DImode);
+-      pat = GEN_FCN (icode) (simplify_gen_subreg (tmode, target, V2DImode, 0), op0, op1);
++      pat = GEN_FCN (icode) (simplify_gen_subreg (tmode, target, V2DImode, 0),
++			     op0, op1);
+       if (! pat)
+ 	return 0;
+       emit_insn (pat);
+Index: gcc-4_2-branch/gcc/config/avr/predicates.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/avr/predicates.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/avr/predicates.md	(revision 123843)
+@@ -1,5 +1,5 @@
+ ;; Predicate definitions for ATMEL AVR micro controllers.
+-;; Copyright (C) 2006 Free Software Foundation, Inc.
++;; Copyright (C) 2006, 2007 Free Software Foundation, Inc.
+ ;;
+ ;; This file is part of GCC.
+ ;;
+@@ -33,23 +33,15 @@
+   (and (match_code "reg")
+        (match_test "REGNO (op) == REG_SP")))
+ 
+-;; Return true if OP is a valid address for an I/O register.
+-(define_predicate "io_address_operand"
+-  (and (match_code "const_int")
+-       (match_test "INTVAL (op) >= 0x20 
+-                    && INTVAL (op) <= 0x60 - GET_MODE_SIZE (mode)")))
+-
+ ;; Return true if OP is a valid address for lower half of I/O space.
+ (define_predicate "low_io_address_operand"
+   (and (match_code "const_int")
+-       (match_test "INTVAL (op) >= 0x20 
+-                    && INTVAL (op) <= 0x40 - GET_MODE_SIZE (mode)")))
+-       
+-;; Return true if OP is a valid address for higth half of I/O space.
+-(define_predicate "higth_io_address_operand"
++       (match_test "IN_RANGE((INTVAL (op)), 0x20, 0x3F)")))
++
++;; Return true if OP is a valid address for high half of I/O space.
++(define_predicate "high_io_address_operand"
+   (and (match_code "const_int")
+-       (match_test "INTVAL (op) >= 0x40 
+-                    && INTVAL (op) <= 0x60 - GET_MODE_SIZE (mode)")))
++       (match_test "IN_RANGE((INTVAL (op)), 0x40, 0x5F)")))
+        
+ ;; Returns 1 if OP is a SYMBOL_REF.
+ (define_predicate "symbol_ref_operand"
+Index: gcc-4_2-branch/gcc/config/avr/avr.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/avr/avr.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/avr/avr.md	(revision 123843)
+@@ -1,7 +1,7 @@
+ ;; -*- Mode: Scheme -*-
+ ;;   Machine description for GNU compiler,
+ ;;   for ATMEL AVR micro controllers.
+-;;   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006
++;;   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007
+ ;;   Free Software Foundation, Inc.
+ ;;   Contributed by Denis Chertykov (denisc@overta.ru)
+ 
+@@ -463,7 +463,7 @@
+    (use (match_operand:QI 1 "register_operand" "r"))
+    (use (match_operand:QI 2 "const_int_operand" "n"))
+    (clobber (match_scratch:HI 3 "=0"))
+-   (clobber (match_scratch:QI 4 "=1"))]
++   (clobber (match_scratch:QI 4 "=&1"))]
+   ""
+   "st %a0+,__zero_reg__
+         dec %1
+@@ -477,7 +477,7 @@
+    (use (match_operand:HI 1 "register_operand" "!w,d"))
+    (use (match_operand:HI 2 "const_int_operand" "n,n"))
+    (clobber (match_scratch:HI 3 "=0,0"))
+-   (clobber (match_scratch:HI 4 "=1,1"))]
++   (clobber (match_scratch:HI 4 "=&1,&1"))]
+   ""
+   "*{
+      if (which_alternative==0)
+@@ -2364,7 +2364,7 @@
+ 	(if_then_else
+ 	 (match_operator 0 "eqne_operator"
+ 			 [(zero_extract
+-			   (mem:QI (match_operand 1 "higth_io_address_operand" "n"))
++			   (mem:QI (match_operand 1 "high_io_address_operand" "n"))
+ 			   (const_int 1)
+ 			   (match_operand 2 "const_int_operand" "n"))
+ 			  (const_int 0)])
+@@ -2385,7 +2385,7 @@
+   [(set (pc)
+ 	(if_then_else
+ 	 (match_operator 0 "gelt_operator"
+-			 [(mem:QI (match_operand 1 "higth_io_address_operand" "n"))
++			 [(mem:QI (match_operand 1 "high_io_address_operand" "n"))
+ 			  (const_int 0)])
+ 	 (label_ref (match_operand 2 "" ""))
+ 	 (pc)))]
+Index: gcc-4_2-branch/gcc/config/avr/avr.c
+===================================================================
+--- gcc-4_2-branch/gcc/config/avr/avr.c	(revision 123014)
++++ gcc-4_2-branch/gcc/config/avr/avr.c	(revision 123843)
+@@ -208,7 +208,7 @@
+   { "at90pwm1",  4, "__AVR_AT90PWM1__" },
+   { "at90pwm2",  4, "__AVR_AT90PWM2__" },
+   { "at90pwm3",  4, "__AVR_AT90PWM3__" },
+-  { "at90usb82",   5, "__AVR_AT90USB82__" },
++  { "at90usb82",   4, "__AVR_AT90USB82__" },
+     /* Enhanced, > 8K.  */
+   { "avr5",      5, NULL },
+   { "atmega16",  5, "__AVR_ATmega16__" },
+@@ -316,6 +316,8 @@
+   const struct mcu_type_s *t;
+   const struct base_arch_s *base;
+ 
++  flag_delete_null_pointer_checks = 0;
++
+   for (t = avr_mcu_types; t->name; t++)
+     if (strcmp (t->name, avr_mcu_name) == 0)
+       break;
+@@ -4698,7 +4700,7 @@
+     }
+   else
+     {
+-      const char *func_name = IDENTIFIER_POINTER (DECL_NAME (*node));
++      const char *func_name = IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (*node));
+       const char *attr = IDENTIFIER_POINTER (name);
+ 
+       /* If the function has the 'signal' or 'interrupt' attribute, test to
+@@ -5092,6 +5094,7 @@
+ 	    *total = COSTS_N_INSNS (AVR_MEGA ? 2 : 1);
+ 	  else
+ 	    return false;
++	  break;
+ 
+ 	case HImode:
+ 	  if (AVR_ENHANCED)
+@@ -5100,6 +5103,7 @@
+ 	    *total = COSTS_N_INSNS (AVR_MEGA ? 2 : 1);
+ 	  else
+ 	    return false;
++	  break;
+ 
+ 	default:
+ 	  return false;
+Index: gcc-4_2-branch/gcc/config/rs6000/darwin.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/rs6000/darwin.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/rs6000/darwin.h	(revision 123843)
+@@ -280,8 +280,6 @@
+ 
+ /* This says how to output an assembler line to define a global common
+    symbol.  */
+-/* ? */
+-#undef  ASM_OUTPUT_ALIGNED_COMMON
+ #define ASM_OUTPUT_COMMON(FILE, NAME, SIZE, ROUNDED)			\
+   do {									\
+     unsigned HOST_WIDE_INT _new_size = SIZE;				\
+Index: gcc-4_2-branch/gcc/config/darwin.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/darwin.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/darwin.h	(revision 123843)
+@@ -652,11 +652,11 @@
+       }									\
+   } while (0)
+ 
+-/* The maximum alignment which the object file format can support.
+-   For Mach-O, this is 2^15.  */
++/* The maximum alignment which the object file format can support in
++   bits.  For Mach-O, this is 2^15 bytes.  */
+ 
+ #undef	MAX_OFILE_ALIGNMENT
+-#define MAX_OFILE_ALIGNMENT 0x8000
++#define MAX_OFILE_ALIGNMENT (0x8000 * 8)
+ 
+ /* Declare the section variables.  */
+ #ifndef USED_FOR_TARGET
+Index: gcc-4_2-branch/gcc/config/score/crti.asm
+===================================================================
+--- gcc-4_2-branch/gcc/config/score/crti.asm	(revision 123014)
++++ gcc-4_2-branch/gcc/config/score/crti.asm	(revision 123843)
+@@ -43,8 +43,8 @@
+         .mask   0x00000000, 0
+ _start:
+         la      r28, _gp
+-        la      r8, _bss_start
+-        la      r9, _bss_end__
++        la      r8, __bss_start
++        la      r9, __bss_end__
+         sub!    r9, r8
+         srli!   r9, 2
+         addi    r9, -1
+@@ -91,8 +91,8 @@
+         .mask   0x00000000,0
+ _start:
+         la      r28, _gp
+-        la      r8, _bss_start
+-        la      r9, _bss_end__
++        la      r8, __bss_start
++        la      r9, __bss_end__
+         sub!    r9, r8
+         srli!   r9, 2
+         addi    r9, -1
+Index: gcc-4_2-branch/gcc/config/score/misc.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/score/misc.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/score/misc.md	(revision 123843)
+@@ -111,7 +111,7 @@
+         (zero_extract (match_operand:SI 1 "memory_operand" "")
+                       (match_operand:SI 2 "immediate_operand" "")
+                       (match_operand:SI 3 "immediate_operand" "")))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+ {
+   if (mdx_unaligned_load (operands))
+     DONE;
+@@ -124,7 +124,7 @@
+                       (match_operand:SI 1 "immediate_operand" "")
+                       (match_operand:SI 2 "immediate_operand" ""))
+         (match_operand:SI 3 "register_operand" ""))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+ {
+   if (mdx_unaligned_store (operands))
+     DONE;
+@@ -137,7 +137,7 @@
+         (sign_extract (match_operand:SI 1 "memory_operand" "")
+                       (match_operand:SI 2 "immediate_operand" "")
+                       (match_operand:SI 3 "immediate_operand" "")))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+ {
+   if (mdx_unaligned_load (operands))
+     DONE;
+@@ -150,7 +150,7 @@
+                    (match_operand:BLK 1 "general_operand"))
+               (use (match_operand:SI 2 ""))
+               (use (match_operand:SI 3 "const_int_operand"))])]
+-  "!TARGET_SCORE5U"
++  "!TARGET_SCORE5U && TARGET_ULS"
+ {
+   if (mdx_block_move (operands))
+     DONE;
+@@ -164,7 +164,7 @@
+                  (match_operand:SI 2 "const_simm12" "")))
+    (set (match_operand:QI 3 "register_operand" "=d")
+         (mem:QI (match_dup 1)))]
+-  "!TARGET_SCORE5U"
++  ""
+   "lbu     %3, [%1]+, %2"
+   [(set_attr "type" "load")
+    (set_attr "mode" "QI")])
+@@ -175,7 +175,7 @@
+                  (match_operand:SI 2 "const_simm12" "")))
+    (set (match_operand:HI 3 "register_operand" "=d")
+         (mem:HI (match_dup 1)))]
+-  "!TARGET_SCORE5U"
++  ""
+   "lhu     %3, [%1]+, %2"
+   [(set_attr "type" "load")
+    (set_attr "mode" "HI")])
+@@ -186,7 +186,7 @@
+                  (match_operand:SI 2 "const_simm12" "")))
+    (set (match_operand:SI 3 "register_operand" "=d")
+         (mem:SI (match_dup 1)))]
+-  "!TARGET_SCORE5U"
++  ""
+   "lw      %3, [%1]+, %2"
+   [(set_attr "type" "load")
+    (set_attr "mode" "SI")])
+@@ -197,7 +197,7 @@
+                  (match_operand:SI 2 "const_simm12" "")))
+    (set (mem:QI (match_dup 1))
+         (match_operand:QI 3 "register_operand" "d"))]
+-  "!TARGET_SCORE5U"
++  ""
+   "sb      %3, [%1]+, %2"
+   [(set_attr "type" "store")
+    (set_attr "mode" "QI")])
+@@ -208,7 +208,7 @@
+                  (match_operand:SI 2 "const_simm12" "")))
+    (set (mem:HI (match_dup 1))
+         (match_operand:HI 3 "register_operand" "d"))]
+-  "!TARGET_SCORE5U"
++  ""
+   "sh      %3, [%1]+, %2"
+   [(set_attr "type" "store")
+    (set_attr "mode" "HI")])
+@@ -219,7 +219,7 @@
+                  (match_operand:SI 2 "const_simm12" "")))
+    (set (mem:SI (match_dup 1))
+         (match_operand:SI 3 "register_operand" "d"))]
+-  "!TARGET_SCORE5U"
++  ""
+   "sw      %3, [%1]+, %2"
+   [(set_attr "type" "store")
+    (set_attr "mode" "SI")])
+@@ -231,7 +231,7 @@
+    (set (match_operand:QI 3 "register_operand" "=d")
+         (mem:QI (plus:SI (match_dup 1)
+                          (match_dup 2))))]
+-  "!TARGET_SCORE5U"
++  ""
+   "lbu     %3, [%1, %2]+"
+   [(set_attr "type" "load")
+    (set_attr "mode" "QI")])
+@@ -243,7 +243,7 @@
+    (set (match_operand:HI 3 "register_operand" "=d")
+         (mem:HI (plus:SI (match_dup 1)
+                          (match_dup 2))))]
+-  "!TARGET_SCORE5U"
++  ""
+   "lhu     %3, [%1, %2]+"
+   [(set_attr "type" "load")
+    (set_attr "mode" "HI")])
+@@ -255,7 +255,7 @@
+    (set (match_operand:SI 3 "register_operand" "=d")
+         (mem:SI (plus:SI (match_dup 1)
+                          (match_dup 2))))]
+-  "!TARGET_SCORE5U"
++  ""
+   "lw      %3, [%1, %2]+"
+   [(set_attr "type" "load")
+    (set_attr "mode" "SI")])
+@@ -267,7 +267,7 @@
+    (set (mem:QI (plus:SI (match_dup 1)
+                          (match_dup 2)))
+         (match_operand:QI 3 "register_operand" "d"))]
+-  "!TARGET_SCORE5U"
++  ""
+   "sb      %3, [%1, %2]+"
+   [(set_attr "type" "store")
+    (set_attr "mode" "QI")])
+@@ -279,7 +279,7 @@
+    (set (mem:HI (plus:SI (match_dup 1)
+                          (match_dup 2)))
+         (match_operand:HI 3 "register_operand" "d"))]
+-  "!TARGET_SCORE5U"
++  ""
+   "sh      %3, [%1, %2]+"
+   [(set_attr "type" "store")
+    (set_attr "mode" "HI")])
+@@ -291,7 +291,7 @@
+    (set (mem:SI (plus:SI (match_dup 1)
+                          (match_dup 2)))
+         (match_operand:SI 3 "register_operand" "d"))]
+-  "!TARGET_SCORE5U"
++  ""
+   "sw      %3, [%1, %2]+"
+   [(set_attr "type" "store")
+    (set_attr "mode" "SI")])
+@@ -302,7 +302,7 @@
+                  (const_int 4)))
+    (set (reg:SI LC_REGNUM)
+         (unspec:SI [(mem:BLK (match_dup 1))] LCB))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+   "lcb     [%1]+"
+   [(set_attr "type" "load")
+    (set_attr "mode" "SI")])
+@@ -316,7 +316,7 @@
+                     (reg:SI LC_REGNUM)] LCW))
+    (set (reg:SI LC_REGNUM)
+         (unspec:SI [(mem:BLK (match_dup 1))] LCB))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+   "lcw     %2, [%1]+"
+   [(set_attr "type" "load")
+    (set_attr "mode" "SI")])
+@@ -328,7 +328,7 @@
+    (set (match_operand:SI 2 "register_operand" "=d")
+         (unspec:SI [(mem:BLK (match_dup 1))
+                     (reg:SI LC_REGNUM)] LCE))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+   "lce     %2, [%1]+"
+   [(set_attr "type" "load")
+    (set_attr "mode" "SI")])
+@@ -341,7 +341,7 @@
+         (unspec:BLK [(match_operand:SI 2 "register_operand" "d")] SCB))
+    (set (reg:SI SC_REGNUM)
+         (unspec:SI [(match_dup 2)] SCLC))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+   "scb     %2, [%1]+"
+   [(set_attr "type" "store")
+    (set_attr "mode" "SI")])
+@@ -355,7 +355,7 @@
+                      (reg:SI SC_REGNUM)] SCW))
+    (set (reg:SI SC_REGNUM)
+         (unspec:SI [(match_dup 2)] SCLC))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+   "scw     %2, [%1]+"
+   [(set_attr "type" "store")
+    (set_attr "mode" "SI")])
+@@ -366,7 +366,7 @@
+                  (const_int 4)))
+    (set (mem:BLK (match_dup 1))
+         (unspec:BLK [(reg:SI SC_REGNUM)] SCE))]
+-  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN"
++  "!TARGET_SCORE5U && !TARGET_LITTLE_ENDIAN && TARGET_ULS"
+   "sce     [%1]+"
+   [(set_attr "type" "store")
+    (set_attr "mode" "SI")])
+Index: gcc-4_2-branch/gcc/config/score/mac.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/score/mac.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/score/mac.md	(revision 123843)
+@@ -26,7 +26,7 @@
+   [(set (match_operand:SI 0 "register_operand" "=d")
+         (smax:SI (match_operand:SI 1 "register_operand" "d")
+                  (match_operand:SI 2 "register_operand" "d")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "max     %0, %1, %2"
+   [(set_attr "type" "arith")
+    (set_attr "mode" "SI")])
+@@ -35,7 +35,7 @@
+   [(set (match_operand:SI 0 "register_operand" "=d")
+         (smin:SI (match_operand:SI 1 "register_operand" "d")
+                  (match_operand:SI 2 "register_operand" "d")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "min     %0, %1, %2"
+   [(set_attr "type" "arith")
+    (set_attr "mode" "SI")])
+@@ -43,7 +43,7 @@
+ (define_insn "abssi2"
+   [(set (match_operand:SI 0 "register_operand" "=d")
+         (abs:SI (match_operand:SI 1 "register_operand" "d")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "abs     %0, %1"
+   [(set_attr "type" "arith")
+    (set_attr "mode" "SI")])
+@@ -51,7 +51,7 @@
+ (define_insn "clzsi2"
+   [(set (match_operand:SI 0 "register_operand" "=d")
+         (clz:SI (match_operand:SI 1 "register_operand" "d")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "clz     %0, %1"
+   [(set_attr "type" "arith")
+    (set_attr "mode" "SI")])
+@@ -59,7 +59,7 @@
+ (define_insn "sffs"
+   [(set (match_operand:SI 0 "register_operand" "=d")
+         (unspec:SI [(match_operand:SI 1 "register_operand" "d")] SFFS))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "bitrev  %0, %1, r0\;clz     %0, %0\;addi    %0, 0x1"
+   [(set_attr "type" "arith")
+    (set_attr "mode" "SI")])
+@@ -67,7 +67,7 @@
+ (define_expand "ffssi2"
+   [(set (match_operand:SI 0 "register_operand")
+         (ffs:SI (match_operand:SI 1 "register_operand")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+ {
+   emit_insn (gen_sffs (operands[0], operands[1]));
+   emit_insn (gen_rtx_SET (VOIDmode, gen_rtx_REG (CC_NZmode, CC_REGNUM),
+@@ -85,7 +85,7 @@
+         (match_operand:SI 1 "register_operand" ""))
+    (set (match_operand:SI 2 "hireg_operand" "")
+         (match_operand:SI 3 "register_operand" ""))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   [(parallel
+        [(set (match_dup 0) (match_dup 1))
+         (set (match_dup 2) (match_dup 3))])])
+@@ -95,7 +95,7 @@
+         (match_operand:SI 1 "register_operand" ""))
+    (set (match_operand:SI 2 "loreg_operand" "")
+         (match_operand:SI 3 "register_operand" ""))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   [(parallel
+        [(set (match_dup 2) (match_dup 3))
+         (set (match_dup 0) (match_dup 1))])])
+@@ -106,7 +106,7 @@
+              (match_operand:SI 1 "register_operand" "d"))
+         (set (match_operand:SI 2 "hireg_operand" "=h")
+              (match_operand:SI 3 "register_operand" "d"))])]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "mtcehl  %3, %1"
+   [(set_attr "type" "fce")
+    (set_attr "mode" "SI")])
+@@ -117,7 +117,7 @@
+                           (match_operand:SI 3 "register_operand" "d,d,d"))
+                  (match_operand:SI 1 "register_operand" "0,d,l")))
+    (clobber (reg:SI HI_REGNUM))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "@
+    mad     %2, %3
+    mtcel%S1 %1\;mad     %2, %3
+@@ -130,7 +130,7 @@
+                   (mult:SI (match_operand:SI 2 "register_operand" "d,d,d")
+                            (match_operand:SI 3 "register_operand" "d,d,d"))))
+    (clobber (reg:SI HI_REGNUM))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "@
+    msb     %2, %3
+    mtcel%S1 %1\;msb     %2, %3
+@@ -143,7 +143,7 @@
+                   (sign_extend:DI (match_operand:SI 2 "register_operand" "%d"))
+                   (sign_extend:DI (match_operand:SI 3 "register_operand" "d")))
+                  (match_operand:DI 1 "register_operand" "0")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "mad     %2, %3"
+   [(set_attr "mode" "DI")])
+ 
+@@ -153,7 +153,7 @@
+                   (zero_extend:DI (match_operand:SI 2 "register_operand" "%d"))
+                   (zero_extend:DI (match_operand:SI 3 "register_operand" "d")))
+                  (match_operand:DI 1 "register_operand" "0")))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "madu    %2, %3"
+   [(set_attr "mode" "DI")])
+ 
+@@ -164,7 +164,7 @@
+          (mult:DI
+           (sign_extend:DI (match_operand:SI 2 "register_operand" "%d"))
+           (sign_extend:DI (match_operand:SI 3 "register_operand" "d")))))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "msb     %2, %3"
+   [(set_attr "mode" "DI")])
+ 
+@@ -176,6 +176,6 @@
+                    (match_operand:SI 2 "register_operand" "%d"))
+                   (zero_extend:DI
+                    (match_operand:SI 3 "register_operand" "d")))))]
+-  "TARGET_MAC"
++  "TARGET_MAC || TARGET_SCORE7D"
+   "msbu    %2, %3"
+   [(set_attr "mode" "DI")])
+Index: gcc-4_2-branch/gcc/config/score/score.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/score/score.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/score/score.h	(revision 123843)
+@@ -38,7 +38,9 @@
+ 
+ #undef ASM_SPEC
+ #define ASM_SPEC \
+-  "%{!mel:-EB} %{mel:-EL} %{mscore5u:-SCORE5U} %{mscore7:-SCORE7} %{G*}"
++  "%{!mel:-EB} %{mel:-EL} %{mscore5:-SCORE5} %{mscore5u:-SCORE5U} \
++   %{mscore7:%{!mmac:-SCORE7}} %{mscore7:%{mmac:-SCORE7D}} \
++   %{mscore7d:-SCORE7D} %{G*}"
+ 
+ #undef LINK_SPEC
+ #define LINK_SPEC                "%{!mel:-EB} %{mel:-EL} %{G*}"
+@@ -286,6 +288,16 @@
+   128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,        \
+   144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159        }
+ 
++/* Macro to conditionally modify fixed_regs/call_used_regs.  */
++#define PIC_OFFSET_TABLE_REGNUM          29
++
++#define CONDITIONAL_REGISTER_USAGE                     \
++{                                                      \
++   if (!flag_pic)                                      \
++     fixed_regs[PIC_OFFSET_TABLE_REGNUM] =             \
++     call_used_regs[PIC_OFFSET_TABLE_REGNUM] = 0;      \
++}
++
+ #define HARD_REGNO_NREGS(REGNO, MODE) \
+   ((GET_MODE_SIZE (MODE) + UNITS_PER_WORD - 1) / UNITS_PER_WORD)
+ 
+@@ -534,7 +546,7 @@
+    If `ACCUMULATE_OUTGOING_ARGS' is also defined, the only effect
+    of this macro is to determine whether the space is included in
+    `current_function_outgoing_args_size'.  */
+-#define OUTGOING_REG_PARM_STACK_SPACE
++#define OUTGOING_REG_PARM_STACK_SPACE   1
+ 
+ #define RETURN_POPS_ARGS(FUNDECL, FUNTYPE, STACK_SIZE) 0
+ 
+Index: gcc-4_2-branch/gcc/config/score/score.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/score/score.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/score/score.md	(revision 123843)
+@@ -1511,7 +1511,7 @@
+    (use (match_operand 2 "" ""))    ; max iterations
+    (use (match_operand 3 "" ""))    ; loop level
+    (use (match_operand 4 "" ""))]   ; label
+-  ""
++  "!TARGET_NHWLOOP"
+   {
+     if (INTVAL (operands[3]) > 1)
+       FAIL;
+@@ -1539,6 +1539,6 @@
+                  (const_int -1)))
+    (clobber (reg:CC CC_REGNUM))
+ ]
+-  ""
++  "!TARGET_NHWLOOP"
+   "bcnz %1"
+   [(set_attr "type" "branch")])
+Index: gcc-4_2-branch/gcc/config/score/score.opt
+===================================================================
+--- gcc-4_2-branch/gcc/config/score/score.opt	(revision 123014)
++++ gcc-4_2-branch/gcc/config/score/score.opt	(revision 123843)
+@@ -27,10 +27,22 @@
+ Target RejectNegative Report Mask(LITTLE_ENDIAN)
+ Generate little-endian code
+ 
++mnhwloop
++Target RejectNegative Report Mask(NHWLOOP)
++Disable bcnz instruction
++
++muls
++Target RejectNegative Report Mask(ULS)
++Enable unaligned load/store instruction
++
+ mmac
+ Target RejectNegative Report Mask(MAC)
+ Enable mac instruction
+ 
++mscore5
++Target RejectNegative Report Mask(SCORE5)
++Support SCORE 5 ISA
++
+ mscore5u
+ Target RejectNegative Report Mask(SCORE5U)
+ Support SCORE 5U ISA
+@@ -39,3 +51,6 @@
+ Target RejectNegative Report Mask(SCORE7)
+ Support SCORE 7 ISA
+ 
++mscore7d
++Target RejectNegative Report Mask(SCORE7D)
++Support SCORE 7D ISA
+Index: gcc-4_2-branch/gcc/config/pa/pa.c
+===================================================================
+--- gcc-4_2-branch/gcc/config/pa/pa.c	(revision 123014)
++++ gcc-4_2-branch/gcc/config/pa/pa.c	(revision 123843)
+@@ -9276,7 +9276,7 @@
+   gcc_assert (TARGET_SOM);
+   if (TARGET_GAS)
+     {
+-      if (cfun && !cfun->machine->in_nsubspa)
++      if (cfun && cfun->machine && !cfun->machine->in_nsubspa)
+ 	{
+ 	  /* We only want to emit a .nsubspa directive once at the
+ 	     start of the function.  */
+@@ -9301,7 +9301,8 @@
+ 	     text section to output debugging information.  Thus, we
+ 	     need to forget that we are in the text section so that
+ 	     varasm.c will call us when text_section is selected again.  */
+-	  gcc_assert (!cfun || cfun->machine->in_nsubspa == 2);
++	  gcc_assert (!cfun || !cfun->machine
++		      || cfun->machine->in_nsubspa == 2);
+ 	  in_section = NULL;
+ 	}
+       output_section_asm_op ("\t.SPACE $TEXT$\n\t.NSUBSPA $CODE$");
+Index: gcc-4_2-branch/gcc/config/darwin9.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/darwin9.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/darwin9.h	(revision 123843)
+@@ -1,2 +1,13 @@
+ /* The linker can generate branch islands.  */
+ #define DARWIN_LINKER_GENERATES_ISLANDS 1
++
++#undef  ASM_OUTPUT_ALIGNED_COMMON
++#define ASM_OUTPUT_ALIGNED_COMMON(FILE, NAME, SIZE, ALIGN)		\
++  do {									\
++    unsigned HOST_WIDE_INT _new_size = (SIZE);				\
++    fprintf ((FILE), ".comm ");						\
++    assemble_name ((FILE), (NAME));					\
++    if (_new_size == 0) _new_size = 1;					\
++    fprintf ((FILE), ","HOST_WIDE_INT_PRINT_UNSIGNED",%u\n",		\
++	     _new_size, floor_log2 ((ALIGN) / BITS_PER_UNIT));		\
++  } while (0)
+Index: gcc-4_2-branch/gcc/reload1.c
+===================================================================
+--- gcc-4_2-branch/gcc/reload1.c	(revision 123014)
++++ gcc-4_2-branch/gcc/reload1.c	(revision 123843)
+@@ -1167,20 +1167,6 @@
+       {
+ 	rtx *pnote;
+ 
+-	/* Clean up invalid ASMs so that they don't confuse later passes.
+-	   See PR 21299.  */
+-	if (asm_noperands (PATTERN (insn)) >= 0)
+-	  {
+-	    extract_insn (insn);
+-	    if (!constrain_operands (1))
+-	      {
+-		error_for_asm (insn,
+-			       "%<asm%> operand has impossible constraints");
+-		delete_insn (insn);
+-		continue;
+-	      }
+-	  }
+-
+ 	if (CALL_P (insn))
+ 	  replace_pseudos_in (& CALL_INSN_FUNCTION_USAGE (insn),
+ 			      VOIDmode, CALL_INSN_FUNCTION_USAGE (insn));
+@@ -1239,8 +1225,22 @@
+ 	add_auto_inc_notes (insn, PATTERN (insn));
+ #endif
+ 
+-	/* And simplify (subreg (reg)) if it appears as an operand.  */
++	/* Simplify (subreg (reg)) if it appears as an operand.  */
+ 	cleanup_subreg_operands (insn);
++
++	/* Clean up invalid ASMs so that they don't confuse later passes.
++	   See PR 21299.  */
++	if (asm_noperands (PATTERN (insn)) >= 0)
++	  {
++	    extract_insn (insn);
++	    if (!constrain_operands (1))
++	      {
++		error_for_asm (insn,
++			       "%<asm%> operand has impossible constraints");
++		delete_insn (insn);
++		continue;
++	      }
++	  }
+       }
+ 
+   /* If we are doing stack checking, give a warning if this function's
+Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h	(revision 123843)
+@@ -1,6 +1,6 @@
+ // Versatile string utility -*- C++ -*-
+ 
+-// Copyright (C) 2005, 2006 Free Software Foundation, Inc.
++// Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -44,6 +44,7 @@
+ #include <bits/functexcept.h>
+ #include <locale>
+ #include <algorithm> // For std::distance, srd::search.
++#include <bits/ostream_insert.h>
+ 
+ _GLIBCXX_BEGIN_NAMESPACE(__gnu_cxx)
+ 
+Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h	(revision 123843)
+@@ -1,6 +1,6 @@
+ // Versatile string -*- C++ -*-
+ 
+-// Copyright (C) 2005, 2006 Free Software Foundation, Inc.
++// Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -2140,10 +2140,15 @@
+    */
+   template<typename _CharT, typename _Traits, typename _Alloc,
+            template <typename, typename, typename> class _Base>
+-    basic_ostream<_CharT, _Traits>&
++    inline basic_ostream<_CharT, _Traits>&
+     operator<<(basic_ostream<_CharT, _Traits>& __os,
+ 	       const __gnu_cxx::__versa_string<_CharT, _Traits,
+-	                                       _Alloc, _Base>& __str);
++	                                       _Alloc, _Base>& __str)
++    {
++      // _GLIBCXX_RESOLVE_LIB_DEFECTS
++      // 586. string inserter not a formatted function
++      return __ostream_insert(__os, __str.data(), __str.size());
++    }
+ 
+   /**
+    *  @brief  Read a line from stream into a string.
+Index: gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp	(revision 123843)
+@@ -52,6 +52,7 @@
+ #include <utility>
+ #include <tr1/type_traits>
+ #include <ext/type_traits.h>
++#include <ext/numeric_traits.h>
+ 
+ namespace pb_ds
+ {
+Index: gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h	(revision 123843)
+@@ -0,0 +1,98 @@
++// -*- C++ -*-
++
++// Copyright (C) 2007 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the terms
++// of the GNU General Public License as published by the Free Software
++// Foundation; either version 2, or (at your option) any later
++// version.
++
++// This library is distributed in the hope that it will be useful, but
++// WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++// General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// As a special exception, you may use this file as part of a free
++// software library without restriction.  Specifically, if other files
++// instantiate templates or use macros or inline functions from this
++// file, or you compile this file and link it with other files to
++// produce an executable, this file does not by itself cause the
++// resulting executable to be covered by the GNU General Public
++// License.  This exception does not however invalidate any other
++// reasons why the executable file might be covered by the GNU General
++// Public License.
++
++/** @file ext/numeric_traits.h
++ *  This file is a GNU extension to the Standard C++ Library.
++ */
++
++#ifndef _EXT_NUMERIC_TRAITS
++#define _EXT_NUMERIC_TRAITS 1
++
++#pragma GCC system_header
++
++#include <limits>
++#include <bits/cpp_type_traits.h>
++#include <ext/type_traits.h>
++
++_GLIBCXX_BEGIN_NAMESPACE(__gnu_cxx)
++
++  // Compile time constants for builtin types.
++  // Sadly std::numeric_limits member functions cannot be used for this.
++#define __glibcxx_signed(_Tp) ((_Tp)(-1) < 0)
++#define __glibcxx_digits(_Tp) \
++  (sizeof(_Tp) * __CHAR_BIT__ - __glibcxx_signed(_Tp))
++
++#define __glibcxx_min(_Tp) \
++  (__glibcxx_signed(_Tp) ? (_Tp)1 << __glibcxx_digits(_Tp) : (_Tp)0)
++
++#define __glibcxx_max(_Tp) \
++  (__glibcxx_signed(_Tp) ? \
++   (((((_Tp)1 << (__glibcxx_digits(_Tp) - 1)) - 1) << 1) + 1) : ~(_Tp)0)
++
++  template<typename _Value>
++    struct __numeric_traits_integer
++    {
++      // Only integers for initialization of member constant.
++      static const _Value __min = __glibcxx_min(_Value);
++      static const _Value __max = __glibcxx_max(_Value);
++    };
++
++  template<typename _Value>
++    const _Value __numeric_traits_integer<_Value>::__min;
++
++  template<typename _Value>
++    const _Value __numeric_traits_integer<_Value>::__max;
++
++  template<typename _Value>
++    struct __numeric_traits_floating
++    {
++      // Only floating point types. See N1822. 
++      static const int __max_digits10 =
++	2 + std::numeric_limits<_Value>::digits * 3010/10000;
++    };
++
++  template<typename _Value>
++    const int __numeric_traits_floating<_Value>::__max_digits10;
++
++  template<typename _Value>
++    struct __numeric_traits
++    : public __conditional_type<std::__is_integer<_Value>::__value,
++				__numeric_traits_integer<_Value>,
++				__numeric_traits_floating<_Value> >::__type
++    { };
++
++_GLIBCXX_END_NAMESPACE
++
++#undef __glibcxx_signed
++#undef __glibcxx_min
++#undef __glibcxx_max
++#undef __glibcxx_digits
++
++#endif 
+Index: gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h	(revision 123843)
+@@ -1,6 +1,6 @@
+ // -*- C++ -*-
+ 
+-// Copyright (C) 2005, 2006 Free Software Foundation, Inc.
++// Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the terms
+@@ -39,8 +39,6 @@
+ 
+ #include <cstddef>
+ #include <utility>
+-#include <limits>
+-#include <iosfwd> // std::streamsize
+ #include <bits/cpp_type_traits.h>
+ 
+ _GLIBCXX_BEGIN_NAMESPACE(__gnu_cxx)
+@@ -150,51 +148,6 @@
+   template<>
+     struct __remove_unsigned<wchar_t>;
+ 
+-
+-  // Compile time constants for builtin types.
+-  // Sadly std::numeric_limits member functions cannot be used for this.
+-#define __glibcxx_signed(_Tp) ((_Tp)(-1) < 0)
+-#define __glibcxx_digits(_Tp) \
+-  (sizeof(_Tp) * __CHAR_BIT__ - __glibcxx_signed(_Tp))
+-
+-#define __glibcxx_min(_Tp) \
+-  (__glibcxx_signed(_Tp) ? (_Tp)1 << __glibcxx_digits(_Tp) : (_Tp)0)
+-
+-#define __glibcxx_max(_Tp) \
+-  (__glibcxx_signed(_Tp) ? ((_Tp)1 << __glibcxx_digits(_Tp)) - 1 : ~(_Tp)0)
+-
+-  template<typename _Value>
+-    struct __numeric_traits_integer
+-    {
+-      // Only integers for initialization of member constant.
+-      static const _Value __min = __glibcxx_min(_Value);
+-      static const _Value __max = __glibcxx_max(_Value);
+-    };
+-
+-  template<typename _Value>
+-    const _Value __numeric_traits_integer<_Value>::__min;
+-
+-  template<typename _Value>
+-    const _Value __numeric_traits_integer<_Value>::__max;
+-
+-  template<typename _Value>
+-    struct __numeric_traits_floating
+-    {
+-      // Only floating point types. See N1822. 
+-      static const std::streamsize __max_digits10 =
+-	2 + std::numeric_limits<_Value>::digits * 3010/10000;
+-    };
+-
+-  template<typename _Value>
+-    const std::streamsize __numeric_traits_floating<_Value>::__max_digits10;
+-
+-  template<typename _Value>
+-    struct __numeric_traits 
+-    : public __conditional_type<std::__is_integer<_Value>::__value,
+-				__numeric_traits_integer<_Value>,
+-				__numeric_traits_floating<_Value> >::__type
+-    { };
+-
+ _GLIBCXX_END_NAMESPACE
+ 
+ #endif 
+Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc	(revision 123843)
+@@ -1,6 +1,6 @@
+ // Versatile string -*- C++ -*-
+ 
+-// Copyright (C) 2005, 2006 Free Software Foundation, Inc.
++// Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -279,7 +279,7 @@
+ 
+       if (__n <= __size)
+ 	{
+-	  for (; __pos + __n <= __size; ++__pos)
++	  for (; __pos <= __size - __n; ++__pos)
+ 	    if (traits_type::eq(__data[__pos], __s[0])
+ 		&& traits_type::compare(__data + __pos + 1,
+ 					__s + 1, __n - 1) == 0)
+@@ -615,39 +615,6 @@
+ 
+   template<typename _CharT, typename _Traits, typename _Alloc,
+            template <typename, typename, typename> class _Base>
+-    basic_ostream<_CharT, _Traits>&
+-    operator<<(basic_ostream<_CharT, _Traits>& __out,
+-	       const __gnu_cxx::__versa_string<_CharT, _Traits,
+-	                                       _Alloc, _Base>& __str)
+-    {
+-      typedef basic_ostream<_CharT, _Traits>            __ostream_type;
+-
+-      typename __ostream_type::sentry __cerb(__out);
+-      if (__cerb)
+-	{
+-	  const streamsize __w = __out.width();
+-	  streamsize __len = static_cast<streamsize>(__str.size());
+-	  const _CharT* __s = __str.data();
+-
+-	  // _GLIBCXX_RESOLVE_LIB_DEFECTS
+-	  // 25. String operator<< uses width() value wrong
+-	  if (__w > __len)
+-	    {
+-	      _CharT* __cs = (static_cast<
+-			      _CharT*>(__builtin_alloca(sizeof(_CharT) * __w)));
+-	      __pad<_CharT, _Traits>::_S_pad(__out, __out.fill(), __cs,
+-					     __s, __w, __len, false);
+-	      __s = __cs;
+-	      __len = __w;
+-	    }
+-	  __out._M_write(__s, __len);
+-	  __out.width(0);
+-	}
+-      return __out;
+-    }
+-
+-  template<typename _CharT, typename _Traits, typename _Alloc,
+-           template <typename, typename, typename> class _Base>
+     basic_istream<_CharT, _Traits>&
+     getline(basic_istream<_CharT, _Traits>& __in,
+ 	    __gnu_cxx::__versa_string<_CharT, _Traits, _Alloc, _Base>& __str,
+Index: gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h	(revision 123843)
+@@ -1,6 +1,7 @@
+ // Map implementation -*- C++ -*-
+ 
+-// Copyright (C) 2001, 2002, 2004, 2005, 2006 Free Software Foundation, Inc.
++// Copyright (C) 2001, 2002, 2003, 2004, 2005, 2006, 2007
++// Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -394,7 +395,7 @@
+        *
+        *  Insertion requires logarithmic time.
+        */
+-      std::pair<iterator,bool>
++      std::pair<iterator, bool>
+       insert(const value_type& __x)
+       { return _M_t._M_insert_unique(__x); }
+ 
+@@ -422,8 +423,8 @@
+        *  Insertion requires logarithmic time (if the hint is not taken).
+        */
+       iterator
+-      insert(iterator position, const value_type& __x)
+-      { return _M_t._M_insert_unique(position, __x); }
++      insert(iterator __position, const value_type& __x)
++      { return _M_t._M_insert_unique(__position, __x); }
+ 
+       /**
+        *  @brief Template function that attemps to insert a range of elements.
+Index: gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h	(revision 123843)
+@@ -1,6 +1,7 @@
+ // Components for manipulating sequences of characters -*- C++ -*-
+ 
+-// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006
++// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
++// 2006, 2007
+ // Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+@@ -2400,7 +2401,7 @@
+     {
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 586. string inserter not a formatted function
+-      return __os._M_insert(__str.data(), __str.size());
++      return __ostream_insert(__os, __str.data(), __str.size());
+     }
+ 
+   /**
+Index: gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc	(revision 123843)
+@@ -283,38 +283,6 @@
+ 
+   template<typename _CharT, typename _Traits>
+     basic_ostream<_CharT, _Traits>&
+-    basic_ostream<_CharT, _Traits>::
+-    _M_insert(const char_type* __s, streamsize __n)
+-    {
+-      sentry __cerb(*this);
+-      if (__cerb)
+-	{
+-	  try
+-	    {
+-	      const streamsize __w = this->width();
+-	      if (__w > __n)
+-		{
+-		  const bool __left = ((this->flags() & ios_base::adjustfield)
+-				       == ios_base::left);
+-		  if (!__left)
+-		    _M_write(this->fill(), __w - __n);
+-		  if (this->good())
+-		    _M_write(__s, __n);
+-		  if (__left && this->good())
+-		    _M_write(this->fill(), __w - __n);
+-		}
+-	      else
+-		_M_write(__s, __n);
+-	      this->width(0);
+-	    }
+-	  catch(...)
+-	    { this->_M_setstate(ios_base::badbit); }
+-	}
+-      return *this;
+-    }
+-
+-  template<typename _CharT, typename _Traits>
+-    basic_ostream<_CharT, _Traits>&
+     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)
+     {
+       if (!__s)
+@@ -340,7 +308,7 @@
+ 
+ 	  try
+ 	    {
+-	      __out._M_insert(__ws, __clen);
++	      __ostream_insert(__out, __ws, __clen);
+ 	      delete [] __ws;
+ 	    }
+ 	  catch(...)
+@@ -366,6 +334,7 @@
+   extern template ostream& operator<<(ostream&, const char*);
+   extern template ostream& operator<<(ostream&, const unsigned char*);
+   extern template ostream& operator<<(ostream&, const signed char*);
++  extern template ostream& __ostream_insert(ostream&, const char*, streamsize);
+ 
+   extern template ostream& ostream::_M_insert(long);
+   extern template ostream& ostream::_M_insert(unsigned long);
+@@ -387,6 +356,8 @@
+   extern template wostream& operator<<(wostream&, char);
+   extern template wostream& operator<<(wostream&, const wchar_t*);
+   extern template wostream& operator<<(wostream&, const char*);
++  extern template wostream& __ostream_insert(wostream&, const wchar_t*,
++					     streamsize);
+ 
+   extern template wostream& wostream::_M_insert(long);
+   extern template wostream& wostream::_M_insert(unsigned long);
+Index: gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc	(revision 123843)
+@@ -1,6 +1,7 @@
+ // Components for manipulating sequences of characters -*- C++ -*-
+ 
+-// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006
++// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
++// 2006, 2007
+ // Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+@@ -726,7 +727,7 @@
+ 
+       if (__n <= __size)
+ 	{
+-	  for (; __pos + __n <= __size; ++__pos)
++	  for (; __pos <= __size - __n; ++__pos)
+ 	    if (traits_type::eq(__data[__pos], __s[0])
+ 		&& traits_type::compare(__data + __pos + 1,
+ 					__s + 1, __n - 1) == 0)
+Index: gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h	(revision 123843)
+@@ -0,0 +1,114 @@
++// Helpers for ostream inserters -*- C++ -*-
++
++// Copyright (C) 2007 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// As a special exception, you may use this file as part of a free software
++// library without restriction.  Specifically, if other files instantiate
++// templates or use macros or inline functions from this file, or you compile
++// this file and link it with other files to produce an executable, this
++// file does not by itself cause the resulting executable to be covered by
++// the GNU General Public License.  This exception does not however
++// invalidate any other reasons why the executable file might be covered by
++// the GNU General Public License.
++
++/** @file ostream_insert.h
++ *  This is an internal header file, included by other library headers.
++ *  You should not attempt to use it directly.
++ */
++
++#ifndef _OSTREAM_INSERT_H
++#define _OSTREAM_INSERT_H 1
++
++#pragma GCC system_header
++
++#include <iosfwd>
++
++_GLIBCXX_BEGIN_NAMESPACE(std)
++
++  template<typename _CharT, typename _Traits>
++    inline void
++    __ostream_write(basic_ostream<_CharT, _Traits>& __out,
++		    const _CharT* __s, streamsize __n)
++    {
++      typedef basic_ostream<_CharT, _Traits>       __ostream_type;      
++      typedef typename __ostream_type::ios_base    __ios_base;
++
++      const streamsize __put = __out.rdbuf()->sputn(__s, __n);
++      if (__put != __n)
++	__out.setstate(__ios_base::badbit);
++    }
++
++  template<typename _CharT, typename _Traits>
++    inline void
++    __ostream_fill(basic_ostream<_CharT, _Traits>& __out, streamsize __n)
++    {
++      typedef basic_ostream<_CharT, _Traits>       __ostream_type;      
++      typedef typename __ostream_type::ios_base    __ios_base;
++
++      const _CharT __c = __out.fill();
++      for (; __n > 0; --__n)
++	{
++	  const typename _Traits::int_type __put = __out.rdbuf()->sputc(__c);
++	  if (_Traits::eq_int_type(__put, _Traits::eof()))
++	    {
++	      __out.setstate(__ios_base::badbit);
++	      break;
++	    }
++	}
++    }
++
++  template<typename _CharT, typename _Traits>
++    basic_ostream<_CharT, _Traits>&
++    __ostream_insert(basic_ostream<_CharT, _Traits>& __out,
++		     const _CharT* __s, streamsize __n)
++    {
++      typedef basic_ostream<_CharT, _Traits>       __ostream_type;
++      typedef typename __ostream_type::ios_base    __ios_base;
++
++      typename __ostream_type::sentry __cerb(__out);
++      if (__cerb)
++	{
++	  try
++	    {
++	      const streamsize __w = __out.width();
++	      if (__w > __n)
++		{
++		  const bool __left = ((__out.flags()
++					& __ios_base::adjustfield)
++				       == __ios_base::left);
++		  if (!__left)
++		    __ostream_fill(__out, __w - __n);
++		  if (__out.good())
++		    __ostream_write(__out, __s, __n);
++		  if (__left && __out.good())
++		    __ostream_fill(__out, __w - __n);
++		}
++	      else
++		__ostream_write(__out, __s, __n);
++	      __out.width(0);
++	    }
++	  catch(...)
++	    { __out._M_setstate(__ios_base::badbit); }
++	}
++      return __out;
++    }
++
++_GLIBCXX_END_NAMESPACE
++
++#endif /* _OSTREAM_INSERT_H */
+Index: gcc-4_2-branch/libstdc++-v3/include/Makefile.in
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/Makefile.in	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/Makefile.in	(revision 123843)
+@@ -343,6 +343,7 @@
+ 	${bits_srcdir}/localefwd.h \
+ 	${bits_srcdir}/mask_array.h \
+ 	${bits_srcdir}/ostream.tcc \
++	${bits_srcdir}/ostream_insert.h \
+ 	${bits_srcdir}/postypes.h \
+ 	${bits_srcdir}/stream_iterator.h \
+ 	${bits_srcdir}/streambuf_iterator.h \
+@@ -756,6 +757,7 @@
+ 	${ext_srcdir}/mt_allocator.h \
+ 	${ext_srcdir}/new_allocator.h \
+ 	${ext_srcdir}/numeric \
++	${ext_srcdir}/numeric_traits.h \
+ 	${ext_srcdir}/pod_char_traits.h \
+ 	${ext_srcdir}/pool_allocator.h \
+ 	${ext_srcdir}/rb_tree \
+Index: gcc-4_2-branch/libstdc++-v3/include/tr1/random
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/tr1/random	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/tr1/random	(revision 123843)
+@@ -43,6 +43,7 @@
+ #include <tr1/type_traits>
+ #include <tr1/cmath>
+ #include <ext/type_traits.h>
++#include <ext/numeric_traits.h>
+ #include <bits/concept_check.h>
+ #include <debug/debug.h>
+ 
+Index: gcc-4_2-branch/libstdc++-v3/include/Makefile.am
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/Makefile.am	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/Makefile.am	(revision 123843)
+@@ -117,6 +117,7 @@
+ 	${bits_srcdir}/localefwd.h \
+ 	${bits_srcdir}/mask_array.h \
+ 	${bits_srcdir}/ostream.tcc \
++	${bits_srcdir}/ostream_insert.h \
+ 	${bits_srcdir}/postypes.h \
+ 	${bits_srcdir}/stream_iterator.h \
+ 	${bits_srcdir}/streambuf_iterator.h \
+@@ -534,6 +535,7 @@
+ 	${ext_srcdir}/mt_allocator.h \
+ 	${ext_srcdir}/new_allocator.h \
+ 	${ext_srcdir}/numeric \
++	${ext_srcdir}/numeric_traits.h \
+ 	${ext_srcdir}/pod_char_traits.h \
+ 	${ext_srcdir}/pool_allocator.h \
+ 	${ext_srcdir}/rb_tree \
+Index: gcc-4_2-branch/libstdc++-v3/include/std/std_string.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/std/std_string.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/std/std_string.h	(revision 123843)
+@@ -1,6 +1,7 @@
+ // Components for manipulating sequences of characters -*- C++ -*-
+ 
+-// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2005
++// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
++// 2006, 2007
+ // Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+@@ -47,6 +48,7 @@
+ #include <memory> 	// For allocator.
+ #include <bits/cpp_type_traits.h>
+ #include <iosfwd> 	// For operators >>, <<, and getline decls.
++#include <bits/ostream_insert.h>
+ #include <bits/stl_iterator.h>
+ #include <bits/stl_function.h>  // For less
+ #include <bits/basic_string.h>
+Index: gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h	(revision 123843)
+@@ -1,6 +1,7 @@
+ // Output streams -*- C++ -*-
+ 
+-// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2005, 2006
++// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
++// 2006, 2007
+ // Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+@@ -42,6 +43,7 @@
+ #pragma GCC system_header
+ 
+ #include <ios>
++#include <bits/ostream_insert.h>
+ 
+ _GLIBCXX_BEGIN_NAMESPACE(std)
+ 
+@@ -72,31 +74,6 @@
+       							__num_put_type;
+       typedef ctype<_CharT>           			__ctype_type;
+ 
+-      template<typename _CharT2, typename _Traits2>
+-        friend basic_ostream<_CharT2, _Traits2>&
+-        operator<<(basic_ostream<_CharT2, _Traits2>&, _CharT2);
+- 
+-      template<typename _Traits2>
+-        friend basic_ostream<char, _Traits2>&
+-        operator<<(basic_ostream<char, _Traits2>&, char);
+- 
+-      template<typename _CharT2, typename _Traits2>
+-        friend basic_ostream<_CharT2, _Traits2>&
+-        operator<<(basic_ostream<_CharT2, _Traits2>&, const _CharT2*);
+- 
+-      template<typename _Traits2>
+-        friend basic_ostream<char, _Traits2>&
+-        operator<<(basic_ostream<char, _Traits2>&, const char*);
+- 
+-      template<typename _CharT2, typename _Traits2>
+-        friend basic_ostream<_CharT2, _Traits2>&
+-        operator<<(basic_ostream<_CharT2, _Traits2>&, const char*);
+-
+-      template<typename _CharT2, typename _Traits2, typename _Alloc>
+-        friend basic_ostream<_CharT2, _Traits2>&
+-        operator<<(basic_ostream<_CharT2, _Traits2>&,
+-		   const basic_string<_CharT2, _Traits2, _Alloc>&);
+-
+       // [27.6.2.2] constructor/destructor
+       /**
+        *  @brief  Base constructor.
+@@ -318,20 +295,6 @@
+ 	  this->setstate(ios_base::badbit);
+       }
+ 
+-      void
+-      _M_write(char_type __c, streamsize __n)
+-      {
+-	for (; __n > 0; --__n)
+-	  {
+-	    const int_type __put = this->rdbuf()->sputc(__c);
+-	    if (traits_type::eq_int_type(__put, traits_type::eof()))
+-	      {
+-		this->setstate(ios_base::badbit);
+-		break;
+-	      }
+-	  }
+-      }
+-
+       /**
+        *  @brief  Character string insertion.
+        *  @param  s  The array to insert.
+@@ -405,9 +368,6 @@
+       template<typename _ValueT>
+         __ostream_type&
+         _M_insert(_ValueT __v);
+-
+-      __ostream_type&
+-      _M_insert(const char_type* __s, streamsize __n);
+     };
+ 
+   /**
+@@ -491,7 +451,7 @@
+   template<typename _CharT, typename _Traits>
+     inline basic_ostream<_CharT, _Traits>&
+     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)
+-    { return __out._M_insert(&__c, 1); }
++    { return __ostream_insert(__out, &__c, 1); }
+ 
+   template<typename _CharT, typename _Traits>
+     inline basic_ostream<_CharT, _Traits>&
+@@ -502,7 +462,7 @@
+   template <class _Traits> 
+     inline basic_ostream<char, _Traits>&
+     operator<<(basic_ostream<char, _Traits>& __out, char __c)
+-    { return __out._M_insert(&__c, 1); }
++    { return __ostream_insert(__out, &__c, 1); }
+ 
+   // Signed and unsigned
+   template<class _Traits>
+@@ -537,7 +497,8 @@
+       if (!__s)
+ 	__out.setstate(ios_base::badbit);
+       else
+-	__out._M_insert(__s, static_cast<streamsize>(_Traits::length(__s)));
++	__ostream_insert(__out, __s,
++			 static_cast<streamsize>(_Traits::length(__s)));
+       return __out;
+     }
+ 
+@@ -553,7 +514,8 @@
+       if (!__s)
+ 	__out.setstate(ios_base::badbit);
+       else
+-	__out._M_insert(__s, static_cast<streamsize>(_Traits::length(__s)));
++	__ostream_insert(__out, __s,
++			 static_cast<streamsize>(_Traits::length(__s)));
+       return __out;
+     }
+ 
+Index: gcc-4_2-branch/libstdc++-v3/ChangeLog
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/ChangeLog	(revision 123843)
+@@ -1,3 +1,73 @@
++2007-04-12  Paolo Carlini  <pcarlini@suse.de>
++
++	PR libstdc++/28277 (partial: vstring bits)
++	* include/bits/ostream_insert.h: New.
++	* include/Makefile.am: Add.
++	* include/ext/vstring.h (operator<<(basic_ostream<>&,
++	const __versa_string<>&): Forward to __ostream_insert.
++	* include/bits/basic_string.h (operator<<(basic_ostream<>&,
++	const string<>&)): Likewise.
++	* include/std/std_ostream.h (operator<<(basic_ostream<>&, _CharT),
++	operator<<(basic_ostream<char,>&, char), operator<<(basic_ostream<>&,
++	const _CharT*), operator<<(basic_ostream<char,>&, const char*)):
++	Likewise.
++	* include/ext/vstring.tcc (operator<<(basic_ostream<>&,
++	const __versa_string<>&)): Remove.
++	(class basic_ostream): Remove friend declarations.
++	(basic_ostream<>::_M_write(char_type, streamsize),
++	_M_insert(const char_type*, streamsize)): Remove.
++	* include/bits/ostream.tcc (_M_insert(const char_type*, streamsize)):
++	Remove definition.
++	(operator<<(basic_ostream<>&, const char*)): Use __ostream_insert.
++	* include/ext/vstring_util.h: Include <bits/ostream_insert.h>.
++	* include/std/std_string.h: Likewise.
++	* config/abi/pre/gnu.ver: Adjust.
++	* src/ostream-inst.cc: Add __ostream_insert instantiations.
++	* include/Makefile.in: Rebuild.
++	* testsuite/ext/vstring/inserters_extractors/char/28277.cc: New.
++	* testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc: New.
++
++2007-04-07  Paolo Carlini  <pcarlini@suse.de>
++
++	PR libstdc++/31481
++	* include/ext/type_traits.h (__numeric_traits): Move...
++	* include/ext/numeric_traits.h: ... here; fix type of
++	__max_digits10.
++	* include/Makefile.am: Add.
++	* include/ext/pb_ds/detail/type_utils.hpp: Include 
++	<ext/numeric_traits.h> too.
++	* include/tr1/random: Likewise.
++	* testsuite/ext/type_traits/numeric_traits.cc: Move...
++	* testsuite/ext/numeric_traits/numeric_traits.cc: ... here.
++	* include/Makefile.in: Regenerate.
++	* testsuite/ext/type_traits/remove_unsigned_integer_neg.cc:
++	Adjust dg-error line number.
++	* testsuite/ext/type_traits/add_unsigned_floating_neg.cc:
++	Likewise.
++	* testsuite/ext/type_traits/remove_unsigned_floating_neg.cc:
++	Likewise.
++	* testsuite/ext/type_traits/add_unsigned_integer_neg.cc:
++	Likewise.
++
++2007-04-03  Paolo Carlini  <pcarlini@suse.de>
++
++	* include/bits/stl_map.h (map<>::insert(iterator, const value_type&):
++	Uglify parameter.
++
++2007-04-02  Paolo Carlini  <pcarlini@suse.de>
++
++	PR libstdc++/31401 (vstring bits)
++	* include/ext/vstring.tcc (find(const _CharT*, size_type,
++	size_type)): Avoid unsigned overflow.
++
++2007-03-30  Paolo Carlini  <pcarlini@suse.de>
++
++	PR libstdc++/31401
++	* include/bits/basic_string.tcc (find(const _CharT*, size_type,
++	size_type)): Avoid unsigned overflow.
++	* testsuite/21_strings/basic_string/find/char/4.cc: New.
++	* testsuite/21_strings/basic_string/find/wchar_t/4.cc: Likewise.
++
+ 2007-03-06  Paolo Carlini  <pcarlini@suse.de>
+ 
+ 	PR libstdc++/28080 (partial)
+Index: gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc	(revision 123843)
+@@ -55,6 +55,7 @@
+   template ostream& operator<<(ostream&, _Setbase);
+   template ostream& operator<<(ostream&, _Setprecision);
+   template ostream& operator<<(ostream&, _Setw);
++  template ostream& __ostream_insert(ostream&, const char*, streamsize);
+ 
+   template ostream& ostream::_M_insert(long);
+   template ostream& ostream::_M_insert(unsigned long);
+@@ -83,6 +84,7 @@
+   template wostream& operator<<(wostream&, _Setbase);
+   template wostream& operator<<(wostream&, _Setprecision);
+   template wostream& operator<<(wostream&, _Setw);
++  template wostream& __ostream_insert(wostream&, const wchar_t*, streamsize);
+ 
+   template wostream& wostream::_M_insert(long);
+   template wostream& wostream::_M_insert(unsigned long);
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc	(revision 123843)
+@@ -0,0 +1,43 @@
++// 2007-03-30  Paolo Carlini  <pcarlini@suse.de>
++
++// Copyright (C) 2007 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// 21.3.6.1 basic_string find
++
++#include <string>
++#include <testsuite_hooks.h>
++
++// libstdc++/31401
++void test01()
++{
++  bool test __attribute__((unused)) = true;
++  typedef std::wstring::size_type csize_type;
++  csize_type npos = std::wstring::npos;
++
++  std::wstring use = L"anu";
++  csize_type pos1 = use.find(L"a", npos);
++
++  VERIFY( pos1 == npos );
++}
++
++int main()
++{
++  test01();
++  return 0;
++}
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc	(revision 123843)
+@@ -0,0 +1,43 @@
++// 2007-03-30  Paolo Carlini  <pcarlini@suse.de>
++
++// Copyright (C) 2007 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// 21.3.6.1 basic_string find
++
++#include <string>
++#include <testsuite_hooks.h>
++
++// libstdc++/31401
++void test01()
++{
++  bool test __attribute__((unused)) = true;
++  typedef std::string::size_type csize_type;
++  csize_type npos = std::string::npos;
++
++  std::string use = "anu";
++  csize_type pos1 = use.find("a", npos);
++
++  VERIFY( pos1 == npos );
++}
++
++int main()
++{
++  test01();
++  return 0;
++}
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc	(revision 123843)
+@@ -0,0 +1,28 @@
++// { dg-do compile }
++// { dg-options "-pedantic" }
++// -*- C++ -*-
++
++// Copyright (C) 2006 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++//
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++//
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++#include <ext/numeric_traits.h>
++
++using __gnu_cxx::__numeric_traits;
++template struct __numeric_traits<short>;
++template struct __numeric_traits<unsigned short>;
++template struct __numeric_traits<double>;
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc	(revision 123843)
+@@ -0,0 +1,48 @@
++// 2007-04-09  Paolo Carlini  <pcarlini@suse.de>
++
++// Copyright (C) 2007 Free Software Foundation
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++#include <ostream>
++#include <sstream>
++#include <ext/vstring.h>
++#include <testsuite_hooks.h>
++
++// libstdc++/28277
++void test01()
++{
++  using namespace std;
++  bool test __attribute__((unused)) = true;
++
++  wostringstream oss_01;
++  const __gnu_cxx::__wvstring str_01(50, L'a');
++
++  oss_01.width(5000000);
++  const streamsize width = oss_01.width();
++
++  oss_01 << str_01;
++
++  VERIFY( oss_01.good() );
++  VERIFY( oss_01.str().size() == width );
++}
++
++int main()
++{
++  test01();
++  return 0;
++}
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc	(revision 0)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc	(revision 123843)
+@@ -0,0 +1,48 @@
++// 2007-04-09  Paolo Carlini  <pcarlini@suse.de>
++
++// Copyright (C) 2007 Free Software Foundation
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++#include <ostream>
++#include <sstream>
++#include <ext/vstring.h>
++#include <testsuite_hooks.h>
++
++// libstdc++/28277
++void test01()
++{
++  using namespace std;
++  bool test __attribute__((unused)) = true;
++
++  ostringstream oss_01;
++  const __gnu_cxx::__vstring str_01(50, 'a');
++
++  oss_01.width(20000000);
++  const streamsize width = oss_01.width();
++
++  oss_01 << str_01;
++
++  VERIFY( oss_01.good() );
++  VERIFY( oss_01.str().size() == width );
++}
++
++int main()
++{
++  test01();
++  return 0;
++}
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc	(revision 123843)
+@@ -1,28 +0,0 @@
+-// { dg-do compile }
+-// { dg-options "-pedantic" }
+-// -*- C++ -*-
+-
+-// Copyright (C) 2006 Free Software Foundation, Inc.
+-//
+-// This file is part of the GNU ISO C++ Library.  This library is free
+-// software; you can redistribute it and/or modify it under the
+-// terms of the GNU General Public License as published by the
+-// Free Software Foundation; either version 2, or (at your option)
+-// any later version.
+-//
+-// This library is distributed in the hope that it will be useful,
+-// but WITHOUT ANY WARRANTY; without even the implied warranty of
+-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-// GNU General Public License for more details.
+-//
+-// You should have received a copy of the GNU General Public License along
+-// with this library; see the file COPYING.  If not, write to the Free
+-// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
+-// USA.
+-
+-#include <ext/type_traits.h>
+-
+-using __gnu_cxx::__numeric_traits;
+-template struct __numeric_traits<short>;
+-template struct __numeric_traits<unsigned short>;
+-template struct __numeric_traits<double>;
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc	(revision 123843)
+@@ -1,7 +1,7 @@
+ // { dg-do compile }
+ // -*- C++ -*-
+ 
+-// Copyright (C) 2006 Free Software Foundation, Inc.
++// Copyright (C) 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -37,4 +37,4 @@
+ }
+ 
+ // { dg-error "invalid use of incomplete" "" { target *-*-* } 29 } 
+-// { dg-error "declaration of" "" { target *-*-* } 114 } 
++// { dg-error "declaration of" "" { target *-*-* } 112 } 
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc	(revision 123843)
+@@ -1,7 +1,7 @@
+ // { dg-do compile }
+ // -*- C++ -*-
+ 
+-// Copyright (C) 2006 Free Software Foundation, Inc.
++// Copyright (C) 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -36,5 +36,5 @@
+ }
+ 
+ // { dg-error "instantiated from" "" { target *-*-* } 29 } 
+-// { dg-error "no type" "" { target *-*-* } 76 } 
++// { dg-error "no type" "" { target *-*-* } 74 } 
+ // { dg-excess-errors "In instantiation of" }
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc	(revision 123843)
+@@ -1,7 +1,7 @@
+ // { dg-do compile }
+ // -*- C++ -*-
+ 
+-// Copyright (C) 2006 Free Software Foundation, Inc.
++// Copyright (C) 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -36,5 +36,5 @@
+ }
+ 
+ // { dg-error "instantiated from" "" { target *-*-* } 29 }
+-// { dg-error "no type" "" { target *-*-* } 119 }
++// { dg-error "no type" "" { target *-*-* } 117 }
+ // { dg-excess-errors "In instantiation of" }
+Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc	(revision 123843)
+@@ -1,7 +1,7 @@
+ // { dg-do compile }
+ // -*- C++ -*-
+ 
+-// Copyright (C) 2006 Free Software Foundation, Inc.
++// Copyright (C) 2006, 2007 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -37,4 +37,4 @@
+ }
+ 
+ // { dg-error "invalid use of incomplete" "" { target *-*-* } 29 } 
+-// { dg-error "declaration of" "" { target *-*-* } 71 } 
++// { dg-error "declaration of" "" { target *-*-* } 69 } 
+Index: gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver
+===================================================================
+--- gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver	(revision 123014)
++++ gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver	(revision 123843)
+@@ -676,8 +676,7 @@
+ 
+     _ZSt21__copy_streambufs_eofI[cw]St11char_traitsI[cw]EE[il]PSt15basic_streambuf*;
+ 
+-    _ZNSo9_M_insertEPKc[il];
+-    _ZNSt13basic_ostreamIwSt11char_traitsIwEE9_M_insertEPKw[il];
++    _ZSt16__ostream_insert*;
+ 
+     _ZN11__gnu_debug19_Safe_sequence_base12_M_get_mutexEv;
+     _ZN11__gnu_debug19_Safe_iterator_base16_M_attach_singleEPNS_19_Safe_sequence_baseEb;
+Index: gcc-4_2-branch/libgfortran/configure
+===================================================================
+--- gcc-4_2-branch/libgfortran/configure	(revision 123014)
++++ gcc-4_2-branch/libgfortran/configure	(revision 123843)
+@@ -10222,7 +10222,10 @@
+ 
+ 
+ 
+-for ac_func in wait setmode gettimeofday
++
++
++
++for ac_func in wait setmode gettimeofday stat fstat lstat
+ do
+ as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ echo "$as_me:$LINENO: checking for $ac_func" >&5
+Index: gcc-4_2-branch/libgfortran/intrinsics/stat.c
+===================================================================
+--- gcc-4_2-branch/libgfortran/intrinsics/stat.c	(revision 123014)
++++ gcc-4_2-branch/libgfortran/intrinsics/stat.c	(revision 123843)
+@@ -49,6 +49,9 @@
+ 
+ #include <errno.h>
+ 
++
++#ifdef HAVE_STAT
++
+ /* SUBROUTINE STAT(FILE, SARRAY, STATUS)
+    CHARACTER(len=*), INTENT(IN) :: FILE
+    INTEGER, INTENT(OUT), :: SARRAY(13)
+@@ -88,9 +91,12 @@
+   memcpy (str, name, name_len);
+   str[name_len] = '\0';
+ 
++  /* On platforms that don't provide lstat(), we use stat() instead.  */
++#ifdef HAVE_LSTAT
+   if (is_lstat)
+     val = lstat(str, &sb);
+   else
++#endif
+     val = stat(str, &sb);
+ 
+   if (val == 0)
+@@ -204,9 +210,12 @@
+   memcpy (str, name, name_len);
+   str[name_len] = '\0';
+ 
++  /* On platforms that don't provide lstat(), we use stat() instead.  */
++#ifdef HAVE_LSTAT
+   if (is_lstat)
+     val = lstat(str, &sb);
+   else
++#endif
+     val = stat(str, &sb);
+ 
+   if (val == 0)
+@@ -319,13 +328,13 @@
+ }
+ 
+ 
+-/* SUBROUTINE STAT(FILE, SARRAY, STATUS)
++/* SUBROUTINE LSTAT(FILE, SARRAY, STATUS)
+    CHARACTER(len=*), INTENT(IN) :: FILE
+    INTEGER, INTENT(OUT), :: SARRAY(13)
+    INTEGER, INTENT(OUT), OPTIONAL :: STATUS
+ 
+-   FUNCTION STAT(FILE, SARRAY)
+-   INTEGER STAT
++   FUNCTION LSTAT(FILE, SARRAY)
++   INTEGER LSTAT
+    CHARACTER(len=*), INTENT(IN) :: FILE
+    INTEGER, INTENT(OUT), :: SARRAY(13)  */
+ 
+@@ -351,8 +360,11 @@
+   return val;
+ }
+ 
++#endif
+ 
+ 
++#ifdef HAVE_FSTAT
++
+ /* SUBROUTINE FSTAT(UNIT, SARRAY, STATUS)
+    INTEGER, INTENT(IN) :: UNIT
+    INTEGER, INTENT(OUT) :: SARRAY(13)
+@@ -546,3 +558,5 @@
+   fstat_i8_sub (unit, sarray, &val);
+   return val;
+ }
++
++#endif
+Index: gcc-4_2-branch/libgfortran/ChangeLog
+===================================================================
+--- gcc-4_2-branch/libgfortran/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/libgfortran/ChangeLog	(revision 123843)
+@@ -1,3 +1,13 @@
++2007-04-13  Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
++
++	PR libfortran/31335
++	* intrinsics/stat.c: Only provide STAT and FSTAT library routines
++	if stat() and fstat() library functions are available. When lstat()
++	is not available, use stat() instead.
++	* configure.ac: Add checks for stat, fstat and lstat.
++	* configure: Regenerate.
++	* config.h.in: Regenerate.
++
+ 2007-03-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+ 
+ 	PR libgfortran/31099
+@@ -3,4 +13,9 @@
+ 	* io/file_pos.c (st_rewind): Don't set bytes_left to zero.
+ 
++2007-03-14  Jakub Jelinek  <jakub@redhat.com>
++
++	* io/unix.c (regular_file): For ACTION_UNSPECIFIED retry with
++	O_RDONLY even if errno is EROFS.
++
+ 2007-03-09  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
+ 
+Index: gcc-4_2-branch/libgfortran/config.h.in
+===================================================================
+--- gcc-4_2-branch/libgfortran/config.h.in	(revision 123014)
++++ gcc-4_2-branch/libgfortran/config.h.in	(revision 123843)
+@@ -357,6 +357,9 @@
+ /* libm includes frexpl */
+ #undef HAVE_FREXPL
+ 
++/* Define to 1 if you have the `fstat' function. */
++#undef HAVE_FSTAT
++
+ /* Define to 1 if you have the `ftruncate' function. */
+ #undef HAVE_FTRUNCATE
+ 
+@@ -462,6 +465,9 @@
+ /* libm includes logl */
+ #undef HAVE_LOGL
+ 
++/* Define to 1 if you have the `lstat' function. */
++#undef HAVE_LSTAT
++
+ /* Define to 1 if you have the <math.h> header file. */
+ #undef HAVE_MATH_H
+ 
+@@ -552,6 +558,9 @@
+ /* libm includes sqrtl */
+ #undef HAVE_SQRTL
+ 
++/* Define to 1 if you have the `stat' function. */
++#undef HAVE_STAT
++
+ /* Define to 1 if you have the <stddef.h> header file. */
+ #undef HAVE_STDDEF_H
+ 
+Index: gcc-4_2-branch/libgfortran/configure.ac
+===================================================================
+--- gcc-4_2-branch/libgfortran/configure.ac	(revision 123014)
++++ gcc-4_2-branch/libgfortran/configure.ac	(revision 123843)
+@@ -177,7 +177,7 @@
+ AC_CHECK_FUNCS(getrusage times mkstemp strtof strtold snprintf ftruncate chsize)
+ AC_CHECK_FUNCS(chdir strerror getlogin gethostname kill link symlink perror)
+ AC_CHECK_FUNCS(sleep time ttyname signal alarm ctime clock access fork execl)
+-AC_CHECK_FUNCS(wait setmode gettimeofday)
++AC_CHECK_FUNCS(wait setmode gettimeofday stat fstat lstat)
+ 
+ # Check for types
+ AC_CHECK_TYPES([intptr_t])
+Index: gcc-4_2-branch/libgfortran/io/unix.c
+===================================================================
+--- gcc-4_2-branch/libgfortran/io/unix.c	(revision 123014)
++++ gcc-4_2-branch/libgfortran/io/unix.c	(revision 123843)
+@@ -1186,7 +1186,7 @@
+       break;
+ 
+     case STATUS_REPLACE:
+-        crflag = O_CREAT | O_TRUNC;
++      crflag = O_CREAT | O_TRUNC;
+       break;
+ 
+     default:
+@@ -1202,14 +1202,14 @@
+   mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+   fd = open (path, rwflag | crflag, mode);
+   if (flags->action != ACTION_UNSPECIFIED)
+-      return fd;
++    return fd;
+ 
+   if (fd >= 0)
+     {
+       flags->action = ACTION_READWRITE;
+       return fd;
+     }
+-  if (errno != EACCES)
++  if (errno != EACCES && errno != EROFS)
+      return fd;
+ 
+   /* retry for read-only access */
+Index: gcc-4_2-branch/contrib/ChangeLog
+===================================================================
+--- gcc-4_2-branch/contrib/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/contrib/ChangeLog	(revision 123843)
+@@ -1,3 +1,18 @@
++2007-04-04  Eric Christopher  <echristo@apple.com>
++
++	Backport from mainline:
++	2007-04-04  Zack Weinberg  <zack@mrtock.ucsd.edu>
++
++        * texi2pod.pl: Correct handling of @itemize with no argument.
++
++        2007-02-16  Matthias Klose  <doko@debian.org>
++
++        * texi2pod.pl: Handle @subsubsection, ignore @anchor.
++
++        2007-02-06  Richard Sandiford  <richard@codesourcery.com>
++
++	* texi2pod.pl: Handle @multitable.
++
+ 2006-09-27  Matthew Sachs  <msachs@apple.com>
+ 
+ 	* compareSumTests3: POD syntax fix.
+@@ -84,14 +99,14 @@
+ 
+ 2005-10-28  Daniel Berlin  <dberlin@dberlin.org>
+ 	    Ben Elliston <bje@au1.ibm.com>
+-	
++
+ 	* gcc_update: Update for svn.
+ 	* newcvsroot: Ditto.
+ 	* gcc_build: Ditto.
+ 
+ 2005-10-21  Mark Mitchell  <mark@codesourcery.com>
+ 
+-	* texi2pod.pl: Substitue for @value even when part of @include. 
++	* texi2pod.pl: Substitue for @value even when part of @include.
+ 
+ 2005-10-21  Bob Wilson  <bob.wilson@acm.org>
+ 
+Index: gcc-4_2-branch/contrib/texi2pod.pl
+===================================================================
+--- gcc-4_2-branch/contrib/texi2pod.pl	(revision 123014)
++++ gcc-4_2-branch/contrib/texi2pod.pl	(revision 123843)
+@@ -162,6 +162,8 @@
+ 	} elsif ($ended =~ /^(?:itemize|enumerate|[fv]?table)$/) {
+ 	    $_ = "\n=back\n";
+ 	    $ic = pop @icstack;
++	} elsif ($ended eq "multitable") {
++	    $_ = "\n=back\n";
+ 	} else {
+ 	    die "unknown command \@end $ended at line $.\n";
+ 	}
+@@ -252,6 +254,8 @@
+ 	and $_ = "\n=head2 $1\n";
+     /^\@subsection\s+(.+)$/
+ 	and $_ = "\n=head3 $1\n";
++    /^\@subsubsection\s+(.+)$/
++	and $_ = "\n=head4 $1\n";
+ 
+     # Block command handlers:
+     /^\@itemize(?:\s+(\@[a-z]+|\*|-))?/ and do {
+@@ -260,7 +264,7 @@
+ 	if (defined $1) {
+ 	    $ic = $1;
+ 	} else {
+-	    $ic = '@bullet';
++	    $ic = '*';
+ 	}
+ 	$_ = "\n=over 4\n";
+ 	$endw = "itemize";
+@@ -278,6 +282,12 @@
+ 	$endw = "enumerate";
+     };
+ 
++    /^\@multitable\s.*/ and do {
++	push @endwstack, $endw;
++	$endw = "multitable";
++	$_ = "\n=over 4\n";
++    };
++
+     /^\@([fv]?table)\s+(\@[a-z]+)/ and do {
+ 	push @endwstack, $endw;
+ 	push @icstack, $ic;
+@@ -297,6 +307,16 @@
+ 	$_ = "";	# need a paragraph break
+     };
+ 
++    /^\@item\s+(.*\S)\s*$/ and $endw eq "multitable" and do {
++	@columns = ();
++	for $column (split (/\s*\@tab\s*/, $1)) {
++	    # @strong{...} is used a @headitem work-alike
++	    $column =~ s/^\@strong{(.*)}$/$1/;
++	    push @columns, $column;
++	}
++	$_ = "\n=item ".join (" : ", @columns)."\n";
++    };
++
+     /^\@itemx?\s*(.+)?$/ and do {
+ 	if (defined $1) {
+ 	    # Entity escapes prevent munging by the <> processing below.
+@@ -382,6 +402,9 @@
+     s/\@gol//g;
+     s/\@\*\s*\n?//g;
+ 
++    # Anchors are thrown away
++    s/\@anchor\{(?:[^\}]*)\}//g;
++
+     # @uref can take one, two, or three arguments, with different
+     # semantics each time.  @url and @email are just like @uref with
+     # one argument, for our purposes.
+Index: gcc-4_2-branch/libjava/configure
+===================================================================
+--- gcc-4_2-branch/libjava/configure	(revision 123014)
++++ gcc-4_2-branch/libjava/configure	(revision 123843)
+@@ -7687,7 +7687,7 @@
+   # See if we find them without any special options.
+   # Don't add to $LIBS permanently.
+   ac_save_LIBS=$LIBS
+-  LIBS="-lXt $LIBS"
++  LIBS="-lX11 $LIBS"
+   if test x$gcc_no_link = xyes; then
+   { { echo "$as_me:$LINENO: error: Link tests are not allowed after GCC_NO_EXECUTABLES." >&5
+ echo "$as_me: error: Link tests are not allowed after GCC_NO_EXECUTABLES." >&2;}
+@@ -9414,12 +9414,13 @@
+ 
+ 
+ 
++
+ for ac_func in strerror ioctl select fstat open fsync sleep opendir \
+                    gmtime_r localtime_r readdir_r getpwuid_r getcwd \
+ 		   access stat lstat mkdir rename rmdir unlink utime chmod readlink \
+ 		   nl_langinfo setlocale \
+ 		   inet_pton uname inet_ntoa \
+-		   fork execvp pipe sigaction ftruncate mmap \
++		   fork execvp getrlimit pipe sigaction ftruncate mmap \
+ 		   getifaddrs
+ do
+ as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
+@@ -9875,7 +9876,8 @@
+ 
+ 
+ 
+-for ac_header in execinfo.h unistd.h dlfcn.h
++
++for ac_header in execinfo.h unistd.h dlfcn.h sys/resource.h
+ do
+ as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ if eval "test \"\${$as_ac_Header+set}\" = set"; then
+Index: gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc
+===================================================================
+--- gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc	(revision 123014)
++++ gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc	(revision 123843)
+@@ -178,8 +178,6 @@
+       throw new ::java::io::FileNotFoundException (msg->toString ());
+     }
+ 
+-  _Jv_platform_close_on_exec (fd);
+-
+   return fd;
+ }
+ 
+Index: gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc
+===================================================================
+--- gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc	(revision 123014)
++++ gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc	(revision 123843)
+@@ -72,8 +72,6 @@
+       throw new ::java::io::IOException (JvNewStringUTF (strerr));
+     }
+ 
+-  _Jv_platform_close_on_exec (sock);
+-
+   // We use native_fd in place of fd here.  From leaving fd null we avoid
+   // the double close problem in FileDescriptor.finalize.
+   native_fd = sock;
+@@ -285,8 +283,6 @@
+   if (new_socket < 0)
+     goto error;
+ 
+-  _Jv_platform_close_on_exec (new_socket);
+-
+   jbyteArray raddr;
+   jint rport;
+   if (u.address.sin_family == AF_INET)
+Index: gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc
+===================================================================
+--- gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc	(revision 123014)
++++ gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc	(revision 123843)
+@@ -83,8 +83,6 @@
+       throw new ::java::net::SocketException (JvNewStringUTF (strerr));
+     }
+ 
+-  _Jv_platform_close_on_exec (sock);
+-
+   // We use native_fd in place of fd here.  From leaving fd null we avoid
+   // the double close problem in FileDescriptor.finalize.
+   native_fd = sock;
+Index: gcc-4_2-branch/libjava/configure.ac
+===================================================================
+--- gcc-4_2-branch/libjava/configure.ac	(revision 123014)
++++ gcc-4_2-branch/libjava/configure.ac	(revision 123843)
+@@ -906,10 +906,10 @@
+ 		   access stat lstat mkdir rename rmdir unlink utime chmod readlink \
+ 		   nl_langinfo setlocale \
+ 		   inet_pton uname inet_ntoa \
+-		   fork execvp pipe sigaction ftruncate mmap \
++		   fork execvp getrlimit pipe sigaction ftruncate mmap \
+ 		   getifaddrs])
+    AC_CHECK_FUNCS(inet_aton inet_addr, break)
+-   AC_CHECK_HEADERS(execinfo.h unistd.h dlfcn.h)
++   AC_CHECK_HEADERS(execinfo.h unistd.h dlfcn.h sys/resource.h)
+    # Do an additional check on dld, HP-UX for example has dladdr in libdld.sl
+    AC_CHECK_LIB(dl, dladdr, [
+        AC_DEFINE(HAVE_DLADDR, 1, [Define if you have dladdr()])], [
+Index: gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc
+===================================================================
+--- gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc	(revision 123014)
++++ gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc	(revision 123843)
+@@ -17,6 +17,9 @@
+ #include <fcntl.h>
+ #include <sys/types.h>
+ #include <sys/wait.h>
++#ifdef HAVE_SYS_RESOURCE_H
++#include <sys/resource.h>
++#endif
+ #include <signal.h>
+ #include <string.h>
+ #include <stdlib.h>
+@@ -341,7 +344,31 @@
+ 		  _exit (127);
+ 		}
+ 	    }
+-
++          // Make sure all file descriptors are closed.  In
++          // multi-threaded programs, there is a race between when a
++          // descriptor is obtained, when we can set FD_CLOEXEC, and
++          // fork().  If the fork occurs before FD_CLOEXEC is set, the
++          // descriptor would leak to the execed process if we did not
++          // manually close it.  So that is what we do.  Since we
++          // close all the descriptors, it is redundant to set
++          // FD_CLOEXEC on them elsewhere.
++          int max_fd;
++#ifdef HAVE_GETRLIMIT
++          rlimit rl;
++          int rv = getrlimit(RLIMIT_NOFILE, &rl);
++          if (rv == 0)
++            max_fd = rl.rlim_max - 1;
++          else
++            max_fd = 1024 - 1;
++#else
++          max_fd = 1024 - 1;
++#endif
++          while(max_fd > 2)
++            {
++              if (max_fd != msgp[1])
++                close (max_fd);
++              max_fd--;
++            }
+ 	  // Make sure that SIGCHLD is unblocked for the new process.
+ 	  sigset_t mask;
+ 	  sigemptyset (&mask);
+@@ -425,11 +452,4 @@
+ 
+   myclose (msgp[0]);
+   cleanup (args, env, path);
+-
+-  if (exception == NULL)
+-    {
+-      fcntl (outp[1], F_SETFD, FD_CLOEXEC);
+-      fcntl (inp[0], F_SETFD, FD_CLOEXEC);
+-      fcntl (errp[0], F_SETFD, FD_CLOEXEC);
+-    }
+ }
+Index: gcc-4_2-branch/libjava/include/posix.h
+===================================================================
+--- gcc-4_2-branch/libjava/include/posix.h	(revision 123014)
++++ gcc-4_2-branch/libjava/include/posix.h	(revision 123843)
+@@ -91,15 +91,6 @@
+ extern void _Jv_platform_initialize (void);
+ extern void _Jv_platform_initProperties (java::util::Properties*);
+ 
+-inline void
+-_Jv_platform_close_on_exec (jint fd)
+-{
+-  // Ignore errors.
+-  ::fcntl (fd, F_SETFD, FD_CLOEXEC);
+-}
+-
+-#undef fcntl
+-
+ #ifdef JV_HASH_SYNCHRONIZATION
+ #ifndef HAVE_USLEEP_DECL
+ extern "C" int usleep (useconds_t useconds);
+Index: gcc-4_2-branch/libjava/include/config.h.in
+===================================================================
+--- gcc-4_2-branch/libjava/include/config.h.in	(revision 123014)
++++ gcc-4_2-branch/libjava/include/config.h.in	(revision 123843)
+@@ -124,6 +124,9 @@
+ /* Define to 1 if you have the `getpwuid_r' function. */
+ #undef HAVE_GETPWUID_R
+ 
++/* Define to 1 if you have the `getrlimit' function. */
++#undef HAVE_GETRLIMIT
++
+ /* Define to 1 if you have the `gettimeofday' function. */
+ #undef HAVE_GETTIMEOFDAY
+ 
+@@ -304,6 +307,9 @@
+ /* Define to 1 if you have the <sys/ioctl.h> header file. */
+ #undef HAVE_SYS_IOCTL_H
+ 
++/* Define to 1 if you have the <sys/resource.h> header file. */
++#undef HAVE_SYS_RESOURCE_H
++
+ /* Define to 1 if you have the <sys/rw_lock.h> header file. */
+ #undef HAVE_SYS_RW_LOCK_H
+ 
+Index: gcc-4_2-branch/libjava/ChangeLog
+===================================================================
+--- gcc-4_2-branch/libjava/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/libjava/ChangeLog	(revision 123843)
+@@ -1,3 +1,19 @@
++2007-03-25  David Daney  <ddaney@avtrex.com>
++
++	PR libgcj/31228
++	* configure.ac: Add checks for getrlimit and sys/resource.h.
++	* include/posix.h (_Jv_platform_close_on_exec): Remove.
++	* include/config.h.in: Regenerate.
++	* configure: Regenerate.
++	* gnu/java/nio/channels/natFileChannelPosix.cc (open): Remove call to
++	_Jv_platform_close_on_exec;
++	* gnu/java/net/natPlainSocketImplPosix.cc (create): Likewise.
++	(accept): Likewise.
++	* gnu/java/net/natPlainDatagramSocketImplPosix.cc (create):Likewise.
++	* java/lang/natPosixProcess.cc: Include sys/resource.h.
++	(nativeSpawn): Close all file descriptors.  Don't set FD_CLOEXEC on
++	pipes.
++
+ 2007-01-29  Kaloian Doganov  <kaloian@doganov.org>
+ 
+ 	PR libgcj/30600:
