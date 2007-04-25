@@ -1,7 +1,7 @@
 Index: gcc-4_2-branch/libgomp/configure
 ===================================================================
 --- gcc-4_2-branch/libgomp/configure	(revision 123014)
-+++ gcc-4_2-branch/libgomp/configure	(revision 123843)
++++ gcc-4_2-branch/libgomp/configure	(revision 124164)
 @@ -9315,7 +9315,7 @@
    # does some of this, but throws away the result.
  
@@ -14,7 +14,7 @@ Index: gcc-4_2-branch/libgomp/configure
 Index: gcc-4_2-branch/libgomp/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/libgomp/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/libgomp/ChangeLog	(revision 123843)
++++ gcc-4_2-branch/libgomp/ChangeLog	(revision 124164)
 @@ -1,3 +1,9 @@
 +2007-03-18  Andreas Schwab  <schwab@suse.de>
 +
@@ -28,7 +28,7 @@ Index: gcc-4_2-branch/libgomp/ChangeLog
 Index: gcc-4_2-branch/libgomp/acinclude.m4
 ===================================================================
 --- gcc-4_2-branch/libgomp/acinclude.m4	(revision 123014)
-+++ gcc-4_2-branch/libgomp/acinclude.m4	(revision 123843)
++++ gcc-4_2-branch/libgomp/acinclude.m4	(revision 124164)
 @@ -148,7 +148,7 @@
    # does some of this, but throws away the result.
    changequote(,)
@@ -41,8 +41,61 @@ Index: gcc-4_2-branch/libgomp/acinclude.m4
 Index: gcc-4_2-branch/gcc/tree-vrp.c
 ===================================================================
 --- gcc-4_2-branch/gcc/tree-vrp.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/tree-vrp.c	(revision 123843)
-@@ -1892,10 +1892,18 @@
++++ gcc-4_2-branch/gcc/tree-vrp.c	(revision 124164)
+@@ -266,6 +266,10 @@
+ 
+       cmp = compare_values (min, max);
+       gcc_assert (cmp == 0 || cmp == -1 || cmp == -2);
++
++      if (needs_overflow_infinity (TREE_TYPE (min)))
++	gcc_assert (!is_overflow_infinity (min)
++		    || !is_overflow_infinity (max));
+     }
+ 
+   if (t == VR_UNDEFINED || t == VR_VARYING)
+@@ -314,6 +318,23 @@
+     bitmap_clear (vr->equiv);
+ }
+ 
++/* Set value range VR to a single value.  This function is only called
++   with values we get from statements, and exists to clear the
++   TREE_OVERFLOW flag so that we don't think we have an overflow
++   infinity when we shouldn't.  */
++
++static inline void
++set_value_range_to_value (value_range_t *vr, tree val)
++{
++  gcc_assert (is_gimple_min_invariant (val));
++  if (is_overflow_infinity (val))
++    {
++      val = copy_node (val);
++      TREE_OVERFLOW (val) = 0;
++    }
++  set_value_range (vr, VR_RANGE, val, val, NULL);
++}
++
+ /* Set value range VR to a non-negative range of type TYPE.
+    OVERFLOW_INFINITY indicates whether to use a overflow infinity
+    rather than TYPE_MAX_VALUE; this should be true if we determine
+@@ -1565,7 +1586,7 @@
+   if (TREE_CODE (op0) == SSA_NAME)
+     vr0 = *(get_value_range (op0));
+   else if (is_gimple_min_invariant (op0))
+-    set_value_range (&vr0, VR_RANGE, op0, op0, NULL);
++    set_value_range_to_value (&vr0, op0);
+   else
+     set_value_range_to_varying (&vr0);
+ 
+@@ -1573,7 +1594,7 @@
+   if (TREE_CODE (op1) == SSA_NAME)
+     vr1 = *(get_value_range (op1));
+   else if (is_gimple_min_invariant (op1))
+-    set_value_range (&vr1, VR_RANGE, op1, op1, NULL);
++    set_value_range_to_value (&vr1, op1);
+   else
+     set_value_range_to_varying (&vr1);
+ 
+@@ -1892,10 +1913,18 @@
        return;
      }
  
@@ -63,10 +116,89 @@ Index: gcc-4_2-branch/gcc/tree-vrp.c
      {
        set_value_range_to_varying (vr);
        return;
+@@ -1946,7 +1975,7 @@
+   if (TREE_CODE (op0) == SSA_NAME)
+     vr0 = *(get_value_range (op0));
+   else if (is_gimple_min_invariant (op0))
+-    set_value_range (&vr0, VR_RANGE, op0, op0, NULL);
++    set_value_range_to_value (&vr0, op0);
+   else
+     set_value_range_to_varying (&vr0);
+ 
+@@ -2078,7 +2107,9 @@
+ 	min = fold_unary_to_constant (code, TREE_TYPE (expr), vr0.max);
+       else if (needs_overflow_infinity (TREE_TYPE (expr)))
+ 	{
+-	  if (supports_overflow_infinity (TREE_TYPE (expr)))
++	  if (supports_overflow_infinity (TREE_TYPE (expr))
++	      && !is_overflow_infinity (vr0.min)
++	      && vr0.min != TYPE_MIN_VALUE (TREE_TYPE (expr)))
+ 	    min = positive_overflow_infinity (TREE_TYPE (expr));
+ 	  else
+ 	    {
+@@ -2254,6 +2285,18 @@
+       if (needs_overflow_infinity (TREE_TYPE (expr)))
+ 	{
+ 	  gcc_assert (code != NEGATE_EXPR && code != ABS_EXPR);
++
++	  /* If both sides have overflowed, we don't know
++	     anything.  */
++	  if ((is_overflow_infinity (vr0.min)
++	       || TREE_OVERFLOW (min))
++	      && (is_overflow_infinity (vr0.max)
++		  || TREE_OVERFLOW (max)))
++	    {
++	      set_value_range_to_varying (vr);
++	      return;
++	    }
++
+ 	  if (is_overflow_infinity (vr0.min))
+ 	    min = vr0.min;
+ 	  else if (TREE_OVERFLOW (min))
+@@ -2350,7 +2393,7 @@
+   else if (TREE_CODE_CLASS (code) == tcc_comparison)
+     extract_range_from_comparison (vr, expr);
+   else if (is_gimple_min_invariant (expr))
+-    set_value_range (vr, VR_RANGE, expr, expr, NULL);
++    set_value_range_to_value (vr, expr);
+   else
+     set_value_range_to_varying (vr);
+ 
+@@ -4514,6 +4557,17 @@
+ 	      return;
+ 	    }
+ 
++	  /* Check for useless ranges.  */
++	  if (INTEGRAL_TYPE_P (TREE_TYPE (min))
++	      && ((min == TYPE_MIN_VALUE (TREE_TYPE (min))
++		   || is_overflow_infinity (min))
++		  && (max == TYPE_MAX_VALUE (TREE_TYPE (max))
++		      || is_overflow_infinity (max))))
++	    {
++	      set_value_range_to_varying (vr0);
++	      return;
++	    }
++
+ 	  /* The resulting set of equivalences is the intersection of
+ 	     the two sets.  */
+ 	  if (vr0->equiv && vr1->equiv && vr0->equiv != vr1->equiv)
+@@ -4639,6 +4693,12 @@
+ 	    vr_arg = *(get_value_range (arg));
+ 	  else
+ 	    {
++	      if (is_overflow_infinity (arg))
++		{
++		  arg = copy_node (arg);
++		  TREE_OVERFLOW (arg) = 0;
++		}
++
+ 	      vr_arg.type = VR_RANGE;
+ 	      vr_arg.min = arg;
+ 	      vr_arg.max = arg;
 Index: gcc-4_2-branch/gcc/doc/invoke.texi
 ===================================================================
 --- gcc-4_2-branch/gcc/doc/invoke.texi	(revision 123014)
-+++ gcc-4_2-branch/gcc/doc/invoke.texi	(revision 123843)
++++ gcc-4_2-branch/gcc/doc/invoke.texi	(revision 124164)
 @@ -695,9 +695,11 @@
  -mwarn-framesize  -mwarn-dynamicstack  -mstack-size -mstack-guard}
  
@@ -81,7 +213,28 @@ Index: gcc-4_2-branch/gcc/doc/invoke.texi
   
  @emph{SH Options}
  @gccoptlist{-m1  -m2  -m2e  -m3  -m3e @gol
-@@ -4673,7 +4675,7 @@
+@@ -2834,7 +2836,7 @@
+ 
+ @item -Wstrict-overflow
+ @item -Wstrict-overflow=@var{n}
+-@opindex -Wstrict-overflow
++@opindex Wstrict-overflow
+ This option is only active when @option{-fstrict-overflow} is active.
+ It warns about cases where the compiler optimizes based on the
+ assumption that signed overflow does not occur.  Note that it does not
+@@ -2847,7 +2849,10 @@
+ overflow never does, in fact, occur.  Therefore this warning can
+ easily give a false positive: a warning about code which is not
+ actually a problem.  To help focus on important issues, several
+-warning levels are defined.
++warning levels are defined.  No warnings are issued for the use of
++undefined signed overflow when estimating how many iterations a loop
++will require, in particular when determining whether a loop will be
++executed at all.
+ 
+ @table @option
+ @item -Wstrict-overflow=1
+@@ -4673,7 +4678,7 @@
  arithmetic on them.  This produces better code by making all memory
  references potential common subexpressions.  When they are not common
  subexpressions, instruction combination should eliminate the separate
@@ -90,7 +243,65 @@ Index: gcc-4_2-branch/gcc/doc/invoke.texi
  
  @item -fforce-addr
  @opindex fforce-addr
-@@ -9759,7 +9761,9 @@
+@@ -5298,7 +5303,7 @@
+ @option{-funroll-loops},
+ 
+ @item -fsplit-ivs-in-unroller
+-@opindex -fsplit-ivs-in-unroller
++@opindex fsplit-ivs-in-unroller
+ Enables expressing of values of induction variables in later iterations
+ of the unrolled loop using the value in the first iteration.  This breaks
+ long dependency chains, thus improving efficiency of the scheduling passes.
+@@ -5311,7 +5316,7 @@
+ This optimization is enabled by default.
+ 
+ @item -fvariable-expansion-in-unroller
+-@opindex -fvariable-expansion-in-unroller
++@opindex fvariable-expansion-in-unroller
+ With this option, the compiler will create multiple copies of some
+ local variables when unrolling a loop which can result in superior code.
+ 
+@@ -8161,13 +8166,13 @@
+ @samp{"PrivateHeaders"} or @samp{"Headers"} directory.
+ 
+ @item -gused
+-@opindex -gused
++@opindex gused
+ Emit debugging information for symbols that are used.  For STABS
+ debugging format, this enables @option{-feliminate-unused-debug-symbols}.
+ This is by default ON@.
+ 
+ @item -gfull
+-@opindex -gfull
++@opindex gfull
+ Emit debugging information for all symbols and types.
+ 
+ @item -mmacosx-version-min=@var{version}
+@@ -8189,7 +8194,7 @@
+ @option{-mlong-branch} for PowerPC targets.
+ 
+ @item -mone-byte-bool
+-@opindex -mone-byte-bool
++@opindex mone-byte-bool
+ Override the defaults for @samp{bool} so that @samp{sizeof(bool)==1}.
+ By default @samp{sizeof(bool)} is @samp{4} when compiling for
+ Darwin/PowerPC and @samp{1} when compiling for Darwin/x86, so this
+@@ -8238,12 +8243,12 @@
+ output file being linked.  See man ld(1) for more information.
+ 
+ @item -dynamiclib
+-@opindex -dynamiclib
++@opindex dynamiclib
+ When passed this option, GCC will produce a dynamic library instead of
+ an executable when linking, using the Darwin @file{libtool} command.
+ 
+ @item -force_cpusubtype_ALL
+-@opindex -force_cpusubtype_ALL
++@opindex force_cpusubtype_ALL
+ This causes GCC's output file to have the @var{ALL} subtype, instead of
+ one controlled by the @option{-mcpu} or @option{-march} option.
+ 
+@@ -9759,7 +9764,9 @@
  The 32-bit environment sets int, long and pointer to 32 bits and
  generates code that runs on any i386 system.
  The 64-bit environment sets int to 32 bits and long and pointer
@@ -101,27 +312,157 @@ Index: gcc-4_2-branch/gcc/doc/invoke.texi
  
  @item -mno-red-zone
  @opindex no-red-zone
-@@ -12273,25 +12277,41 @@
+@@ -9947,8 +9954,8 @@
+ 
+ @item -mno-sched-br-data-spec
+ @itemx -msched-br-data-spec
+-@opindex -mno-sched-br-data-spec
+-@opindex -msched-br-data-spec
++@opindex mno-sched-br-data-spec
++@opindex msched-br-data-spec
+ (Dis/En)able data speculative scheduling before reload.
+ This will result in generation of the ld.a instructions and
+ the corresponding check instructions (ld.c / chk.a).
+@@ -9956,8 +9963,8 @@
+ 
+ @item -msched-ar-data-spec
+ @itemx -mno-sched-ar-data-spec
+-@opindex -msched-ar-data-spec
+-@opindex -mno-sched-ar-data-spec
++@opindex msched-ar-data-spec
++@opindex mno-sched-ar-data-spec
+ (En/Dis)able data speculative scheduling after reload.
+ This will result in generation of the ld.a instructions and
+ the corresponding check instructions (ld.c / chk.a).
+@@ -9965,8 +9972,8 @@
+ 
+ @item -mno-sched-control-spec
+ @itemx -msched-control-spec
+-@opindex -mno-sched-control-spec
+-@opindex -msched-control-spec
++@opindex mno-sched-control-spec
++@opindex msched-control-spec
+ (Dis/En)able control speculative scheduling.  This feature is
+ available only during region scheduling (i.e. before reload).
+ This will result in generation of the ld.s instructions and
+@@ -9975,8 +9982,8 @@
+ 
+ @item -msched-br-in-data-spec
+ @itemx -mno-sched-br-in-data-spec
+-@opindex -msched-br-in-data-spec
+-@opindex -mno-sched-br-in-data-spec
++@opindex msched-br-in-data-spec
++@opindex mno-sched-br-in-data-spec
+ (En/Dis)able speculative scheduling of the instructions that
+ are dependent on the data speculative loads before reload.
+ This is effective only with @option{-msched-br-data-spec} enabled.
+@@ -9984,8 +9991,8 @@
+ 
+ @item -msched-ar-in-data-spec
+ @itemx -mno-sched-ar-in-data-spec
+-@opindex -msched-ar-in-data-spec
+-@opindex -mno-sched-ar-in-data-spec
++@opindex msched-ar-in-data-spec
++@opindex mno-sched-ar-in-data-spec
+ (En/Dis)able speculative scheduling of the instructions that
+ are dependent on the data speculative loads after reload.
+ This is effective only with @option{-msched-ar-data-spec} enabled.
+@@ -9993,8 +10000,8 @@
+ 
+ @item -msched-in-control-spec
+ @itemx -mno-sched-in-control-spec
+-@opindex -msched-in-control-spec
+-@opindex -mno-sched-in-control-spec
++@opindex msched-in-control-spec
++@opindex mno-sched-in-control-spec
+ (En/Dis)able speculative scheduling of the instructions that
+ are dependent on the control speculative loads.
+ This is effective only with @option{-msched-control-spec} enabled.
+@@ -10002,8 +10009,8 @@
+ 
+ @item -msched-ldc
+ @itemx -mno-sched-ldc
+-@opindex -msched-ldc
+-@opindex -mno-sched-ldc
++@opindex msched-ldc
++@opindex mno-sched-ldc
+ (En/Dis)able use of simple data speculation checks ld.c .
+ If disabled, only chk.a instructions will be emitted to check
+ data speculative loads.
+@@ -10011,8 +10018,8 @@
+ 
+ @item -mno-sched-control-ldc
+ @itemx -msched-control-ldc
+-@opindex -mno-sched-control-ldc
+-@opindex -msched-control-ldc 
++@opindex mno-sched-control-ldc
++@opindex msched-control-ldc 
+ (Dis/En)able use of ld.c instructions to check control speculative loads.
+ If enabled, in case of control speculative load with no speculatively
+ scheduled dependent instructions this load will be emitted as ld.sa and
+@@ -10021,14 +10028,14 @@
+ 
+ @item -mno-sched-spec-verbose
+ @itemx -msched-spec-verbose
+-@opindex -mno-sched-spec-verbose
+-@opindex -msched-spec-verbose
++@opindex mno-sched-spec-verbose
++@opindex msched-spec-verbose
+ (Dis/En)able printing of the information about speculative motions.
+ 
+ @item -mno-sched-prefer-non-data-spec-insns
+ @itemx -msched-prefer-non-data-spec-insns
+-@opindex -mno-sched-prefer-non-data-spec-insns
+-@opindex -msched-prefer-non-data-spec-insns
++@opindex mno-sched-prefer-non-data-spec-insns
++@opindex msched-prefer-non-data-spec-insns
+ If enabled, data speculative instructions will be chosen for schedule
+ only if there are no other choices at the moment.  This will make
+ the use of the data speculation much more conservative.
+@@ -10036,8 +10043,8 @@
+ 
+ @item -mno-sched-prefer-non-control-spec-insns
+ @itemx -msched-prefer-non-control-spec-insns
+-@opindex -mno-sched-prefer-non-control-spec-insns
+-@opindex -msched-prefer-non-control-spec-insns
++@opindex mno-sched-prefer-non-control-spec-insns
++@opindex msched-prefer-non-control-spec-insns
+ If enabled, control speculative instructions will be chosen for schedule
+ only if there are no other choices at the moment.  This will make
+ the use of the control speculation much more conservative.
+@@ -10045,8 +10052,8 @@
+ 
+ @item -mno-sched-count-spec-in-critical-path
+ @itemx -msched-count-spec-in-critical-path
+-@opindex -mno-sched-count-spec-in-critical-path
+-@opindex -msched-count-spec-in-critical-path
++@opindex mno-sched-count-spec-in-critical-path
++@opindex msched-count-spec-in-critical-path
+ If enabled, speculative dependencies will be considered during
+ computation of the instructions priorities.  This will make the use of the
+ speculation a bit more conservative.
+@@ -12273,25 +12280,41 @@
  These options are defined for Score implementations:
  
  @table @gcctabopt
-+@item -meb
-+@opindex meb
-+Compile code for big endian mode.  This is the default.
+-@item -mel
+-@opindex -mel
+-Compile code for little endian mode. 
+-
+ @item -meb
+ @opindex meb
+ Compile code for big endian mode.  This is the default.
+ 
++@item -mel
++@opindex mel
++Compile code for little endian mode. 
 +
- @item -mel
- @opindex -mel
- Compile code for little endian mode. 
- 
--@item -meb
--@opindex meb
--Compile code for big endian mode.  This is the default.
 +@item -mnhwloop
-+@opindex -mnhwloop
++@opindex mnhwloop
 +Disable generate bcnz instruction.
- 
++
 +@item -muls
-+@opindex -muls
++@opindex muls
 +Enable generate unaligned load and store instruction.
 +
  @item -mmac
@@ -150,7 +491,7 @@ Index: gcc-4_2-branch/gcc/doc/invoke.texi
 Index: gcc-4_2-branch/gcc/doc/md.texi
 ===================================================================
 --- gcc-4_2-branch/gcc/doc/md.texi	(revision 123014)
-+++ gcc-4_2-branch/gcc/doc/md.texi	(revision 123843)
++++ gcc-4_2-branch/gcc/doc/md.texi	(revision 124164)
 @@ -2814,7 +2814,7 @@
  cp1 + cp2 + cp3 registers.
  
@@ -182,14 +523,71 @@ Index: gcc-4_2-branch/gcc/doc/md.texi
 Index: gcc-4_2-branch/gcc/DATESTAMP
 ===================================================================
 --- gcc-4_2-branch/gcc/DATESTAMP	(revision 123014)
-+++ gcc-4_2-branch/gcc/DATESTAMP	(revision 123843)
++++ gcc-4_2-branch/gcc/DATESTAMP	(revision 124164)
 @@ -1 +1 @@
 -20070317
-+20070415
++20070425
+Index: gcc-4_2-branch/gcc/tree-ssa-loop-ch.c
+===================================================================
+--- gcc-4_2-branch/gcc/tree-ssa-loop-ch.c	(revision 123014)
++++ gcc-4_2-branch/gcc/tree-ssa-loop-ch.c	(revision 124164)
+@@ -1,5 +1,5 @@
+ /* Loop header copying on trees.
+-   Copyright (C) 2004, 2005 Free Software Foundation, Inc.
++   Copyright (C) 2004, 2005, 2006, 2007 Free Software Foundation, Inc.
+    
+ This file is part of GCC.
+    
+@@ -204,6 +204,27 @@
+ 	  continue;
+ 	}
+ 
++      /* If the loop has the form "for (i = j; i < j + 10; i++)" then
++	 this copying can introduce a case where we rely on undefined
++	 signed overflow to eliminate the preheader condition, because
++	 we assume that "j < j + 10" is true.  We don't want to warn
++	 about that case for -Wstrict-overflow, because in general we
++	 don't warn about overflow involving loops.  Prevent the
++	 warning by setting TREE_NO_WARNING.  */
++      if (warn_strict_overflow > 0)
++	{
++	  unsigned int i;
++
++	  for (i = 0; i < n_bbs; ++i)
++	    {
++	      tree last;
++
++	      last = last_stmt (copied_bbs[i]);
++	      if (TREE_CODE (last) == COND_EXPR)
++		TREE_NO_WARNING (last) = 1;
++	    }
++	}
++
+       /* Ensure that the latch and the preheader is simple (we know that they
+ 	 are not now, since there was the loop exit condition.  */
+       loop_split_edge_with (loop_preheader_edge (loop), NULL);
+Index: gcc-4_2-branch/gcc/reload.c
+===================================================================
+--- gcc-4_2-branch/gcc/reload.c	(revision 123014)
++++ gcc-4_2-branch/gcc/reload.c	(revision 124164)
+@@ -1853,7 +1853,12 @@
+ 		    ||  ! (TEST_HARD_REG_BIT
+ 			   (reg_class_contents[(int) rld[secondary_out].class],
+ 			    REGNO (XEXP (note, 0)))))))
+-	&& ! fixed_regs[REGNO (XEXP (note, 0))])
++	&& ! fixed_regs[REGNO (XEXP (note, 0))]
++	/* Check that we don't use a hardreg for an uninitialized
++	   pseudo.  See also find_dummy_reload().  */
++	&& (ORIGINAL_REGNO (XEXP (note, 0)) < FIRST_PSEUDO_REGISTER
++	    || ! bitmap_bit_p (ENTRY_BLOCK_PTR->il.rtl->global_live_at_end,
++			       ORIGINAL_REGNO (XEXP (note, 0)))))
+       {
+ 	rld[output_reload].reg_rtx
+ 	  = gen_rtx_REG (rld[output_reload].outmode,
 Index: gcc-4_2-branch/gcc/builtins.c
 ===================================================================
 --- gcc-4_2-branch/gcc/builtins.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/builtins.c	(revision 123843)
++++ gcc-4_2-branch/gcc/builtins.c	(revision 124164)
 @@ -5492,14 +5492,19 @@
  			       rtx target, bool ignore)
  {
@@ -270,7 +668,7 @@ Index: gcc-4_2-branch/gcc/builtins.c
 Index: gcc-4_2-branch/gcc/fold-const.c
 ===================================================================
 --- gcc-4_2-branch/gcc/fold-const.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/fold-const.c	(revision 123843)
++++ gcc-4_2-branch/gcc/fold-const.c	(revision 124164)
 @@ -7052,7 +7052,7 @@
  {
    tree type = TREE_TYPE (expr);
@@ -360,10 +758,96 @@ Index: gcc-4_2-branch/gcc/fold-const.c
  
        tmp[bitpos / 32] |= (unsigned long)value << (bitpos & 31);
      }
+@@ -7732,7 +7734,7 @@
+ 	    return fold_build1 (BIT_NOT_EXPR, type, fold_convert (type, tem));
+ 	}
+ 
+-      tem = fold_convert_const (code, type, arg0);
++      tem = fold_convert_const (code, type, op0);
+       return tem ? tem : NULL_TREE;
+ 
+     case VIEW_CONVERT_EXPR:
+@@ -11126,13 +11128,13 @@
+ 		  return omit_one_operand (type, integer_zero_node, arg0);
+ 
+ 		case GE_EXPR:
+-		  return fold_build2 (EQ_EXPR, type, arg0, arg1);
++		  return fold_build2 (EQ_EXPR, type, op0, op1);
+ 
+ 		case LE_EXPR:
+ 		  return omit_one_operand (type, integer_one_node, arg0);
+ 
+ 		case LT_EXPR:
+-		  return fold_build2 (NE_EXPR, type, arg0, arg1);
++		  return fold_build2 (NE_EXPR, type, op0, op1);
+ 
+ 		/* The GE_EXPR and LT_EXPR cases above are not normally
+ 		   reached because of previous transformations.  */
+@@ -11147,10 +11149,14 @@
+ 		{
+ 		case GT_EXPR:
+ 		  arg1 = const_binop (PLUS_EXPR, arg1, integer_one_node, 0);
+-		  return fold_build2 (EQ_EXPR, type, arg0, arg1);
++		  return fold_build2 (EQ_EXPR, type,
++				      fold_convert (TREE_TYPE (arg1), arg0),
++				      arg1);
+ 		case LE_EXPR:
+ 		  arg1 = const_binop (PLUS_EXPR, arg1, integer_one_node, 0);
+-		  return fold_build2 (NE_EXPR, type, arg0, arg1);
++		  return fold_build2 (NE_EXPR, type,
++				      fold_convert (TREE_TYPE (arg1), arg0),
++				      arg1);
+ 		default:
+ 		  break;
+ 		}
+@@ -11163,7 +11169,7 @@
+ 		  return omit_one_operand (type, integer_zero_node, arg0);
+ 
+ 		case LE_EXPR:
+-		  return fold_build2 (EQ_EXPR, type, arg0, arg1);
++		  return fold_build2 (EQ_EXPR, type, op0, op1);
+ 
+ 		case GE_EXPR:
+ 		  return omit_one_operand (type, integer_one_node, arg0);
+@@ -11181,10 +11187,14 @@
+ 		{
+ 		case GE_EXPR:
+ 		  arg1 = const_binop (MINUS_EXPR, arg1, integer_one_node, 0);
+-		  return fold_build2 (NE_EXPR, type, arg0, arg1);
++		  return fold_build2 (NE_EXPR, type,
++				      fold_convert (TREE_TYPE (arg1), arg0),
++				      arg1);
+ 		case LT_EXPR:
+ 		  arg1 = const_binop (MINUS_EXPR, arg1, integer_one_node, 0);
+-		  return fold_build2 (EQ_EXPR, type, arg0, arg1);
++		  return fold_build2 (EQ_EXPR, type,
++				      fold_convert (TREE_TYPE (arg1), arg0),
++				      arg1);
+ 		default:
+ 		  break;
+ 		}
+@@ -11200,12 +11210,11 @@
+ 		   and X >= signed_max+1 because previous transformations.  */
+ 		if (code == LE_EXPR || code == GT_EXPR)
+ 		  {
+-		    tree st0, st1;
+-		    st0 = lang_hooks.types.signed_type (TREE_TYPE (arg0));
+-		    st1 = lang_hooks.types.signed_type (TREE_TYPE (arg1));
+-		    return fold_build2 (code == LE_EXPR ? GE_EXPR: LT_EXPR,
+-			       		type, fold_convert (st0, arg0),
+-			       		build_int_cst (st1, 0));
++		    tree st;
++		    st = lang_hooks.types.signed_type (TREE_TYPE (arg1));
++		    return fold_build2 (code == LE_EXPR ? GE_EXPR : LT_EXPR,
++					type, fold_convert (st, arg0),
++					build_int_cst (st, 0));
+ 		  }
+ 	      }
+ 	  }
 Index: gcc-4_2-branch/gcc/omp-low.c
 ===================================================================
 --- gcc-4_2-branch/gcc/omp-low.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/omp-low.c	(revision 123843)
++++ gcc-4_2-branch/gcc/omp-low.c	(revision 124164)
 @@ -2421,6 +2421,7 @@
    block_stmt_iterator si;
    tree entry_stmt;
@@ -398,7 +882,7 @@ Index: gcc-4_2-branch/gcc/omp-low.c
 Index: gcc-4_2-branch/gcc/objc/objc-act.c
 ===================================================================
 --- gcc-4_2-branch/gcc/objc/objc-act.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/objc/objc-act.c	(revision 123843)
++++ gcc-4_2-branch/gcc/objc/objc-act.c	(revision 124164)
 @@ -3632,7 +3632,7 @@
  
  	{
@@ -419,12 +903,177 @@ Index: gcc-4_2-branch/gcc/objc/objc-act.c
 Index: gcc-4_2-branch/gcc/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/gcc/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/gcc/ChangeLog	(revision 123843)
-@@ -1,3 +1,169 @@
++++ gcc-4_2-branch/gcc/ChangeLog	(revision 124164)
+@@ -1,3 +1,334 @@
++2007-04-25  Anatoly Sokolov <aesok@post.ru>
++
++	PR target/18989
++ 	* config/avr/avr.h (ASM_OUTPUT_ALIGN): Redefine.
++
++2007-04-24  Andrew Pinski  <andrew_pinski@playstation.sony.com>
++            Roger Sayle  <roger@eyesopen.com>
++
++	PR middle-end/30222
++	* expmed.c (make_tree): Use the correct type, i.e. the inner
++	type, when constructing the individual elements of a CONST_VECTOR.
++
++2007-04-24  Ian Lance Taylor  <iant@google.com>
++
++	PR tree-optimization/31605
++	* tree-vrp.c (set_value_range): Check that min and max are not
++	both overflow infinities.
++	(set_value_range_to_value): New static function.
++	(extract_range_from_binary_expr): Call set_value_range_to_value.
++	(extract_range_from_expr): Likewise.
++	(extract_range_from_unary_expr): Likewise.  Don't create a range
++	which overflows on both sides.
++	(vrp_meet): Check for a useless range.
++	(vrp_visit_phi_node): If we see a constant which looks like an
++	overflow infinity, turn off the TREE_OVERFLOW flag.
++
++2007-04-24  Ian Lance Taylor  <iant@google.com>
++
++	PR tree-optimization/31602
++	* tree-ssa-loop-ch.c (copy_loop_headers): Set TREE_NO_WARNING for
++	conditionals in the copied loop header.
++	* tree-cfg.c (fold_cond_expr_cond): Don't issue undefined overflow
++	warnings if TREE_NO_WARNING is set.
++	* doc/invoke.texi (Warning Options): Clarify that
++	-Wstrict-overflow does not warn about loops.
++
++2007-04-24  Andreas Krebbel  <krebbel1@de.ibm.com>
++
++	PR target/31641
++	* config/s390/s390.c (s390_expand_setmem): Don't ICE for constant length
++	argument of 0 for memset.
++	(s390_expand_movmem, s390_expand_setmem, s390_expand_cmpmem): Use
++	unsigned shift instead of the signed variant.
++
++2007-04-24  Daniel Franke  <franke.daniel@gmail.com>
++
++	* doc/invoke.texi: Removed leading '-' from option index entries.
++
++2007-04-22  Andrew Pinski  <andrew_pinski@playstation.sony.com>
++
++	PR middle-end/31448
++	* expr.c (reduce_to_bit_field_precision): Handle
++	CONST_INT rtx's.
++
++2007-04-20  Richard Henderson  <rth@redhat.com>
++
++	PR target/28623
++	* config/alpha/alpha.c (get_unaligned_address): Remove extra_offset
++	argument; update all callers.
++	(get_unaligned_offset): New.
++	* config/alpha/alpha.md (extendqidi2, extendhidi2): Don't use
++	get_unaligned_address, just pass on the address directly.
++	(unaligned_extendqidi): Use gen_lowpart instead of open-coding
++	the subreg in the helper patterns.
++	(unaligned_extendqidi_le): Use get_unaligned_offset.
++	(unaligned_extendqidi_be, unaligned_extendhidi_le): Likewise.
++	(unaligned_extendhidi_be): Likewise.
++	(unaligned_extendhidi): Tidy.
++	* config/alpha/alpha-protos.h: Update.
++
++2007-04-21  Richard Guenther  <rguenther@suse.de>
++
++	PR middle-end/31136
++	* fold-const.c (fold_unary): Call fold_convert_const on the
++	original tree.
++
++2007-04-20  Richard Henderson  <rth@redhat.com>
++
++	* config/alpha/linux.h (CPP_SPEC): Undef before redefine.
++
++2007-04-20  Bernd Schmidt  <bernd.schmidt@analog.com>
++
++	* reload.c (combine_reloads): When trying to use a dying register,
++	check whether it's uninitialized and don't use if so.
++
++2007-04-20  Jakub Jelinek  <jakub@redhat.com>
++
++	* config/i386/i386.c (bdesc_2arg): Use ORDERED rather than UNORDERED
++	for __builtin_ia32_cmpordss.
++
++	PR tree-optimization/31632
++	* fold-const.c (fold_binary): Use op0 and op1 instead of arg0
++	and arg1 for optimizations of comparison against min/max values.
++	Fold arg0 to arg1's type for optimizations of comparison against
++	min+1 and max-1 values.
++
++2007-04-19  Eric Botcazou  <ebotcazou@libertysurf.fr>
++
++	PR rtl-optimization/29841
++	* cfgbuild.c (control_flow_insn_p): Return TRUE for unconditional
++	trap instructions.
++	* sched-deps.c (sched_analyze_insn): Prevent all non-jump instructions
++	that may cause control flow transfer from being moved.
++
++2007-04-18  Anatoly Sokolov <aesok@post.ru>
++
++	* config/avr/avr.c (ptrreg_to_str): Replace error() with
++	output_operand_lossage().
++
++2007-04-17  Anatoly Sokolov <aesok@post.ru>
++
++	PR target/30483
++	* config/avr/avr.c (ptrreg_to_str): Replace gcc_unreachable() with
++	error().
++
++2007-04-17  Jan Hubicka  <jh@suse.cz>
++
++	PR middle-end/30700
++	* dwarf2out.c (reference_to_unused): Ask cgraph for functions
++	availablility; add more sanity checking; ask varpool only about
++	VAR_DECL.
++
++2007-04-17  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* Backport from mainline:
++	2007-04-17  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* config/i386/sse.md (sse_vmaddv4sf3): Use register_operand
++	on "0".
++	(sse_vmmulv4sf3): Likewise.
++	(sse2_vmaddv2df3): Likewise.
++	(sse2_vmmulv2df3): Likewise.
++
++2007-04-16  Matthias Klose  <doko@debian.org>
++
++	* config/alpha/linux.h (CPP_SPEC): Define.
++	* config/arm/linux-gas.h (SUBTARGET_CPP_SPEC): Extend.
++
++2007-04-16  Anatoly Sokolov <aesok@post.ru>
++
++	* config/avr/avr.c (avr_arch_types): Rearranging  array.
++	(enum avr_arch): Add.
++	(avr_mcu_types): Use avr_arch enumeration constants instead of 
++	numbers.
++	* config/avr/avr.h (LINK_SPEC): Simplify.
++
++2007-04-16  Jan Hubicka  <jh@suse.cz>
++
++	PR target/27869
++	* config/i386/sse.md
++	(sse_vmaddv4sf3, sse_vmmulv4sf3): Remove '%' modifier.
++	(sse_vmsmaxv4sf3_finite, sse_vmsminv4sf3_finite): Remove.
++	(sse2_vmaddv2df3, sse2_vmmulv2df3): Remove '%' modifier.
++	(sse2_vmsmaxv2df3_finite, sse2_vmsminv2df3_finite): Remove.
++
++2007-04-16  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* Backport from mainline:
++	2007-04-16  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/31582
++	* config/i386/i386.c (ix86_expand_vec_set_builtin): Make a
++	copy of source, pass it to ix86_expand_vector_set and return
++	it as target.
++
 +2007-04-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
 +
 +	PR c/31520
-+        * c-del.c (finish_decl): Grab the type of the decl after the call
++	* c-decl.c (finish_decl): Grab the type of the decl after the call
 +	to store_init_value.
 +
 +2007-04-14  Jakub Jelinek  <jakub@redhat.com>
@@ -590,7 +1239,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  2007-03-16  John David Anglin  <dave.anglin@nrc-cnrc.gc.ca>
  
  	* pa.c (attr_length_call): Partially revert change of 2007-03-09.
-@@ -24,7 +190,7 @@
+@@ -24,7 +355,7 @@
  	PR target/31123
  	* pa.md (vdepi_ior): Don't allow zero length deposit.  Likewise for
  	two unamed patterns.
@@ -599,7 +1248,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  2007-03-12  Brooks Moses  <brooks.moses@codesourcery.com>
  
  	* doc/extend.texi: Edit "gnu_inline" documentation.
-@@ -37,7 +203,7 @@
+@@ -37,7 +368,7 @@
  	* doc/passes.texi: Fix gcc.info cross-reference.
  
  2007-03-12  Daniel Berlin  <dberlin@dberlin.org>
@@ -608,7 +1257,16 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	Fix PR tree-optimization/28544
  	* tree-ssa-operands.c (add_virtual_operand):
  	Move assert triggering on aliasing violations into
-@@ -415,7 +581,7 @@
+@@ -119,7 +450,7 @@
+ 	(thread_across_edge): Likewise.
+ 	* tree-flow.h (vrp_evaluate_conditional): Update declaration.
+ 	(thread_across_edge): Likewise.
+-	* gcc/Makefile.in (tree-vrp.o): Depend upon toplev.h and intl.h.
++	* Makefile.in (tree-vrp.o): Depend upon toplev.h and intl.h.
+ 
+ 	2007-03-05  Ian Lance Taylor  <iant@google.com>
+ 
+@@ -415,7 +746,7 @@
  2007-03-09  Andrew Pinski  <andrew_pinski@playstation.sony.com>
  
  	PR tree-opt/28624
@@ -617,7 +1275,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	bitmap for EXECUTE_IF_SET_IN_BITMAP.
  
  2006-03-09  Mark Shinwell  <shinwell@codesourcery.com>
-@@ -436,7 +602,7 @@
+@@ -436,7 +767,7 @@
  	* builtins.def (lceil, lceilf, lceill, lfloor, lfloorf, lfloorl,
  	llceil, llceilf, llceill, llfloor, llfloorf, llfloorl): Mark with
  	ATTR_CONST_NOTHROW_LIST.
@@ -626,7 +1284,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	* fold-const.c (tree_expr_nonnegative_p): Handle FIX_TRUNC_EXPR.
  
  2007-03-08 Andrew Pinski <andrew_pinski@playstation.sony.com>
-@@ -484,11 +650,11 @@
+@@ -484,11 +815,11 @@
  	* doc/invoke.texi (Warning Options): Replace -Werror- with
  	-Werror=.
  	* opts.c (common_handle_option): Likewise.
@@ -640,7 +1298,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	devices.
  	* config/avr/avr.h (LINK_SPEC, CRT_BINUTILS_SPECS): (Ditto.).
  	* config/avr/t-avr (MULTILIB_MATCHES): (Ditto.).
-@@ -509,7 +675,7 @@
+@@ -509,7 +840,7 @@
  	in soft-float DFmode pattern.
  	(movdf): Fail if operand1 is a CONST_DOUBLE and operand0 is a hard
  	floating register.
@@ -649,7 +1307,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  
  2007-03-05  Kaveh R. Ghazi  <ghazi@caip.rutgers.edu>
  
-@@ -618,7 +784,7 @@
+@@ -618,7 +949,7 @@
  2007-03-01  Manuel Lopez-Ibanez  <manu@gcc.gnu.org>
  
  	* doc/invoke.texi (Wextra): Delete outdated paragraph.
@@ -658,7 +1316,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  2007-02-27  John David Anglin  <dave.anglin@nrc-cnrc.gc.ca>
  
  	* pa/predicates.md (move_src_operand): Allow zero for mode.
-@@ -706,7 +872,7 @@
+@@ -706,7 +1037,7 @@
  2007-02-18 Ira Rosen  <irar@il.ibm.com>
  
  	* tree-ssa-alias.c (may_aliases_intersect): New function.
@@ -667,7 +1325,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	for different tags.
  	* tree-flow.h (may_aliases_intersect): Add function declaration.
  
-@@ -764,7 +930,7 @@
+@@ -764,7 +1095,7 @@
  
  2007-02-06  Rask Ingemann Lamberisen  <rask@sygehus.dk>
  
@@ -676,7 +1334,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	* config/rs6000/t-ppccomm: Correct Makefile typo.
  
  2007-02-06  Roger Sayle  <roger@eyesopen.com>
-@@ -788,7 +954,7 @@
+@@ -788,7 +1119,7 @@
  2007-02-05  Bob Wilson  <bob.wilson@acm.org>
  
  	* config/xtensa/xtensa.c (constantpool_mem_p): Skip over SUBREGs.
@@ -685,7 +1343,7 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  2007-02-02  Maxim Kuvyrkov  <mkuvyrkov@ispras.ru>
  
  	PR target/29682
-@@ -817,7 +983,7 @@
+@@ -817,7 +1148,7 @@
  
  	Revert for x86 darwin:
  	2005-06-19  Uros Bizjak  <uros@kss-loka.si>
@@ -694,10 +1352,73 @@ Index: gcc-4_2-branch/gcc/ChangeLog
  	* config/i386/i386.c (ix86_function_arg_regno_p): Put back the
  	code before the following patch under TARGET_MACHO.
  	(ix86_function_value_regno_p): Likewise.
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31448.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31448.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31448.c	(revision 124164)
+@@ -0,0 +1,36 @@
++/* PR middle-end/31448, this used to ICE during expand because
++   reduce_to_bit_field_precision was not ready to handle constants. */
++
++typedef struct _st {
++    int iIndex : 24;
++    int iIndex1 : 24;
++} st;
++st *next;
++void g(void)
++{
++    st *next = 0;
++    int nIndx;
++    const static int constreg[] = { 0,};
++    nIndx = 0;
++    next->iIndex = constreg[nIndx];
++}
++void f(void)
++{
++    int nIndx;
++    const static int constreg[] = { 0xFEFEFEFE,};
++    nIndx = 0;
++    next->iIndex = constreg[nIndx];
++    next->iIndex1 = constreg[nIndx];
++}
++int main(void)
++{
++  st a;
++  next = &a;
++  f();
++  if (next->iIndex != 0xFFFEFEFE)
++    __builtin_abort ();
++  if (next->iIndex1 != 0xFFFEFEFE)
++    __builtin_abort ();
++  return 0;
++}
++
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31136.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31136.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31136.c	(revision 124164)
+@@ -0,0 +1,17 @@
++extern void abort (void);
++
++struct S {
++  unsigned b4:4;
++  unsigned b6:6;
++} s;
++
++int main()
++{
++  s.b6 = 31;
++  s.b4 = s.b6;
++  s.b6 = s.b4;
++  if (s.b6 != 15)
++    abort ();
++  return 0;
++}
++
 Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c	(revision 124164)
 @@ -0,0 +1,57 @@
 +/* PR middle-end/30704 */
 +
@@ -756,10 +1477,28 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/ieee/pr30704.c
 +
 +  return 0;
 +}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31605.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31605.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/pr31605.c	(revision 124164)
+@@ -0,0 +1,13 @@
++void put_field (unsigned int start, unsigned int len)
++{
++  int cur_bitshift = ((start + len) % 8) - 8;
++  if (cur_bitshift > -8)
++    exit (0);
++}
++
++int
++main ()
++{
++  put_field (0, 1);
++  abort ();
++}
 Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x	(revision 124164)
 @@ -0,0 +1,10 @@
 +set torture_eval_before_compile {
 +    set compiler_conditional_xfail_data {
@@ -774,7 +1513,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/execute/mayalias-2.x
 Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c	(revision 124164)
 @@ -0,0 +1,24 @@
 +/* PR tree-optimization/31345
 +   This caused a crash in VRP when dealing with overflow infinities.  */
@@ -803,7 +1542,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr31345-1.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c	(revision 124164)
 @@ -0,0 +1,7 @@
 +int fs_exec(int ino)
 +{
@@ -812,10 +1551,32 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/pr30984.c
 +   src = (void*)0xe000;
 + goto *src;
 +}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/20070419-1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/20070419-1.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.c-torture/compile/20070419-1.c	(revision 124164)
+@@ -0,0 +1,17 @@
++/* PR tree-optimization/31632 */
++
++struct S
++{
++  long int l;
++  void *m;
++};
++
++int
++foo (struct S *x)
++{
++  unsigned long a;
++  a = x->l;
++  if (a <= ((void *) 0))
++    x->m = 0;
++  return 0;
++}
 Index: gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c	(revision 124164)
 @@ -0,0 +1,21 @@
 +/* { dg-do run } */
 +/* { dg-options "-O" } */
@@ -838,10 +1599,92 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.target/arm/register-variables.c
 +    return 0;
 +}
 +
+Index: gcc-4_2-branch/gcc/testsuite/gcc.target/i386/ordcmp-1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.target/i386/ordcmp-1.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.target/i386/ordcmp-1.c	(revision 124164)
+@@ -0,0 +1,36 @@
++/* { dg-do compile { target i?86-*-* x86_64-*-* } } */
++/* { dg-options "-O2 -msse2" } */
++/* { dg-final { scan-assembler "cmpordss" } } */
++/* { dg-final { scan-assembler "cmpordps" } } */
++/* { dg-final { scan-assembler "cmpordsd" } } */
++/* { dg-final { scan-assembler "cmpordpd" } } */
++/* { dg-final { scan-assembler-not "cmpunordss" } } */
++/* { dg-final { scan-assembler-not "cmpunordps" } } */
++/* { dg-final { scan-assembler-not "cmpunordsd" } } */
++/* { dg-final { scan-assembler-not "cmpunordpd" } } */
++
++#include <emmintrin.h>
++
++__m128
++f1 (__m128 x, __m128 y)
++{
++  return _mm_cmpord_ss (x, y);
++}
++
++__m128
++f2 (__m128 x, __m128 y)
++{
++  return _mm_cmpord_ps (x, y);
++}
++
++__m128d
++f3 (__m128d x, __m128d y)
++{
++  return _mm_cmpord_sd (x, y);
++}
++
++__m128d
++f4 (__m128d x, __m128d y)
++{
++  return _mm_cmpord_pd (x, y);
++}
+Index: gcc-4_2-branch/gcc/testsuite/gcc.target/i386/unordcmp-1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.target/i386/unordcmp-1.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.target/i386/unordcmp-1.c	(revision 124164)
+@@ -0,0 +1,36 @@
++/* { dg-do compile { target i?86-*-* x86_64-*-* } } */
++/* { dg-options "-O2 -msse2" } */
++/* { dg-final { scan-assembler "cmpunordss" } } */
++/* { dg-final { scan-assembler "cmpunordps" } } */
++/* { dg-final { scan-assembler "cmpunordsd" } } */
++/* { dg-final { scan-assembler "cmpunordpd" } } */
++/* { dg-final { scan-assembler-not "cmpordss" } } */
++/* { dg-final { scan-assembler-not "cmpordps" } } */
++/* { dg-final { scan-assembler-not "cmpordsd" } } */
++/* { dg-final { scan-assembler-not "cmpordpd" } } */
++
++#include <emmintrin.h>
++
++__m128
++f1 (__m128 x, __m128 y)
++{
++  return _mm_cmpunord_ss (x, y);
++}
++
++__m128
++f2 (__m128 x, __m128 y)
++{
++  return _mm_cmpunord_ps (x, y);
++}
++
++__m128d
++f3 (__m128d x, __m128d y)
++{
++  return _mm_cmpunord_sd (x, y);
++}
++
++__m128d
++f4 (__m128d x, __m128d y)
++{
++  return _mm_cmpunord_pd (x, y);
++}
 Index: gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c	(revision 124164)
 @@ -0,0 +1,19 @@
 +/* PR inline-asm/30505 */
 +/* { dg-do compile { target ilp32 } } */
@@ -865,7 +1708,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.target/i386/pr30505.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c	(revision 124164)
 @@ -1,3 +1,5 @@
 +/* { dg-options "-O -fopenmp" } */
 +
@@ -875,7 +1718,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/gomp/pr25874.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c	(revision 124164)
 @@ -0,0 +1,9 @@
 +/* PR c/30762 */
 +/* { dg-do compile } */
@@ -889,7 +1732,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-2.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c	(revision 124164)
 @@ -14,5 +14,5 @@
    e = *a;
    return d + e;
@@ -900,7 +1743,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre1.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c	(revision 124164)
 @@ -15,5 +15,5 @@
    e = (*a)[0];
    return d + e;
@@ -911,7 +1754,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre14.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c	(revision 124164)
 @@ -15,5 +15,5 @@
    e = (*a)[t];
    return d + e;
@@ -919,13 +1762,35 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/tree-ssa/loadpre15.c
 -/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre"} } */
 +/* { dg-final { scan-tree-dump-times "Eliminated: 1" 1 "pre" { xfail *-*-* } } } */
  /* { dg-final { cleanup-tree-dump "pre" } } */
+Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/invalid-call-1.c
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gcc.dg/invalid-call-1.c	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/invalid-call-1.c	(revision 124164)
+@@ -0,0 +1,17 @@
++/* PR rtl-optimization/29841 */
++/* Testcase by Khem Raj <raj.khem@gmail.com> */
++
++/* { dg-do compile } */
++/* { dg-options "-O2" } */
++/* { dg-options "-O2 -mtune=i586" { target i?86-*-* } } */
++
++typedef void (*fp)(void);
++extern char* bar(void* a1, int a2);
++extern char* mar(int n);
++char* cptr;
++
++void foo()
++{
++  cptr = mar(6);
++  ((char *(*)(void *,int (*)(void *,unsigned char **),char**))((fp)bar))(0,0,(void*)(0)); /* { dg-warning "" "non-compatible type" } */
++}
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c	(revision 124164)
 @@ -0,0 +1,12 @@
 +/* Test for GNU extensions to compound literals are giving the correct array bounds */
-+/* { dg-do run } */
++/* { dg-do compile } */
 +/* { dg-options "-std=gnu89 -W -Wall -O2" } */
 +
 +int a[] = (int[4]){1, 1, 2};
@@ -939,7 +1804,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/gnu89-init-4.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c	(revision 124164)
 @@ -0,0 +1,4 @@
 +/* { dg-do compile { target *-*-darwin9* } } */
 +/* { dg-final { scan-assembler ".comm _foo,1,15" } } */
@@ -948,7 +1813,7 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/darwin-comm.c
 Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c	(revision 124164)
 @@ -0,0 +1,15 @@
 +/* PR c/30762 */
 +/* { dg-do compile } */
@@ -968,12 +1833,70 @@ Index: gcc-4_2-branch/gcc/testsuite/gcc.dg/pr30762-1.c
 Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/ChangeLog	(revision 123843)
-@@ -1,3 +1,106 @@
++++ gcc-4_2-branch/gcc/testsuite/ChangeLog	(revision 124164)
+@@ -1,3 +1,164 @@
++2007-04-24  Paolo Carlini  <pcarlini@suse.de>
++
++	PR c++/30500
++	* g++.dg/warn/pragma-system_header3.C: New test.
++	* g++.dg/warn/pragma-system_header3.h. New.
++
++2007-04-24  Ian Lance Taylor  <iant@google.com>
++
++	PR tree-optimization/31605
++	* gcc.c-torture/execute/pr31605.c: New test.
++
++2007-04-24  Andreas Krebbel  <krebbel1@de.ibm.com>
++
++	PR target/31641
++	* gcc.c-torture/compile/pr31641.c: New testcase.
++
++2007-04-22  Andrew Pinski  <andrew_pinski@playstation.sony.com>
++
++	PR middle-end/31448
++	* gcc.c-torture/execute/pr31448.c: New testcase.
++
++2007-04-21  Richard Guenther  <rguenther@suse.de>
++
++	PR middle-end/31136
++	* gcc.c-torture/execute/pr31136.c: New testcase.
++
++2007-04-20  Jakub Jelinek  <jakub@redhat.com>
++
++	* gcc.target/i386/ordcmp-1.c: New test.
++	* gcc.target/i386/unordcmp-1.c: New test.
++
++	PR tree-optimization/31632
++	* gcc.c-torture/compile/20070419-1.c: New test.
++
++2007-04-19  Eric Botcazou  <ebotcazou@libertysurf.fr>
++
++	* gcc.dg/invalid-call-1.c: New test.
++
++2007-04-17  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
++
++	PR libgfortran/31366
++	* gfortran.dg/direct_io_6.f90: New test.
++
++2007-04-17  Simon Martin  <simartin@users.sourceforge.net>
++
++	PR c++/31517
++	* g++.dg/template/init7.C: New test.
++
++2007-04-16  Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/31513
++	* g++.dg/expr/bitfield8.C: New test.
++
++2007-04-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
++
++	PR testsuite/31578
++	* gcc.dg/gnu89-init-4.c: Change to a compile only test.
++
 +2007-04-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
 +
 +	PR C/31520
-+	* testsuite/gcc.dg/gnu89-init-4.c: New testcase.
++	* gcc.dg/gnu89-init-4.c: New testcase.
 +
 +2007-04-14  Jakub Jelinek  <jakub@redhat.com>
 +
@@ -1076,7 +1999,7 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  2007-03-16  Alexandre Oliva  <aoliva@redhat.com>
  
  	PR debug/29906
-@@ -123,12 +226,12 @@
+@@ -123,12 +284,12 @@
  	PR rtl-optimization/30643
  	* gcc.dg/pr30643.c: New.
  
@@ -1091,7 +2014,7 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  
  	PR middle-end/30729
  	* gcc.dg/Wunused-value-2.c: New testcase.
-@@ -163,7 +266,7 @@
+@@ -163,7 +324,7 @@
  2007-03-08  Brooks Moses  <brooks.moses@codesourcery.com>
  
  	Backport from trunk.
@@ -1100,7 +2023,7 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  	dg-options.
  
  2007-03-08  Paul Thomas  <pault@gcc.gnu.org>
-@@ -216,7 +319,7 @@
+@@ -216,7 +377,7 @@
  	* gcc.dg/Wstring-literal-comparison-4.c: Likewise.
  	* g++.dg/warn/Wstring-literal-comparison-1.C: Likewise.
  	* g++.dg/warn/Wstring-literal-comparison-4.c: Likewise.
@@ -1109,7 +2032,7 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  2007-03-06  Roger Sayle  <roger@eyesopen.com>
  
  	PR middle-end/30744
-@@ -315,7 +418,7 @@
+@@ -315,7 +476,7 @@
  
  2007-02-23  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
  
@@ -1118,7 +2041,16 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  	* gfortran.dg/fmt_zero_precision.f90: Update test.
  
  2007-02-23  Tobias Burnus  <burnus@net-b.de>
-@@ -480,7 +583,7 @@
+@@ -404,7 +565,7 @@
+ 2007-02-16  Francois-Xavier Coudert  <coudert@clipper.ens.fr>
+ 
+ 	PR fortran/30611
+-	* gcc/testsuite/gfortran.dg/repeat_1.f90: New test.
++	* gfortran.dg/repeat_1.f90: New test.
+ 
+ 2007-02-16  Thomas Koenig  <Thomas.Koenig@online.de>
+ 
+@@ -480,7 +641,7 @@
  
  2007-02-07  Hans-Peter Nilsson  <hp@axis.com>
  
@@ -1127,7 +2059,7 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  
  2007-02-05  Alexandre Oliva  <aoliva@redhat.com>
  
-@@ -614,7 +717,7 @@
+@@ -614,7 +775,7 @@
  
  	PR fortran/30532
  	* gfortran.dg/ctrl-z.f90:  New test.
@@ -1136,10 +2068,178 @@ Index: gcc-4_2-branch/gcc/testsuite/ChangeLog
  2007-01-26  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
  
  	PR fortran/30481
+@@ -1319,7 +1480,7 @@
+ 2006-11-13  Francois-Xavier Coudert  <coudert@clipper.ens.fr>
+ 
+ 	PR libfortran/27895
+-	* gcc/testsuite/gfortran.dg/zero_sized_1.f90: Uncomment checks
++	* gfortran.dg/zero_sized_1.f90: Uncomment checks
+ 	for RESHAPE.
+ 
+ 2006-11-13  Mark Mitchell  <mark@codesourcery.com>
+@@ -1753,16 +1914,16 @@
+ 2006-10-13  Francois-Xavier Coudert  <coudert@clipper.ens.fr>
+ 
+ 	PR fortran/21435
+-	* gcc/testsuite/gfortran.dg/io_constraints_3.f90: New test.
+-	* gcc/testsuite/gfortran.dg/open_access_append_1.f90: Add checks
++	* gfortran.dg/io_constraints_3.f90: New test.
++	* gfortran.dg/open_access_append_1.f90: Add checks
+ 	for compile-time warnings.
+-	* gcc/testsuite/gfortran.dg/pr20163-2.f: Likewise.
+-	* gcc/testsuite/gfortran.dg/iostat_2.f90: Likewise.
+-	* gcc/testsuite/gfortran.dg/label_4.f90: Delete the temporary
++	* gfortran.dg/pr20163-2.f: Likewise.
++	* gfortran.dg/iostat_2.f90: Likewise.
++	* gfortran.dg/label_4.f90: Delete the temporary
+ 	file.
+-	* gcc/testsuite/gfortran.dg/direct_io_2.f90: Add a FILE=
++	* gfortran.dg/direct_io_2.f90: Add a FILE=
+ 	specifier.
+-	* gcc/testsuite/gfortran.dg/iomsg_1.f90: Add check for
++	* gfortran.dg/iomsg_1.f90: Add check for
+ 	compile-time warning.
+ 
+ 2006-10-12  Jan Hubicka  <jh@suse.cz>
+@@ -1899,12 +2060,12 @@
+ 
+ 	PR fortran/16580
+ 	PR fortran/29288
+-	* gcc/testsuite/gfortran.fortran-torture/execute/specifics.f90:
++	* gfortran.fortran-torture/execute/specifics.f90:
+ 	Add tests for using all possible intrinsics as actual arguments.
+-	* gcc/testsuite/gfortran.dg/specifics_1.f90: Add tests for using
++	* gfortran.dg/specifics_1.f90: Add tests for using
+ 	all possible intrinsics as actual arguments.
+-	* gcc/testsuite/gfortran.dg/specifics_2.f90: New file.
+-	* gcc/testsuite/gfortran.dg/specifics_3.f90: New file.
++	* gfortran.dg/specifics_2.f90: New file.
++	* gfortran.dg/specifics_3.f90: New file.
+ 
+ 2006-10-07  Richard Sandiford  <richard@codesourcery.com>
+ 
+@@ -4158,7 +4319,7 @@
+ 2006-06-08  Francois-Xavier Coudert  <coudert@clipper.ens.fr>
+ 
+ 	PR fortran/27958
+-	* gcc/testsuite/gfortran.dg/substr_2.f: New test.
++	* gfortran.dg/substr_2.f: New test.
+ 
+ 2006-06-08  Asher Langton  <langton2@llnl.gov>
+ 
+@@ -6195,7 +6356,7 @@
+ 
+ 2006-03-03  Paul Brook  <paul@codesourcery.com>
+ 
+-	* gcc/testsuite/lib/target-supports.exp (check_profiling_available):
++	* lib/target-supports.exp (check_profiling_available):
+ 	Add m68k-*-elf.
+ 
+ 2006-03-03  Thomas Koenig  <Thomas.Koenig@online.de>
+@@ -9951,11 +10112,11 @@
+ 2005-11-04  Francois-Xavier Coudert  <coudert@clipper.ens.fr>
+ 
+ 	PR libfortran/22298
+-	* gcc/testsuite/lib/target-supports.exp
++	* lib/target-supports.exp
+ 	(check_effective_target_static_libgfortran): New
+ 	static_libgfortran effective target.
+-	* gcc/testsuite/gfortran.dg/static_linking_1.f: New test.
+-	* gcc/testsuite/gfortran.dg/static_linking_1.c: New file.
++	* gfortran.dg/static_linking_1.f: New test.
++	* gfortran.dg/static_linking_1.c: New file.
+ 
+ 2005-11-04  Hans-Peter Nilsson  <hp@axis.com>
+ 
+@@ -17467,7 +17628,7 @@
+ 2005-02-11  Jakub Jelinek  <jakub@redhat.com>
+ 
+ 	PR c++/19666
+-	* gcc/testsuite/g++.dg/other/ptrmem6.C: New test.
++	* g++.dg/other/ptrmem6.C: New test.
+ 
+ 	PR middle-end/19858
+ 	* gcc.c-torture/compile/20050210-1.c: New test.
+@@ -33085,33 +33246,33 @@
+ 
+ 2003-01-16  Mark Mitchell  <mark@codesourcery.com>
+ 
+-	* gcc/testsuite/g++.dg/ext/typename1.C: Add typename keyword.
+-	* gcc/testsuite/g++.dg/template/crash1.C: Update error messages.
+-	* gcc/testsuite/g++.dg/template/crash2.C: Remove error message.
+-	* gcc/testsuite/g++.dg/parse/typename2.C: New test.
+-	* gcc/testsuite/g++.dg/template/typename2.C: Change implicit
++	* g++.dg/ext/typename1.C: Add typename keyword.
++	* g++.dg/template/crash1.C: Update error messages.
++	* g++.dg/template/crash2.C: Remove error message.
++	* g++.dg/parse/typename2.C: New test.
++	* g++.dg/template/typename2.C: Change implicit
+ 	typename warning into error.
+-	* gcc/testsuite/g++.old-deja/g++.benjamin/tem03.C: Issue more
++	* g++.old-deja/g++.benjamin/tem03.C: Issue more
+ 	error messages.
+-	* gcc/testsuite/g++.old-deja/g++.benjamin/tem04.C: Fix typos.
+-	* gcc/testsuite/g++.old-deja/g++.brendan/crash56.C: Add this->.
+-	* gcc/testsuite/g++.old-deja/g++.law/visibility13.C: Remove error
++	* g++.old-deja/g++.benjamin/tem04.C: Fix typos.
++	* g++.old-deja/g++.brendan/crash56.C: Add this->.
++	* g++.old-deja/g++.law/visibility13.C: Remove error
+ 	messages.
+-	* gcc/testsuite/g++.old-deja/g++.ns/template17.C: Reorder code to
++	* g++.old-deja/g++.ns/template17.C: Reorder code to
+ 	make declaration visible in template.
+-	* gcc/testsuite/g++.old-deja/g++.pt/crash3.C: Fix typos.
+-	* gcc/testsuite/g++.old-deja/g++.pt/crash36.C: Issue more error
++	* g++.old-deja/g++.pt/crash3.C: Fix typos.
++	* g++.old-deja/g++.pt/crash36.C: Issue more error
+ 	messages.
+-	* gcc/testsuite/g++.old-deja/g++.pt/crash5.C: Improve error
++	* g++.old-deja/g++.pt/crash5.C: Improve error
+ 	message.
+-	* gcc/testsuite/g++.old-deja/g++.pt/crash67.C: Remove warning.
+-	* gcc/testsuite/g++.old-deja/g++.pt/inherit1.C: Add this->.
+-	* gcc/testsuite/g++.old-deja/g++.pt/niklas01a.C: Add error message.
+-	* gcc/testsuite/g++.old-deja/g++.pt/typename16.C: Replace implicit
++	* g++.old-deja/g++.pt/crash67.C: Remove warning.
++	* g++.old-deja/g++.pt/inherit1.C: Add this->.
++	* g++.old-deja/g++.pt/niklas01a.C: Add error message.
++	* g++.old-deja/g++.pt/typename16.C: Replace implicit
+ 	typename warning with error message.
+-	* gcc/testsuite/g++.old-deja/g++.pt/typename19.C: Remove warning.
+-	* gcc/testsuite/g++.old-deja/g++.robertl/eb112.C: Fix typo.
+-	* gcc/testsuite/g++.old-deja/g++.robertl/eb24.C: Use this->.
++	* g++.old-deja/g++.pt/typename19.C: Remove warning.
++	* g++.old-deja/g++.robertl/eb112.C: Fix typo.
++	* g++.old-deja/g++.robertl/eb24.C: Use this->.
+ 
+ 2003-01-16  Nathan Sidwell  <nathan@codesourcery.com>
+ 
+@@ -34702,9 +34863,9 @@
+ 
+ 2002-09-25  Mark Mitchell  <mark@codesourcery.com>
+ 
+-	* gcc/testsuite/g++.dg/abi/empty5.C: New test.
+-	* gcc/testsuite/g++.dg/abi/empty6.C: New test.
+-	* gcc/testsuite/g++.dg/abi/vbase12.C: New test.
++	* g++.dg/abi/empty5.C: New test.
++	* g++.dg/abi/empty6.C: New test.
++	* g++.dg/abi/vbase12.C: New test.
+ 
+ 2002-09-25  Richard Henderson  <rth@redhat.com>
+ 
+@@ -35726,7 +35887,7 @@
+ 
+ 2002-05-23  Mark Mitchell  <mark@codesourcery.com>
+ 
+-	* gcc/testsuite/gcc.dg/weak-8.c: New test.
++	* gcc.dg/weak-8.c: New test.
+ 
+ 2002-05-23  J"orn Rennecke <joern.rennecke@superh.com>
+ 
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C	(revision 124164)
 @@ -0,0 +1,15 @@
 +/* { dg-do compile } */
 +/* { dg-options "-O2 -w" } */
@@ -1159,7 +2259,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29585.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C	(revision 124164)
 @@ -1,5 +1,6 @@
  /* { dg-do compile { target i?86-*-* } } */
  /* { dg-options "-O1 -fprefetch-loop-arrays -march=athlon" } */
@@ -1175,7 +2275,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/tree-ssa/pr29902.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C	(revision 124164)
 @@ -0,0 +1,16 @@
 +// PR c++/31187
 +// Bug: the repeated declaration was confusing the compiler into
@@ -1196,7 +2296,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/ext/visibility/anon3.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C	(revision 124164)
 @@ -0,0 +1,31 @@
 +// PR 31074
 +// Bug: The reference cast wasn't finding the desired static_cast followed by
@@ -1232,7 +2332,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/inherit/conv3.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C	(revision 124164)
 @@ -1,3 +1,5 @@
 +// { dg-options "-O -fopenmp" }
 +
@@ -1242,7 +2342,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/gomp/pr25874.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C	(revision 124164)
 @@ -0,0 +1,40 @@
 +/* { dg-do run } */
 +/* { dg-options "-O" } */
@@ -1287,7 +2387,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/opt/pr30590.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C	(revision 124164)
 @@ -0,0 +1,11 @@
 +// PR c++/31449
 +
@@ -1300,10 +2400,37 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/init/const5.C
 +void func(const Foo *foo) {
 +  Bar *bar = static_cast<const Bar*>(foo);  // { dg-error "conversion" }
 +}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/warn/pragma-system_header3.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/warn/pragma-system_header3.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/warn/pragma-system_header3.C	(revision 124164)
+@@ -0,0 +1,10 @@
++// PR c++/30500
++// { dg-options "-Wcast-align" }
++
++#include "pragma-system_header3.h"
++
++void f()
++{
++  g<int>();
++  h<int>();
++}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/warn/pragma-system_header3.h
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/warn/pragma-system_header3.h	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/warn/pragma-system_header3.h	(revision 124164)
+@@ -0,0 +1,7 @@
++#pragma GCC system_header
++
++template <typename T>
++  int* g() { static char c; return reinterpret_cast<int*>(&c); }
++
++template <typename T>
++  T* h() { static char c; return reinterpret_cast<T*>(&c); }
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C	(revision 124164)
 @@ -0,0 +1,15 @@
 +// PR c++/30847
 +// { dg-do compile }
@@ -1323,7 +2450,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/parse/cond3.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C	(revision 123014)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C	(revision 124164)
 @@ -7,5 +7,4 @@
     template <int i> struct Y {};
  };
@@ -1334,7 +2461,7 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/parse/tmpl-outside1.C
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C	(revision 124164)
 @@ -0,0 +1,8 @@
 +// PR c++/30863
 +
@@ -1344,10 +2471,24 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/template/error24.C
 +void f() {
 +  unsigned s<int> x; // { dg-error "invalid" }
 +}
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/template/init7.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/template/init7.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/template/init7.C	(revision 124164)
+@@ -0,0 +1,9 @@
++/* PR c++/31517. This used to ICE.  */
++/* { dg-do "compile" } */
++
++template<typename> struct A
++{
++  static const int i=0;
++};
++
++template<typename T> const int A<T>::i = 0=0; /* { dg-error "duplicate initialization" } */
 Index: gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C	(revision 124164)
 @@ -0,0 +1,8 @@
 +// PR c++/31273
 +
@@ -1357,10 +2498,60 @@ Index: gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield7.C
 +};
 +S s;
 +int main() { if (!s.v) return 0; }
+Index: gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield8.C
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield8.C	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/g++.dg/expr/bitfield8.C	(revision 124164)
+@@ -0,0 +1,24 @@
++// PR c++/31513
++// { dg-do run }
++
++extern "C" void abort();
++
++struct tree_type {
++  unsigned int precision : 9;
++};
++
++void bork(unsigned int i) {
++  if (i != 7)
++    abort();
++}
++
++void foo(struct tree_type *t)
++{
++  bork(t->precision);
++}
++
++int main() {
++  tree_type t;
++  t.precision = 7;
++  foo(&t);
++}
+Index: gcc-4_2-branch/gcc/testsuite/gfortran.dg/direct_io_6.f90
+===================================================================
+--- gcc-4_2-branch/gcc/testsuite/gfortran.dg/direct_io_6.f90	(revision 0)
++++ gcc-4_2-branch/gcc/testsuite/gfortran.dg/direct_io_6.f90	(revision 124164)
+@@ -0,0 +1,16 @@
++! { dg-do run }
++! pr31366 last record truncated for read after short write, direct access file.
++! test case derived from pr, submitted by jerry delisle  <jvdelisle@gcc.gnu.org
++      program test
++      character(len=8) :: as_written, as_read
++      character(1) :: byte
++      as_written = "12345678"
++      open (76, access="direct", recl=12, status="scratch")
++      write(76, rec=1) as_written
++      write(76, rec=2) as_written
++      read(76, rec=1) as_read, byte, byte, byte, byte
++      read(76, rec=2, err=3) as_read, byte, byte, byte, byte
++      stop
++  3   call abort()
++      end program test
++
 Index: gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m
 ===================================================================
 --- gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m	(revision 0)
-+++ gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m	(revision 123843)
++++ gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m	(revision 124164)
 @@ -0,0 +1,27 @@
 +/* From PR31281.  */
 +extern void abort (void);
@@ -1392,7 +2583,7 @@ Index: gcc-4_2-branch/gcc/testsuite/objc/execute/exceptions/pr31281.m
 Index: gcc-4_2-branch/gcc/cp/typeck.c
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/typeck.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/typeck.c	(revision 123843)
++++ gcc-4_2-branch/gcc/cp/typeck.c	(revision 124164)
 @@ -5614,6 +5614,12 @@
  	tree cond;
  	tree preeval = NULL_TREE;
@@ -1426,7 +2617,7 @@ Index: gcc-4_2-branch/gcc/cp/typeck.c
 Index: gcc-4_2-branch/gcc/cp/class.c
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/class.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/class.c	(revision 123843)
++++ gcc-4_2-branch/gcc/cp/class.c	(revision 124164)
 @@ -302,7 +302,18 @@
  	 field, because other parts of the compiler know that such
  	 expressions are always non-NULL.  */
@@ -1465,7 +2656,7 @@ Index: gcc-4_2-branch/gcc/cp/class.c
 Index: gcc-4_2-branch/gcc/cp/decl.c
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/decl.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/decl.c	(revision 123843)
++++ gcc-4_2-branch/gcc/cp/decl.c	(revision 124164)
 @@ -3815,6 +3815,7 @@
    tree decl;
    tree type, tem;
@@ -1519,7 +2710,7 @@ Index: gcc-4_2-branch/gcc/cp/decl.c
 Index: gcc-4_2-branch/gcc/cp/call.c
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/call.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/call.c	(revision 123843)
++++ gcc-4_2-branch/gcc/cp/call.c	(revision 124164)
 @@ -171,7 +171,7 @@
  	(struct z_candidate **, tree, tree, tree, tree, tree, int);
  static conversion *implicit_conversion (tree, tree, tree, bool, int);
@@ -1606,7 +2797,15 @@ Index: gcc-4_2-branch/gcc/cp/call.c
    else
      conv = standard_conversion (to, from, expr, c_cast_p, flags);
  
-@@ -6564,7 +6567,8 @@
+@@ -4655,6 +4658,7 @@
+ tree
+ convert_for_arg_passing (tree type, tree val)
+ {
++  val = convert_bitfield_to_declared_type (val);
+   if (val == error_mark_node)
+     ;
+   /* Pass classes with copy ctors by invisible reference.  */
+@@ -6564,7 +6568,8 @@
    /* Get the high-water mark for the CONVERSION_OBSTACK.  */
    p = conversion_obstack_alloc (0);
  
@@ -1619,7 +2818,7 @@ Index: gcc-4_2-branch/gcc/cp/call.c
 Index: gcc-4_2-branch/gcc/cp/cp-tree.h
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/cp-tree.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/cp-tree.h	(revision 123843)
++++ gcc-4_2-branch/gcc/cp/cp-tree.h	(revision 124164)
 @@ -4471,6 +4471,7 @@
  extern int ptr_reasonably_similar		(tree, tree);
  extern tree build_ptrmemfunc			(tree, tree, int, bool);
@@ -1631,8 +2830,24 @@ Index: gcc-4_2-branch/gcc/cp/cp-tree.h
 Index: gcc-4_2-branch/gcc/cp/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/ChangeLog	(revision 123843)
-@@ -1,3 +1,54 @@
++++ gcc-4_2-branch/gcc/cp/ChangeLog	(revision 124164)
+@@ -1,3 +1,70 @@
++2007-04-24  Paolo Carlini  <pcarlini@suse.de>
++
++	PR c++/30500
++	* pt.c (instantiate_decl): Set in_system_header.
++
++2007-04-17  Simon Martin  <simartin@users.sourceforge.net>
++
++	PR c++/31517
++	* pt.c (value_dependent_expression_p): Handle MODOP_EXPRs.
++
++2007-04-16  Mark Mitchell  <mark@codesourcery.com>
++
++	PR c++/31513
++	* call.c (convert_for_arg_passing): Convert bitfields to their
++	declared types.
++
 +2007-04-13  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/31074
@@ -1687,10 +2902,49 @@ Index: gcc-4_2-branch/gcc/cp/ChangeLog
  2007-03-14  Andrew Pinski  <andrew_pinski@playstation.sony.com>
  
  	PR c++/31165
+Index: gcc-4_2-branch/gcc/cp/pt.c
+===================================================================
+--- gcc-4_2-branch/gcc/cp/pt.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cp/pt.c	(revision 124164)
+@@ -12034,6 +12034,7 @@
+   bool pattern_defined;
+   int need_push;
+   location_t saved_loc = input_location;
++  int saved_in_system_header = in_system_header;
+   bool external_p;
+ 
+   /* This function should only be used to instantiate templates for
+@@ -12116,6 +12117,7 @@
+     mark_definable (d);
+ 
+   input_location = DECL_SOURCE_LOCATION (d);
++  in_system_header = DECL_IN_SYSTEM_HEADER (d);
+ 
+   /* If D is a member of an explicitly instantiated class template,
+      and no definition is available, treat it like an implicit
+@@ -12349,6 +12351,7 @@
+ 
+ out:
+   input_location = saved_loc;
++  in_system_header = saved_in_system_header;
+   pop_deferring_access_checks ();
+   pop_tinst_level ();
+ 
+@@ -12924,6 +12927,10 @@
+ 	 such calls are value-dependent.  */
+       return true;
+ 
++    case MODOP_EXPR:
++      return ((value_dependent_expression_p (TREE_OPERAND (expression, 0)))
++	      || (value_dependent_expression_p (TREE_OPERAND (expression, 2))));
++
+     default:
+       /* A constant expression is value-dependent if any subexpression is
+ 	 value-dependent.  */
 Index: gcc-4_2-branch/gcc/cp/parser.c
 ===================================================================
 --- gcc-4_2-branch/gcc/cp/parser.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/cp/parser.c	(revision 123843)
++++ gcc-4_2-branch/gcc/cp/parser.c	(revision 124164)
 @@ -2281,12 +2281,13 @@
       the scope is dependent, we cannot do much.  */
    if (!cp_lexer_next_token_is (parser->lexer, CPP_NAME)
@@ -1710,7 +2964,7 @@ Index: gcc-4_2-branch/gcc/cp/parser.c
 Index: gcc-4_2-branch/gcc/cse.c
 ===================================================================
 --- gcc-4_2-branch/gcc/cse.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/cse.c	(revision 123843)
++++ gcc-4_2-branch/gcc/cse.c	(revision 124164)
 @@ -4542,6 +4542,14 @@
    op1 = fold_rtx (XEXP (XEXP (SET_SRC (set), 0), 1), insn);
  
@@ -1726,10 +2980,77 @@ Index: gcc-4_2-branch/gcc/cse.c
    if (! cond_known_true)
      {
        code = reversed_comparison_code_parts (code, op0, op1, insn);
+Index: gcc-4_2-branch/gcc/dwarf2out.c
+===================================================================
+--- gcc-4_2-branch/gcc/dwarf2out.c	(revision 123014)
++++ gcc-4_2-branch/gcc/dwarf2out.c	(revision 124164)
+@@ -10003,12 +10003,24 @@
+   if (DECL_P (*tp) && ! TREE_PUBLIC (*tp) && ! TREE_USED (*tp)
+       && ! TREE_ASM_WRITTEN (*tp))
+     return *tp;
+-  else if (DECL_P (*tp) && TREE_CODE (*tp) != FUNCTION_DECL)
++  else if (!flag_unit_at_a_time)
++    return NULL_TREE;
++  else if (!cgraph_global_info_ready
++	   && (TREE_CODE (*tp) == VAR_DECL || TREE_CODE (*tp) == FUNCTION_DECL))
++    gcc_unreachable ();
++  else if (DECL_P (*tp) && TREE_CODE (*tp) == VAR_DECL)
+     {
+       struct cgraph_varpool_node *node = cgraph_varpool_node (*tp);
+       if (!node->needed)
+ 	return *tp;
+     }
++   else if (DECL_P (*tp) && TREE_CODE (*tp) == FUNCTION_DECL
++	    && (!DECL_EXTERNAL (*tp) || DECL_DECLARED_INLINE_P (*tp)))
++    {
++      struct cgraph_node *node = cgraph_node (*tp);
++      if (!node->output)
++        return *tp;
++    }
+ 
+   return NULL_TREE;
+ }
+Index: gcc-4_2-branch/gcc/expr.c
+===================================================================
+--- gcc-4_2-branch/gcc/expr.c	(revision 123014)
++++ gcc-4_2-branch/gcc/expr.c	(revision 124164)
+@@ -8786,8 +8786,15 @@
+   HOST_WIDE_INT prec = TYPE_PRECISION (type);
+   if (target && GET_MODE (target) != GET_MODE (exp))
+     target = 0;
+-  if (TYPE_UNSIGNED (type))
++  /* For constant values, reduce using build_int_cst_type. */
++  if (GET_CODE (exp) == CONST_INT)
+     {
++      HOST_WIDE_INT value = INTVAL (exp);
++      tree t = build_int_cst_type (type, value);
++      return expand_expr (t, target, VOIDmode, EXPAND_NORMAL);
++    }
++  else if (TYPE_UNSIGNED (type))
++    {
+       rtx mask;
+       if (prec < HOST_BITS_PER_WIDE_INT)
+ 	mask = immed_double_const (((unsigned HOST_WIDE_INT) 1 << prec) - 1, 0,
+Index: gcc-4_2-branch/gcc/cfgbuild.c
+===================================================================
+--- gcc-4_2-branch/gcc/cfgbuild.c	(revision 123014)
++++ gcc-4_2-branch/gcc/cfgbuild.c	(revision 124164)
+@@ -120,6 +120,11 @@
+ 	      || can_throw_internal (insn));
+ 
+     case INSN:
++      /* Treat trap instructions like noreturn calls (same provision).  */
++      if (GET_CODE (PATTERN (insn)) == TRAP_IF
++	  && XEXP (PATTERN (insn), 0) == const1_rtx)
++	return true;
++
+       return (flag_non_call_exceptions && can_throw_internal (insn));
+ 
+     case BARRIER:
 Index: gcc-4_2-branch/gcc/opts.c
 ===================================================================
 --- gcc-4_2-branch/gcc/opts.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/opts.c	(revision 123843)
++++ gcc-4_2-branch/gcc/opts.c	(revision 124164)
 @@ -1010,7 +1010,7 @@
        break;
  
@@ -1742,7 +3063,7 @@ Index: gcc-4_2-branch/gcc/opts.c
 Index: gcc-4_2-branch/gcc/c-decl.c
 ===================================================================
 --- gcc-4_2-branch/gcc/c-decl.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/c-decl.c	(revision 123843)
++++ gcc-4_2-branch/gcc/c-decl.c	(revision 124164)
 @@ -3337,7 +3337,7 @@
  void
  finish_decl (tree decl, tree init, tree asmspec_tree)
@@ -1764,7 +3085,7 @@ Index: gcc-4_2-branch/gcc/c-decl.c
 Index: gcc-4_2-branch/gcc/fortran/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/gcc/fortran/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/gcc/fortran/ChangeLog	(revision 123843)
++++ gcc-4_2-branch/gcc/fortran/ChangeLog	(revision 124164)
 @@ -1,3 +1,20 @@
 +2007-04-12  Daniel Franke  <franke.daniel@gmail.com>
 +
@@ -1789,7 +3110,7 @@ Index: gcc-4_2-branch/gcc/fortran/ChangeLog
 Index: gcc-4_2-branch/gcc/fortran/invoke.texi
 ===================================================================
 --- gcc-4_2-branch/gcc/fortran/invoke.texi	(revision 123014)
-+++ gcc-4_2-branch/gcc/fortran/invoke.texi	(revision 123843)
++++ gcc-4_2-branch/gcc/fortran/invoke.texi	(revision 124164)
 @@ -128,9 +128,9 @@
  and Warnings}.
  @gccoptlist{-fmax-errors=@var{n} @gol
@@ -1907,7 +3228,7 @@ Index: gcc-4_2-branch/gcc/fortran/invoke.texi
 Index: gcc-4_2-branch/gcc/fortran/intrinsic.texi
 ===================================================================
 --- gcc-4_2-branch/gcc/fortran/intrinsic.texi	(revision 123014)
-+++ gcc-4_2-branch/gcc/fortran/intrinsic.texi	(revision 123843)
++++ gcc-4_2-branch/gcc/fortran/intrinsic.texi	(revision 124164)
 @@ -7614,10 +7614,11 @@
  @cindex @code{RANDOM_NUMBER} intrinsic
  @cindex random numbers
@@ -2019,7 +3340,7 @@ Index: gcc-4_2-branch/gcc/fortran/intrinsic.texi
 Index: gcc-4_2-branch/gcc/c.opt
 ===================================================================
 --- gcc-4_2-branch/gcc/c.opt	(revision 123014)
-+++ gcc-4_2-branch/gcc/c.opt	(revision 123843)
++++ gcc-4_2-branch/gcc/c.opt	(revision 124164)
 @@ -133,7 +133,7 @@
  Warn about casting functions to incompatible types
  
@@ -2059,7 +3380,7 @@ Index: gcc-4_2-branch/gcc/c.opt
 Index: gcc-4_2-branch/gcc/c-typeck.c
 ===================================================================
 --- gcc-4_2-branch/gcc/c-typeck.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/c-typeck.c	(revision 123843)
++++ gcc-4_2-branch/gcc/c-typeck.c	(revision 124164)
 @@ -3940,10 +3940,16 @@
  	       || coder == BOOLEAN_TYPE))
      return convert_and_check (type, rhs);
@@ -2079,11 +3400,915 @@ Index: gcc-4_2-branch/gcc/c-typeck.c
      {
        tree memb, marginal_memb = NULL_TREE;
  
+Index: gcc-4_2-branch/gcc/expmed.c
+===================================================================
+--- gcc-4_2-branch/gcc/expmed.c	(revision 123014)
++++ gcc-4_2-branch/gcc/expmed.c	(revision 124164)
+@@ -4976,17 +4976,17 @@
+ 
+     case CONST_VECTOR:
+       {
+-	int i, units;
+-	rtx elt;
++	int units = CONST_VECTOR_NUNITS (x);
++	tree itype = TREE_TYPE (type);
+ 	tree t = NULL_TREE;
++	int i;
+ 
+-	units = CONST_VECTOR_NUNITS (x);
+ 
+ 	/* Build a tree with vector elements.  */
+ 	for (i = units - 1; i >= 0; --i)
+ 	  {
+-	    elt = CONST_VECTOR_ELT (x, i);
+-	    t = tree_cons (NULL_TREE, make_tree (type, elt), t);
++	    rtx elt = CONST_VECTOR_ELT (x, i);
++	    t = tree_cons (NULL_TREE, make_tree (itype, elt), t);
+ 	  }
+ 
+ 	return build_vector (type, t);
+Index: gcc-4_2-branch/gcc/po/ChangeLog
+===================================================================
+--- gcc-4_2-branch/gcc/po/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/gcc/po/ChangeLog	(revision 124164)
+@@ -1,3 +1,7 @@
++2007-04-21  Joseph S. Myers  <joseph@codesourcery.com>
++
++	* sv.po: Update.
++
+ 2007-03-08  Joseph S. Myers  <joseph@codesourcery.com>
+ 
+ 	* sr.po: New.
+Index: gcc-4_2-branch/gcc/po/sv.po
+===================================================================
+--- gcc-4_2-branch/gcc/po/sv.po	(revision 123014)
++++ gcc-4_2-branch/gcc/po/sv.po	(revision 124164)
+@@ -1,7 +1,7 @@
+ # Swedish messages for GCC.
+-# Copyright © 2000, 2005, 2006 Free Software Foundation, Inc.
++# Copyright © 2000, 2005, 2006, 2007 Free Software Foundation, Inc.
+ # Dennis Björklund <db@zigo.dhs.org>, 2000, 2001, 2002.
+-# Göran Uddeborg <goeran@uddeborg.se>, 2005, 2006.
++# Göran Uddeborg <goeran@uddeborg.se>, 2005, 2006, 2007.
+ #
+ # Remember: GCC team does not want RCS keywords in the header!
+ #
+@@ -10,7 +10,7 @@
+ "Project-Id-Version: gcc 4.1.1\n"
+ "Report-Msgid-Bugs-To: http://gcc.gnu.org/bugs.html\n"
+ "POT-Creation-Date: 2006-05-24 16:19-0700\n"
+-"PO-Revision-Date: 2006-12-13 22:05+0100\n"
++"PO-Revision-Date: 2007-04-03 09:58+0200\n"
+ "Last-Translator: Göran Uddeborg <goeran@uddeborg.se>\n"
+ "Language-Team: Swedish <tp-sv@listor.tp-sv.se>\n"
+ "MIME-Version: 1.0\n"
+@@ -364,7 +364,7 @@
+ 
+ #: c-typeck.c:5209
+ msgid "braces around scalar initializer"
+-msgstr "klamrar funt skalär initierare"
++msgstr "klamrar runt skalär initierare"
+ 
+ #: c-typeck.c:5266
+ msgid "initialization of flexible array member in a nested context"
+@@ -9266,19 +9266,19 @@
+ 
+ #: java/lang.opt:66
+ msgid "Warn if a deprecated compiler feature, class, method, or field is used"
+-msgstr "Varna om en kompilatorfunktion, klass, metod eller fält som avrådes ifrån används"
++msgstr "Varna för en kompilatorfunktion, klass, metod eller fält som bör undvikas används"
+ 
+ #: java/lang.opt:70
+ msgid "Warn if deprecated empty statements are found"
+-msgstr "Varna om föråldrade tomma satser finns"
++msgstr "Varna för tomma satser som bör undvikas finns"
+ 
+ #: java/lang.opt:74
+ msgid "Warn if .class files are out of date"
+-msgstr "Varna om .class-filer är inaktuella"
++msgstr "Varna för .class-filer är inaktuella"
+ 
+ #: java/lang.opt:78
+ msgid "Warn if modifiers are specified when not necessary"
+-msgstr "Varna om modifierare anges när de inte behövs"
++msgstr "Varna för modifierare anges när de inte behövs"
+ 
+ #: java/lang.opt:82
+ msgid "Deprecated; use --classpath instead"
+@@ -9370,23 +9370,23 @@
+ 
+ #: fortran/lang.opt:42
+ msgid "Warn about possible aliasing of dummy arguments"
+-msgstr "Varna om eventuell aliasning av atrappargument"
++msgstr "Varna för eventuell aliasning av atrappargument"
+ 
+ #: fortran/lang.opt:46
+ msgid "Warn about missing ampersand in continued character literals"
+-msgstr "Varna om saknade ampersander i fortsatta teckenliteraler"
++msgstr "Varna för saknade ampersander i fortsatta teckenliteraler"
+ 
+ #: fortran/lang.opt:50
+ msgid "Warn about implicit conversion"
+-msgstr "Varna om implicita konverteringar"
++msgstr "Varna för implicita konverteringar"
+ 
+ #: fortran/lang.opt:54
+ msgid "Warn about calls with implicit interface"
+-msgstr "Varna om anrop med implicit gränssnitt"
++msgstr "Varna för anrop med implicit gränssnitt"
+ 
+ #: fortran/lang.opt:58
+ msgid "Warn about truncated source lines"
+-msgstr "Varna om avhuggna källkodsrader"
++msgstr "Varna för avhuggna källkodsrader"
+ 
+ #: fortran/lang.opt:62
+ msgid "Warn about usage of non-standard intrinsics"
+@@ -9394,11 +9394,11 @@
+ 
+ #: fortran/lang.opt:66
+ msgid "Warn about \"suspicious\" constructs"
+-msgstr "Varna om \"misstänkta\" konstruktioner"
++msgstr "Varna för \"misstänkta\" konstruktioner"
+ 
+ #: fortran/lang.opt:70
+ msgid "Warn about underflow of numerical constant expressions"
+-msgstr "Varna om underspill i numeriska konstantuttryck"
++msgstr "Varna för underspill i numeriska konstantuttryck"
+ 
+ #: fortran/lang.opt:74 common.opt:162
+ msgid "Warn when a label is unused"
+@@ -9936,11 +9936,11 @@
+ 
+ #: config/s390/s390.opt:92
+ msgid "Warn if a function uses alloca or creates an array with dynamic size"
+-msgstr "Varna om en funktion använder alloca eller skapar en vektor med dynamisk storlek"
++msgstr "Varna för en funktion använder alloca eller skapar en vektor med dynamisk storlek"
+ 
+ #: config/s390/s390.opt:96
+ msgid "Warn if a single function's framesize exceeds the given framesize"
+-msgstr "Varna om en enskild funktions ramstorlek överskrider den angivna ramstorleken"
++msgstr "Varna för en enskild funktions ramstorlek överskrider den angivna ramstorleken"
+ 
+ #: config/s390/s390.opt:100
+ msgid "z/Architecture"
+@@ -10690,7 +10690,7 @@
+ 
+ #: config/rs6000/rs6000.opt:215
+ msgid "Warn about deprecated 'vector long ...' AltiVec type usage"
+-msgstr "Varna för användning av AltiVec-typen \"vector long ...\" som avrådes från"
++msgstr "Varna för användning av AltiVec-typen \"vector long ...\" som bör undvikas"
+ 
+ #: config/rs6000/rs6000.opt:219
+ msgid "Select GPR floating point method"
+@@ -12214,7 +12214,7 @@
+ 
+ #: c.opt:117
+ msgid "Warn about things that will change when compiling with an ABI-compliant compiler"
+-msgstr "Varna om saker som skulle ändras vid kompilering med en kompilator som följer ABI"
++msgstr "Varna för saker som skulle ändras vid kompilering med en kompilator som följer ABI"
+ 
+ #: c.opt:121
+ msgid "Enable most warning messages"
+@@ -12226,23 +12226,23 @@
+ 
+ #: c.opt:129
+ msgid "Warn about casting functions to incompatible types"
+-msgstr "Varna om typkonvertering av funktioner till inkompatibla typer"
++msgstr "Varna för typkonvertering av funktioner till inkompatibla typer"
+ 
+ #: c.opt:133
+ msgid "Warn about C constructs that are not in the common subset of C and C++"
+-msgstr "Varna om C-konstruktioner som inte är i den gemensamma delmängden av C och C++"
++msgstr "Varna för C-konstruktioner som inte är i den gemensamma delmängden av C och C++"
+ 
+ #: c.opt:138
+ msgid "Warn about casts which discard qualifiers"
+-msgstr "Varna om typkonvertering som slänger kvalificerare"
++msgstr "Varna för typkonvertering som slänger kvalificerare"
+ 
+ #: c.opt:142
+ msgid "Warn about subscripts whose type is \"char\""
+-msgstr "Varna om index vars typ är \"char\""
++msgstr "Varna för index vars typ är \"char\""
+ 
+ #: c.opt:146
+ msgid "Warn about possibly nested block comments, and C++ comments spanning more than one physical line"
+-msgstr "Varna om möjliga nästade blockkommentarer, och C++-kommentarer som spänner över mer än en fysisk rad"
++msgstr "Varna för möjliga nästade blockkommentarer, och C++-kommentarer som spänner över mer än en fysisk rad"
+ 
+ #: c.opt:150
+ msgid "Synonym for -Wcomment"
+@@ -12250,7 +12250,7 @@
+ 
+ #: c.opt:154
+ msgid "Warn about possibly confusing type conversions"
+-msgstr "Varna om eventuellt förvirrande typkonverteringar"
++msgstr "Varna för eventuellt förvirrande typkonverteringar"
+ 
+ #: c.opt:158
+ msgid "Warn when all constructors and destructors are private"
+@@ -12262,19 +12262,19 @@
+ 
+ #: c.opt:166
+ msgid "Warn about deprecated compiler features"
+-msgstr "Varna om kompilatorfunktioner som undanbedes"
++msgstr "Varna för kompilatorfunktioner bör undvikas"
+ 
+ #: c.opt:170
+ msgid "Warn about compile-time integer division by zero"
+-msgstr "Varna om heltalsdivision med noll vid kompileringstillfället"
++msgstr "Varna för heltalsdivision med noll vid kompileringstillfället"
+ 
+ #: c.opt:174
+ msgid "Warn about violations of Effective C++ style rules"
+-msgstr "Varna om brott mot Effective C++ stilregler"
++msgstr "Varna för brott mot stilreglerna i Effective C++"
+ 
+ #: c.opt:178
+ msgid "Warn about stray tokens after #elif and #endif"
+-msgstr "Varna om vilsekomna symboler efter #elif och #endif"
++msgstr "Varna för vilsekomna symboler efter #elif och #endif"
+ 
+ #: c.opt:186
+ msgid "Make implicit function declarations an error"
+@@ -12286,35 +12286,35 @@
+ 
+ #: c.opt:194
+ msgid "Warn about printf/scanf/strftime/strfmon format string anomalies"
+-msgstr "Varna om anomalier i formatsträngar till printf/scanf/strftime/strfmon"
++msgstr "Varna för anomalier i formatsträngar till printf/scanf/strftime/strfmon"
+ 
+ #: c.opt:198
+ msgid "Warn if passing too many arguments to a function for its format string"
+-msgstr "Varna om för många argument argument till en funktion för dess formatsträng"
++msgstr "Varna för för många argument argument till en funktion för dess formatsträng"
+ 
+ #: c.opt:202
+ msgid "Warn about format strings that are not literals"
+-msgstr "Varna om formatsträngar som inte är literaler"
++msgstr "Varna för formatsträngar som inte är literaler"
+ 
+ #: c.opt:206
+ msgid "Warn about possible security problems with format functions"
+-msgstr "Varna om möjliga säkerhetsproblem med formatfunktioner"
++msgstr "Varna för möjliga säkerhetsproblem med formatfunktioner"
+ 
+ #: c.opt:210
+ msgid "Warn about strftime formats yielding 2-digit years"
+-msgstr "Varna om format till strftime som ger 2-siffrigt årtal"
++msgstr "Varna för format till strftime som ger 2-siffrigt årtal"
+ 
+ #: c.opt:214
+ msgid "Warn about zero-length formats"
+-msgstr "Varna om format med längden noll"
++msgstr "Varna för format med längden noll"
+ 
+ #: c.opt:221
+ msgid "Warn about variables which are initialized to themselves"
+-msgstr "Varna om variabler som intieras till sig själva"
++msgstr "Varna för variabler som intieras till sig själva"
+ 
+ #: c.opt:228
+ msgid "Warn about implicit function declarations"
+-msgstr "Varna om implicita funktionsdeklarationer"
++msgstr "Varna för implicita funktionsdeklarationer"
+ 
+ #: c.opt:232
+ msgid "Warn when a declaration does not specify a type"
+@@ -12326,15 +12326,15 @@
+ 
+ #: c.opt:240
+ msgid "Warn when there is a cast to a pointer from an integer of a different size"
+-msgstr "Varna om typkonverteringar till pekare från ett heltal med annan storlek"
++msgstr "Varna för typkonverteringar till pekare från ett heltal med annan storlek"
+ 
+ #: c.opt:244
+ msgid "Warn about invalid uses of the \"offsetof\" macro"
+-msgstr "Varna om ogiltiga användningar av makrot \"offsetof\""
++msgstr "Varna för ogiltiga användningar av makrot \"offsetof\""
+ 
+ #: c.opt:248
+ msgid "Warn about PCH files that are found but not used"
+-msgstr "Varna om PCH-filer som hittas men inte används"
++msgstr "Varna för PCH-filer som hittas men inte används"
+ 
+ #: c.opt:252
+ msgid "Do not warn about using \"long long\" when -pedantic"
+@@ -12342,31 +12342,31 @@
+ 
+ #: c.opt:256
+ msgid "Warn about suspicious declarations of \"main\""
+-msgstr "Varna om tveksamma deklarationer av \"main\""
++msgstr "Varna för tveksamma deklarationer av \"main\""
+ 
+ #: c.opt:260
+ msgid "Warn about possibly missing braces around initializers"
+-msgstr "Varna om eventuellt saknade klamrar runt initierare"
++msgstr "Varna för eventuellt saknade klamrar runt initierare"
+ 
+ #: c.opt:264
+ msgid "Warn about global functions without previous declarations"
+-msgstr "Varna om globala globala funktioner utan tidigare deklaration"
++msgstr "Varna för globala globala funktioner utan tidigare deklaration"
+ 
+ #: c.opt:268
+ msgid "Warn about missing fields in struct initializers"
+-msgstr "Varna om saknade fält i postinitierare"
++msgstr "Varna för saknade fält i postinitierare"
+ 
+ #: c.opt:272
+ msgid "Warn about functions which might be candidates for format attributes"
+-msgstr "Varna om funktioner som kan vara kandidater för formatattribut"
++msgstr "Varna för funktioner som kan vara kandidater för formatattribut"
+ 
+ #: c.opt:276
+ msgid "Warn about user-specified include directories that do not exist"
+-msgstr "Varna om användarangivna inkluderingskataloger som inte finns"
++msgstr "Varna för användarangivna inkluderingskataloger som inte finns"
+ 
+ #: c.opt:280
+ msgid "Warn about global functions without prototypes"
+-msgstr "Varna om globala funktioner utan prototyper"
++msgstr "Varna för globala funktioner utan prototyper"
+ 
+ #: c.opt:284
+ msgid "Warn about use of multi-character character constants"
+@@ -12374,7 +12374,7 @@
+ 
+ #: c.opt:288
+ msgid "Warn about \"extern\" declarations not at file scope"
+-msgstr "Varna om \"extern\"-deklaration som inte är på filnivå"
++msgstr "Varna för \"extern\"-deklaration som inte är på filnivå"
+ 
+ #: c.opt:292
+ msgid "Warn when non-templatized friend functions are declared within a template"
+@@ -12382,31 +12382,31 @@
+ 
+ #: c.opt:296
+ msgid "Warn about non-virtual destructors"
+-msgstr "Varna om ickevirtuella destruerare"
++msgstr "Varna för ickevirtuella destruerare"
+ 
+ #: c.opt:300
+ msgid "Warn about NULL being passed to argument slots marked as requiring non-NULL"
+-msgstr "Varna om NULL skickas som argument till fack markerde att de kräver icke-NULL"
++msgstr "Varna om NULL skickas som argument som är markerade att de kräver icke-NULL"
+ 
+ #: c.opt:304
+ msgid "Warn about non-normalised Unicode strings"
+-msgstr "Varna om icke normaliserade Unicodesträngar"
++msgstr "Varna för icke normaliserade Unicodesträngar"
+ 
+ #: c.opt:308
+ msgid "Warn if a C-style cast is used in a program"
+-msgstr "Varna om en typkonvertering i C-stil används i ett program"
++msgstr "Varna för en typkonvertering i C-stil används i ett program"
+ 
+ #: c.opt:312
+ msgid "Warn if an old-style parameter definition is used"
+-msgstr "Varna om en gammaldags parameterdefinition används"
++msgstr "Varna för en gammaldags parameterdefinition används"
+ 
+ #: c.opt:316
+ msgid "Warn about overloaded virtual function names"
+-msgstr "Varna om överlastade virtuella funktionsnamn"
++msgstr "Varna för överlagrade virtuella funktionsnamn"
+ 
+ #: c.opt:320
+ msgid "Warn about possibly missing parentheses"
+-msgstr "Varna om eventuellt saknade parenteser"
++msgstr "Varna för eventuellt saknade parenteser"
+ 
+ #: c.opt:324
+ msgid "Warn when converting the type of pointers to member functions"
+@@ -12414,7 +12414,7 @@
+ 
+ #: c.opt:328
+ msgid "Warn about function pointer arithmetic"
+-msgstr "Varna om aritmetik med funktionspekare"
++msgstr "Varna för aritmetik med funktionspekare"
+ 
+ #: c.opt:332
+ msgid "Warn when a pointer is cast to an integer of a different size"
+@@ -12422,15 +12422,15 @@
+ 
+ #: c.opt:336
+ msgid "Warn about misuses of pragmas"
+-msgstr "Varna om missbruk av pragman"
++msgstr "Varna för missbruk av pragman"
+ 
+ #: c.opt:340
+ msgid "Warn if inherited methods are unimplemented"
+-msgstr "Varna om ärvda metoder är oimplementerade"
++msgstr "Varna för ärvda metoder är oimplementerade"
+ 
+ #: c.opt:344
+ msgid "Warn about multiple declarations of the same object"
+-msgstr "Varna om multipla deklarationer av samma objekt"
++msgstr "Varna för multipla deklarationer av samma objekt"
+ 
+ #: c.opt:348
+ msgid "Warn when the compiler reorders code"
+@@ -12442,31 +12442,31 @@
+ 
+ #: c.opt:356
+ msgid "Warn if a selector has multiple methods"
+-msgstr "Varna om en väljare har multipla metoder"
++msgstr "Varna för en väljare har multipla metoder"
+ 
+ #: c.opt:360
+ msgid "Warn about possible violations of sequence point rules"
+-msgstr "Varna om möjliga brott mot sekvenspunktregler"
++msgstr "Varna för möjliga brott mot sekvenspunktregler"
+ 
+ #: c.opt:364
+ msgid "Warn about signed-unsigned comparisons"
+-msgstr "Varna om jämförelser mellan signed/unsigned"
++msgstr "Varna för jämförelser mellan signed/unsigned"
+ 
+ #: c.opt:368
+ msgid "Warn when overload promotes from unsigned to signed"
+-msgstr "Varna när överlastning anpassar från teckenlöst till med tecken"
++msgstr "Varna när överlagring anpassar från teckenlöst till med tecken"
+ 
+ #: c.opt:372
+ msgid "Warn about uncasted NULL used as sentinel"
+-msgstr "Varna om ej typkonverterad NULL används som vaktpost"
++msgstr "Varna för ej typkonverterad NULL används som vaktpost"
+ 
+ #: c.opt:376
+ msgid "Warn about unprototyped function declarations"
+-msgstr "Varna om funktionsdeklarationer utan prototyp"
++msgstr "Varna för funktionsdeklarationer utan prototyp"
+ 
+ #: c.opt:380
+ msgid "Warn if type signatures of candidate methods do not match exactly"
+-msgstr "Varna om typsignaturer till kandidatmetoder inte stämmer exakt"
++msgstr "Varna för typsignaturer till kandidatmetoder inte stämmer exakt"
+ 
+ #: c.opt:384
+ msgid "Warn when synthesis behavior differs from Cfront"
+@@ -12478,27 +12478,27 @@
+ 
+ #: c.opt:392
+ msgid "Warn about features not present in traditional C"
+-msgstr "Varna om funktioner som inte finns i traditionell C"
++msgstr "Varna för funktioner som inte finns i traditionell C"
+ 
+ #: c.opt:396
+ msgid "Warn if trigraphs are encountered that might affect the meaning of the program"
+-msgstr "Varna om trigrafer upptäcks som kan påverka betydelsen av programmet"
++msgstr "Varna för trigrafer upptäcks som kan påverka betydelsen av programmet"
+ 
+ #: c.opt:400
+ msgid "Warn about @selector()s without previously declared methods"
+-msgstr "Varna om @selector()er utan tidigare deklarerade metoder"
++msgstr "Varna för @selector()er utan tidigare deklarerade metoder"
+ 
+ #: c.opt:404
+ msgid "Warn if an undefined macro is used in an #if directive"
+-msgstr "Varna om ett odefinierat makro används i ett #if-direktiv"
++msgstr "Varna för ett odefinierat makro används i ett #if-direktiv"
+ 
+ #: c.opt:408
+ msgid "Warn about unrecognized pragmas"
+-msgstr "Varna om okända pragman"
++msgstr "Varna för okända pragman"
+ 
+ #: c.opt:412
+ msgid "Warn about macros defined in the main file that are not used"
+-msgstr "Varna om makron definierade i huvudfilen som inte används"
++msgstr "Varna för makron definierade i huvudfilen som inte används"
+ 
+ #: c.opt:416
+ msgid "Do not warn about using variadic macros when -pedantic"
+@@ -12886,23 +12886,23 @@
+ 
+ #: common.opt:54
+ msgid "This switch is deprecated; use -Wextra instead"
+-msgstr "Denna flagga avrådes ifrån, använd -Wextra istället"
++msgstr "Denna flagga bör undvikas, använd -Wextra istället"
+ 
+ #: common.opt:58
+ msgid "Warn about returning structures, unions or arrays"
+-msgstr "Varna om retur av poster, unioner eller vektorer"
++msgstr "Varna för retur av poster, unioner eller vektorer"
+ 
+ #: common.opt:62
+ msgid "Warn about inappropriate attribute usage"
+-msgstr "Varna om felaktig användning av attribut"
++msgstr "Varna för felaktig användning av attribut"
+ 
+ #: common.opt:66
+ msgid "Warn about pointer casts which increase alignment"
+-msgstr "Varna om typkonvertering av pekare som ökar justeringen"
++msgstr "Varna för typkonvertering av pekare som ökar justeringen"
+ 
+ #: common.opt:70
+ msgid "Warn about uses of __attribute__((deprecated)) declarations"
+-msgstr "Varna om användning av __attribute__((deprecated))-deklarationer"
++msgstr "Varna för användning av __attribute__((deprecated))-deklarationer"
+ 
+ #: common.opt:74
+ msgid "Warn when an optimization pass is disabled"
+@@ -12926,15 +12926,15 @@
+ 
+ #: common.opt:94
+ msgid "Warn if an object is larger than <number> bytes"
+-msgstr "Varna om ett objekt är större än <antal> byte"
++msgstr "Varna för ett objekt är större än <antal> byte"
+ 
+ #: common.opt:98
+ msgid "Warn if the loop cannot be optimized due to nontrivial assumptions."
+-msgstr "Varna om slingan inte kan optimeras på grund av icketriviala antaganden."
++msgstr "Varna för slingan inte kan optimeras på grund av icketriviala antaganden."
+ 
+ #: common.opt:102
+ msgid "Warn about functions which might be candidates for __attribute__((noreturn))"
+-msgstr "Varna om funktioner som är möjliga kandidater för __attribute__((noreturn))"
++msgstr "Varna för funktioner som är möjliga kandidater för __attribute__((noreturn))"
+ 
+ #: common.opt:106
+ msgid "Warn when the packed attribute has no effect on struct layout"
+@@ -12950,31 +12950,31 @@
+ 
+ #: common.opt:118
+ msgid "Warn when not issuing stack smashing protection for some reason"
+-msgstr "Varna när stacksprängningsskydd inte läggs ut av någon anledning"
++msgstr "Varna när stacköverskrivningsskydd inte läggs ut av någon anledning"
+ 
+ #: common.opt:122 common.opt:126
+ msgid "Warn about code which might break strict aliasing rules"
+-msgstr "Varna om kod som kan bryta strikta aliasregler"
++msgstr "Varna för kod som kan bryta strikta aliasregler"
+ 
+ #: common.opt:130
+ msgid "Warn about enumerated switches, with no default, missing a case"
+-msgstr "Varna om uppräkningshopptabeller, utan standardfall, saknar ett fall"
++msgstr "Varna när hopptabeller för uppräkningstyper inte har standardfall och saknar ett fall"
+ 
+ #: common.opt:134
+ msgid "Warn about enumerated switches missing a \"default:\" statement"
+-msgstr "Varna om uppräkningshopptabeller saknar en \"default:\"-sats"
++msgstr "Varna för uppräkningshopptabeller saknar en \"default:\"-sats"
+ 
+ #: common.opt:138
+ msgid "Warn about all enumerated switches missing a specific case"
+-msgstr "Varna om alla uppräkningshopptabeller som saknar ett specifikt fall"
++msgstr "Varna för alla uppräkningshopptabeller som saknar ett specifikt fall"
+ 
+ #: common.opt:146
+ msgid "Warn about uninitialized automatic variables"
+-msgstr "Varna om oinitierade automatiska variabler"
++msgstr "Varna för oinitierade automatiska variabler"
+ 
+ #: common.opt:150
+ msgid "Warn about code that will never be executed"
+-msgstr "Varna om kod som aldrig kommer köras"
++msgstr "Varna för kod som aldrig kommer köras"
+ 
+ #: common.opt:154
+ msgid "Enable all -Wunused- warnings"
+@@ -13106,7 +13106,7 @@
+ 
+ #: common.opt:334
+ msgid "Place data items into their own section"
+-msgstr "Placera dataföremål i sin egen sektion"
++msgstr "Placera dataobjekt i sin egen sektion"
+ 
+ #: common.opt:340
+ msgid "Defer popping functions args from stack until later"
+@@ -13118,7 +13118,7 @@
+ 
+ #: common.opt:348
+ msgid "Delete useless null pointer checks"
+-msgstr "Tag bort oanvändbara nollpekarkontroller"
++msgstr "Tag bort onödiga nollpekarkontroller"
+ 
+ #: common.opt:352
+ msgid "How often to emit source location at the beginning of line-wrapped diagnostics"
+@@ -13214,7 +13214,7 @@
+ 
+ #: common.opt:464
+ msgid "Perform conversion of conditional jumps to branchless equivalents"
+-msgstr "Utvör konvertering av villkorliga hopp till grenlösa motsvarigheter"
++msgstr "Utför konvertering av villkorliga hopp till grenlösa motsvarigheter"
+ 
+ #: common.opt:468
+ msgid "Perform conversion of conditional jumps to conditional execution"
+@@ -13730,15 +13730,15 @@
+ 
+ #: common.opt:1034
+ msgid "Construct webs and split unrelated uses of single variable"
+-msgstr "Kostruera nät och dela orelaterade användningar av en enskild variabel"
++msgstr "Konstruera nät och dela orelaterade användningar av en enskild variabel"
+ 
+ #: common.opt:1038
+ msgid "Perform whole program optimizations"
+-msgstr "Utför optimeringav hela program"
++msgstr "Utför optimering av hela program"
+ 
+ #: common.opt:1042
+ msgid "Assume signed arithmetic overflow wraps around"
+-msgstr "Anta spill vid teckenaritmetik slår runt"
++msgstr "Anta att spill vid teckenaritmetik slår runt"
+ 
+ #: common.opt:1046
+ msgid "Put zero initialized data in the bss section"
+@@ -14044,7 +14044,7 @@
+ #: c-common.c:975
+ #, gcc-internal-format
+ msgid "type-punning to incomplete type might break strict-aliasing rules"
+-msgstr "typstampning till ofullständiga typ kan bryta strikta aliasregler"
++msgstr "typstampning till ofullständig typ kan bryta strikta aliasregler"
+ 
+ #: c-common.c:983
+ #, gcc-internal-format
+@@ -14059,7 +14059,7 @@
+ #: c-common.c:1049
+ #, gcc-internal-format
+ msgid "overflow in implicit constant conversion"
+-msgstr "spill i implicit constant konvertering"
++msgstr "spill i implicit konstant konvertering"
+ 
+ #: c-common.c:1185
+ #, gcc-internal-format
+@@ -14129,12 +14129,12 @@
+ #: c-common.c:2288
+ #, gcc-internal-format
+ msgid "pointer to a function used in arithmetic"
+-msgstr "pekare till funktion använd med aritmetik"
++msgstr "pekare till funktion använd i aritmetik"
+ 
+ #: c-common.c:2294
+ #, gcc-internal-format
+ msgid "pointer to member function used in arithmetic"
+-msgstr "pekare till medlemsfunktion använd med aritmetik"
++msgstr "pekare till medlemsfunktion använd i aritmetik"
+ 
+ #. Common Ada/Pascal programmer's mistake.  We always warn
+ #. about this since it is so bad.
+@@ -14196,7 +14196,7 @@
+ #: c-common.c:3724
+ #, gcc-internal-format
+ msgid "duplicate (or overlapping) case value"
+-msgstr "dubbla (eller överlappand) case-värden"
++msgstr "dubbla (eller överlappande) case-värden"
+ 
+ #: c-common.c:3725
+ #, gcc-internal-format
+@@ -14236,7 +14236,7 @@
+ #: c-common.c:3844
+ #, gcc-internal-format
+ msgid "%Hswitch missing default case"
+-msgstr "%Hswitch saknare default-fall"
++msgstr "%Hswitch saknar default-fall"
+ 
+ #. Warn if there are enumerators that don't correspond to
+ #. case expressions.
+@@ -14279,7 +14279,7 @@
+ #: c-common.c:4540
+ #, gcc-internal-format
+ msgid "specifying vector types with __attribute__ ((mode)) is deprecated"
+-msgstr "det avrådes från att ange vektortyper med __attribute__ ((sätt))"
++msgstr "att ange vektortyper med __attribute__ ((sätt)) bör unvikas"
+ 
+ #: c-common.c:4543
+ #, gcc-internal-format
+@@ -14339,7 +14339,7 @@
+ #: c-common.c:4708
+ #, gcc-internal-format
+ msgid "requested alignment is not a power of 2"
+-msgstr "efterrågad minnesjustering är inte en potens av 2"
++msgstr "efterfågad minnesjustering är inte en potens av 2"
+ 
+ #: c-common.c:4713
+ #, gcc-internal-format
+@@ -19077,7 +19077,7 @@
+ #: stmt.c:910
+ #, gcc-internal-format
+ msgid "use of memory input without lvalue in asm operand %d is deprecated"
+-msgstr "användning av minnesindata utan lvärde i asm-operand %d undanbedes"
++msgstr "användning av minnesindata utan lvärde i asm-operand %d bör undvikas"
+ 
+ #: stmt.c:1057
+ #, gcc-internal-format
+@@ -19234,22 +19234,22 @@
+ #: toplev.c:892 toplev.c:916
+ #, gcc-internal-format
+ msgid "%qs is deprecated (declared at %s:%d)"
+-msgstr "%qs undanbedes (deklarerad vid %s:%d)"
++msgstr "%qs bör undvikas (deklarerad vid %s:%d)"
+ 
+ #: toplev.c:920
+ #, gcc-internal-format
+ msgid "type is deprecated (declared at %s:%d)"
+-msgstr "typen undanbedes (deklarerad vid %s:%d)"
++msgstr "typen bör undvikas (deklarerad vid %s:%d)"
+ 
+ #: toplev.c:926
+ #, gcc-internal-format
+ msgid "%qs is deprecated"
+-msgstr "%qs undanbedes"
++msgstr "%qs bör undvikas"
+ 
+ #: toplev.c:928
+ #, gcc-internal-format
+ msgid "type is deprecated"
+-msgstr "type undanbedes"
++msgstr "typen bör undvikas"
+ 
+ #: toplev.c:1095
+ #, gcc-internal-format
+@@ -21694,7 +21694,7 @@
+ #: config/rs6000/rs6000.c:7259
+ #, gcc-internal-format
+ msgid "unresolved overload for Altivec builtin %qF"
+-msgstr "ej upplöst överlastning för inbyggd Altivec %qF"
++msgstr "ej upplöst överlagring för inbyggd Altivec %qF"
+ 
+ #: config/rs6000/rs6000.c:7341
+ #, gcc-internal-format
+@@ -21729,7 +21729,7 @@
+ #: config/rs6000/rs6000.c:17299
+ #, gcc-internal-format
+ msgid "use of %<long%> in AltiVec types is deprecated; use %<int%>"
+-msgstr "användning av %<long%> i AltiVec-typer undanbedes, använd %<int%>"
++msgstr "användning av %<long%> i AltiVec-typer bör undvikas, använd %<int%>"
+ 
+ #: config/rs6000/rs6000.c:17303
+ #, gcc-internal-format
+@@ -22307,7 +22307,7 @@
+ #: cp/call.c:2800 cp/call.c:2858
+ #, gcc-internal-format
+ msgid "call of overloaded %<%D(%A)%> is ambiguous"
+-msgstr "anrop av överlastad %<%D(%A)%> är tvetydigt"
++msgstr "anrop av överlagrad %<%D(%A)%> är tvetydigt"
+ 
+ #. It's no good looking for an overloaded operator() on a
+ #. pointer-to-member-function.
+@@ -22522,7 +22522,7 @@
+ #: cp/call.c:5404
+ #, gcc-internal-format
+ msgid "call of overloaded %<%s(%A)%> is ambiguous"
+-msgstr "anrop av överlastad %<%s(%A)%> är tvetydigt"
++msgstr "anrop av överlagrad %<%s(%A)%> är tvetydigt"
+ 
+ #: cp/call.c:5428
+ #, gcc-internal-format
+@@ -22602,7 +22602,7 @@
+ #: cp/class.c:1061
+ #, gcc-internal-format
+ msgid "%q+#D cannot be overloaded"
+-msgstr "%q+#D kan inte överlastas"
++msgstr "%q+#D kan inte överlagras"
+ 
+ #: cp/class.c:1062
+ #, gcc-internal-format
+@@ -22880,7 +22880,7 @@
+ #: cp/class.c:5714
+ #, gcc-internal-format
+ msgid "cannot resolve overloaded function %qD based on conversion to type %qT"
+-msgstr "det går inte att lösa upp  överlastad funktion %qD baserat på konvertering till typ %qT"
++msgstr "det går inte att lösa upp överlagrad funktion %qD baserat på konvertering till typ %qT"
+ 
+ #: cp/class.c:5841
+ #, gcc-internal-format
+@@ -22890,7 +22890,7 @@
+ #: cp/class.c:5864
+ #, gcc-internal-format
+ msgid "converting overloaded function %qD to type %q#T is ambiguous"
+-msgstr "konvertering av överlastad funktion %qD till typ %q#T är tvetydig"
++msgstr "konvertering av överlagrad funktion %qD till typ %q#T är tvetydig"
+ 
+ #: cp/class.c:5890
+ #, gcc-internal-format
+@@ -23022,7 +23022,7 @@
+ #: cp/cvt.c:902
+ #, gcc-internal-format
+ msgid "%s cannot resolve address of overloaded function"
+-msgstr "%s kan inte lösa upp adress till överlastad funktion"
++msgstr "%s kan inte lösa upp adress till överlagrad funktion"
+ 
+ #. Only warn when there is no &.
+ #: cp/cvt.c:908
+@@ -23565,7 +23565,7 @@
+ #: cp/decl.c:4387
+ #, gcc-internal-format
+ msgid "braces around scalar initializer for type %qT"
+-msgstr "klamrar funt skalär initierare för typen %qT"
++msgstr "klamrar runt skalär initierare för typen %qT"
+ 
+ #: cp/decl.c:4465
+ #, gcc-internal-format
+@@ -24427,7 +24427,7 @@
+ #: cp/decl.c:9012
+ #, gcc-internal-format
+ msgid "ISO C++ prohibits overloading operator ?:"
+-msgstr "ISO C++ förhindrar överlastning av operatorn ?:"
++msgstr "ISO C++ förhindrar överlagring av operatorn ?:"
+ 
+ #: cp/decl.c:9015
+ #, gcc-internal-format
+@@ -24848,7 +24848,7 @@
+ #: cp/except.c:631 cp/init.c:1929
+ #, gcc-internal-format
+ msgid "%qD should never be overloaded"
+-msgstr "%qD skall aldrig överlastas"
++msgstr "%qD skall aldrig överlagras"
+ 
+ #: cp/except.c:698
+ #, gcc-internal-format
+@@ -25242,7 +25242,7 @@
+ #: cp/lex.c:651
+ #, gcc-internal-format
+ msgid "(if you use %<-fpermissive%>, G++ will accept your code, but allowing the use of an undeclared name is deprecated)"
+-msgstr "(om du använder %<-fpermissive%>, kommer G++ acceptera din kod, men det avrådes från att tillåta användning av ett odeklarerat namn)"
++msgstr "(om du använder %<-fpermissive%>, kommer G++ acceptera din kod, men man bör undvika att tillåta användning av ett odeklarerat namn)"
+ 
+ #: cp/mangle.c:2139
+ #, gcc-internal-format
+@@ -25562,7 +25562,7 @@
+ #: cp/parser.c:1875
+ #, gcc-internal-format
+ msgid "minimum/maximum operators are deprecated"
+-msgstr "minimum-/maximumoperatorer undanbedes"
++msgstr "minimum-/maximumoperatorer bör undvikas"
+ 
+ #: cp/parser.c:1895
+ #, gcc-internal-format
+@@ -25905,7 +25905,7 @@
+ #: cp/parser.c:12370
+ #, gcc-internal-format
+ msgid "deprecated use of default argument for parameter of non-function"
+-msgstr "undanbedd användning av standardargument för parametrar till annat än funktioner"
++msgstr "användning av standardargument för parametrar till annat än funktioner bör undvikas"
+ 
+ #: cp/parser.c:12373
+ #, gcc-internal-format
+@@ -26728,7 +26728,7 @@
+ #: cp/search.c:1847
+ #, gcc-internal-format
+ msgid "deprecated covariant return type for %q+#D"
+-msgstr "undanbedd kovariant returtyp för %q+#D"
++msgstr "kovariant returtyp för %q+#D bör undvikas"
+ 
+ #: cp/search.c:1849 cp/search.c:1864 cp/search.c:1869
+ #, gcc-internal-format
+@@ -27013,7 +27013,7 @@
+ #: cp/typeck.c:1502
+ #, gcc-internal-format
+ msgid "deprecated conversion from string constant to %qT'"
+-msgstr "undanbedd konvertering från strängkonstant till %qT'"
++msgstr "konvertering från strängkonstant till %qT' bör undvikas"
+ 
+ #: cp/typeck.c:1613 cp/typeck.c:1961
+ #, gcc-internal-format
+@@ -27155,7 +27155,7 @@
+ #: cp/typeck.c:2885 cp/typeck.c:2895
+ #, gcc-internal-format
+ msgid "assuming cast to type %qT from overloaded function"
+-msgstr "antar typkonvertering till %qT från överlastad funktion"
++msgstr "antar typkonvertering till %qT från överlagrad funktion"
+ 
+ #: cp/typeck.c:2963
+ #, gcc-internal-format
+Index: gcc-4_2-branch/gcc/sched-deps.c
+===================================================================
+--- gcc-4_2-branch/gcc/sched-deps.c	(revision 123014)
++++ gcc-4_2-branch/gcc/sched-deps.c	(revision 124164)
+@@ -1238,8 +1238,12 @@
+ 
+   /* If this instruction can throw an exception, then moving it changes
+      where block boundaries fall.  This is mighty confusing elsewhere.
+-     Therefore, prevent such an instruction from being moved.  */
+-  if (can_throw_internal (insn))
++     Therefore, prevent such an instruction from being moved.  Same for
++     non-jump instructions that define block boundaries.
++     ??? Unclear whether this is still necessary in EBB mode.  If not,
++     add_branch_dependences should be adjusted for RGN mode instead.  */
++  if (((CALL_P (insn) || JUMP_P (insn)) && can_throw_internal (insn))
++      || (NONJUMP_INSN_P (insn) && control_flow_insn_p (insn)))
+     reg_pending_barrier = MOVE_BARRIER;
+ 
+   /* Add dependencies if a scheduling barrier was found.  */
 Index: gcc-4_2-branch/gcc/tree-cfg.c
 ===================================================================
 --- gcc-4_2-branch/gcc/tree-cfg.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/tree-cfg.c	(revision 123843)
-@@ -2121,8 +2121,19 @@
++++ gcc-4_2-branch/gcc/tree-cfg.c	(revision 124164)
+@@ -439,7 +439,9 @@
+ 	  cond = fold (COND_EXPR_COND (stmt));
+ 	  zerop = integer_zerop (cond);
+ 	  onep = integer_onep (cond);
+-	  fold_undefer_overflow_warnings (zerop || onep, stmt,
++	  fold_undefer_overflow_warnings (((zerop || onep)
++					   && !TREE_NO_WARNING (stmt)),
++					  stmt,
+ 					  WARN_STRICT_OVERFLOW_CONDITIONAL);
+ 	  if (zerop)
+ 	    COND_EXPR_COND (stmt) = boolean_false_node;
+@@ -2121,8 +2123,19 @@
      return find_taken_edge_switch_expr (bb, val);
  
    if (computed_goto_p (stmt))
@@ -2104,10 +4329,346 @@ Index: gcc-4_2-branch/gcc/tree-cfg.c
    gcc_unreachable ();
  }
  
+Index: gcc-4_2-branch/gcc/config/alpha/linux.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/alpha/linux.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/alpha/linux.h	(revision 124164)
+@@ -44,6 +44,9 @@
+    %{shared:-lc} \
+    %{!shared: %{profile:-lc_p}%{!profile:-lc}}"
+ 
++#undef CPP_SPEC
++#define CPP_SPEC "%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
++
+ /* Show that we need a GP when profiling.  */
+ #undef TARGET_PROFILING_NEEDS_GP
+ #define TARGET_PROFILING_NEEDS_GP 1
+Index: gcc-4_2-branch/gcc/config/alpha/alpha.c
+===================================================================
+--- gcc-4_2-branch/gcc/config/alpha/alpha.c	(revision 123014)
++++ gcc-4_2-branch/gcc/config/alpha/alpha.c	(revision 124164)
+@@ -1549,7 +1549,7 @@
+    Add EXTRA_OFFSET to the address we return.  */
+ 
+ rtx
+-get_unaligned_address (rtx ref, int extra_offset)
++get_unaligned_address (rtx ref)
+ {
+   rtx base;
+   HOST_WIDE_INT offset = 0;
+@@ -1569,9 +1569,25 @@
+   if (GET_CODE (base) == PLUS)
+     offset += INTVAL (XEXP (base, 1)), base = XEXP (base, 0);
+ 
+-  return plus_constant (base, offset + extra_offset);
++  return plus_constant (base, offset);
+ }
+ 
++/* Compute a value X, such that X & 7 == (ADDR + OFS) & 7.
++   X is always returned in a register.  */
++
++rtx
++get_unaligned_offset (rtx addr, HOST_WIDE_INT ofs)
++{
++  if (GET_CODE (addr) == PLUS)
++    {
++      ofs += INTVAL (XEXP (addr, 1));
++      addr = XEXP (addr, 0);
++    }
++
++  return expand_simple_binop (Pmode, PLUS, addr, GEN_INT (ofs & 7),
++			      NULL_RTX, 1, OPTAB_LIB_WIDEN);
++}
++
+ /* On the Alpha, all (non-symbolic) constants except zero go into
+    a floating-point register via memory.  Note that we cannot
+    return anything that is not a subset of CLASS, and that some
+@@ -2318,7 +2334,7 @@
+ 	  seq = ((mode == QImode
+ 		  ? gen_unaligned_loadqi
+ 		  : gen_unaligned_loadhi)
+-		 (subtarget, get_unaligned_address (operands[1], 0),
++		 (subtarget, get_unaligned_address (operands[1]),
+ 		  temp1, temp2));
+ 	  alpha_set_memflags (seq, operands[1]);
+ 	  emit_insn (seq);
+@@ -2357,7 +2373,7 @@
+ 	  rtx seq = ((mode == QImode
+ 		      ? gen_unaligned_storeqi
+ 		      : gen_unaligned_storehi)
+-		     (get_unaligned_address (operands[0], 0),
++		     (get_unaligned_address (operands[0]),
+ 		      operands[1], temp1, temp2, temp3));
+ 
+ 	  alpha_set_memflags (seq, operands[0]);
+Index: gcc-4_2-branch/gcc/config/alpha/alpha.md
+===================================================================
+--- gcc-4_2-branch/gcc/config/alpha/alpha.md	(revision 123014)
++++ gcc-4_2-branch/gcc/config/alpha/alpha.md	(revision 124164)
+@@ -1607,10 +1607,7 @@
+ 
+   if (unaligned_memory_operand (operands[1], QImode))
+     {
+-      rtx seq
+-	= gen_unaligned_extendqidi (operands[0],
+-				    get_unaligned_address (operands[1], 1));
+-
++      rtx seq = gen_unaligned_extendqidi (operands[0], XEXP (operands[1], 0));
+       alpha_set_memflags (seq, operands[1]);
+       emit_insn (seq);
+       DONE;
+@@ -1670,9 +1667,7 @@
+ 
+   if (unaligned_memory_operand (operands[1], HImode))
+     {
+-      rtx seq
+-	= gen_unaligned_extendhidi (operands[0],
+-				    get_unaligned_address (operands[1], 2));
++      rtx seq = gen_unaligned_extendhidi (operands[0], XEXP (operands[1], 0));
+ 
+       alpha_set_memflags (seq, operands[1]);
+       emit_insn (seq);
+@@ -1687,12 +1682,13 @@
+ ;; as a pattern saves one instruction.  The code is similar to that for
+ ;; the unaligned loads (see below).
+ ;;
+-;; Operand 1 is the address + 1 (+2 for HI), operand 0 is the result.
++;; Operand 1 is the address, operand 0 is the result.
+ (define_expand "unaligned_extendqidi"
+   [(use (match_operand:QI 0 "register_operand" ""))
+    (use (match_operand:DI 1 "address_operand" ""))]
+   ""
+ {
++  operands[0] = gen_lowpart (DImode, operands[0]);
+   if (WORDS_BIG_ENDIAN)
+     emit_insn (gen_unaligned_extendqidi_be (operands[0], operands[1]));
+   else
+@@ -1701,48 +1697,40 @@
+ })
+ 
+ (define_expand "unaligned_extendqidi_le"
+-  [(set (match_dup 2) (match_operand:DI 1 "address_operand" ""))
+-   (set (match_dup 3)
+-	(mem:DI (and:DI (plus:DI (match_dup 2) (const_int -1))
+-			(const_int -8))))
++  [(set (match_dup 3)
++	(mem:DI (and:DI (match_operand:DI 1 "" "") (const_int -8))))
+    (set (match_dup 4)
+ 	(ashift:DI (match_dup 3)
+ 		   (minus:DI (const_int 64)
+ 			     (ashift:DI
+ 			      (and:DI (match_dup 2) (const_int 7))
+ 			      (const_int 3)))))
+-   (set (subreg:DI (match_operand:QI 0 "register_operand" "") 0)
++   (set (match_operand:DI 0 "register_operand" "")
+ 	(ashiftrt:DI (match_dup 4) (const_int 56)))]
+   "! WORDS_BIG_ENDIAN"
+ {
+-  operands[2] = gen_reg_rtx (DImode);
++  operands[2] = get_unaligned_offset (operands[1], 1);
+   operands[3] = gen_reg_rtx (DImode);
+   operands[4] = gen_reg_rtx (DImode);
+ })
+ 
+ (define_expand "unaligned_extendqidi_be"
+-  [(set (match_dup 2) (match_operand:DI 1 "address_operand" ""))
+-   (set (match_dup 3) (plus:DI (match_dup 2) (const_int -1)))
++  [(set (match_dup 3)
++	(mem:DI (and:DI (match_operand:DI 1 "" "") (const_int -8))))
+    (set (match_dup 4)
+-	(mem:DI (and:DI (match_dup 3)
+-			(const_int -8))))
+-   (set (match_dup 5) (plus:DI (match_dup 2) (const_int -2)))
+-   (set (match_dup 6)
+-	(ashift:DI (match_dup 4)
++	(ashift:DI (match_dup 3)
+ 		   (ashift:DI
+ 		     (and:DI
+-		       (plus:DI (match_dup 5) (const_int 1))
++		       (plus:DI (match_dup 2) (const_int 1))
+ 		       (const_int 7))
+ 		     (const_int 3))))
+-   (set (subreg:DI (match_operand:QI 0 "register_operand" "") 0)
+-	(ashiftrt:DI (match_dup 6) (const_int 56)))]
++   (set (match_operand:DI 0 "register_operand" "")
++	(ashiftrt:DI (match_dup 4) (const_int 56)))]
+   "WORDS_BIG_ENDIAN"
+ {
+-  operands[2] = gen_reg_rtx (DImode);
++  operands[2] = get_unaligned_offset (operands[1], -1);
+   operands[3] = gen_reg_rtx (DImode);
+   operands[4] = gen_reg_rtx (DImode);
+-  operands[5] = gen_reg_rtx (DImode);
+-  operands[6] = gen_reg_rtx (DImode);
+ })
+ 
+ (define_expand "unaligned_extendhidi"
+@@ -1751,17 +1739,16 @@
+   ""
+ {
+   operands[0] = gen_lowpart (DImode, operands[0]);
+-  emit_insn ((WORDS_BIG_ENDIAN
+-	      ? gen_unaligned_extendhidi_be
+-	      : gen_unaligned_extendhidi_le) (operands[0], operands[1]));
++  if (WORDS_BIG_ENDIAN)
++    emit_insn (gen_unaligned_extendhidi_be (operands[0], operands[1]));
++  else
++    emit_insn (gen_unaligned_extendhidi_le (operands[0], operands[1]));
+   DONE;
+ })
+ 
+ (define_expand "unaligned_extendhidi_le"
+-  [(set (match_dup 2) (match_operand:DI 1 "address_operand" ""))
+-   (set (match_dup 3)
+-	(mem:DI (and:DI (plus:DI (match_dup 2) (const_int -2))
+-			(const_int -8))))
++  [(set (match_dup 3)
++	(mem:DI (and:DI (match_operand:DI 1 "" "") (const_int -8))))
+    (set (match_dup 4)
+ 	(ashift:DI (match_dup 3)
+ 		   (minus:DI (const_int 64)
+@@ -1772,34 +1759,28 @@
+ 	(ashiftrt:DI (match_dup 4) (const_int 48)))]
+   "! WORDS_BIG_ENDIAN"
+ {
+-  operands[2] = gen_reg_rtx (DImode);
++  operands[2] = get_unaligned_offset (operands[1], 2);
+   operands[3] = gen_reg_rtx (DImode);
+   operands[4] = gen_reg_rtx (DImode);
+ })
+ 
+ (define_expand "unaligned_extendhidi_be"
+-  [(set (match_dup 2) (match_operand:DI 1 "address_operand" ""))
+-   (set (match_dup 3) (plus:DI (match_dup 2) (const_int -2)))
++  [(set (match_dup 3)
++	(mem:DI (and:DI (match_operand:DI 1 "" "") (const_int -8))))
+    (set (match_dup 4)
+-	(mem:DI (and:DI (match_dup 3)
+-			(const_int -8))))
+-   (set (match_dup 5) (plus:DI (match_dup 2) (const_int -3)))
+-   (set (match_dup 6)
+-	(ashift:DI (match_dup 4)
++	(ashift:DI (match_dup 3)
+ 		   (ashift:DI
+ 		     (and:DI
+-		       (plus:DI (match_dup 5) (const_int 1))
++		       (plus:DI (match_dup 2) (const_int 1))
+ 		       (const_int 7))
+ 		     (const_int 3))))
+    (set (match_operand:DI 0 "register_operand" "")
+-	(ashiftrt:DI (match_dup 6) (const_int 48)))]
++	(ashiftrt:DI (match_dup 4) (const_int 48)))]
+   "WORDS_BIG_ENDIAN"
+ {
+-  operands[2] = gen_reg_rtx (DImode);
++  operands[2] = get_unaligned_offset (operands[1], -1);
+   operands[3] = gen_reg_rtx (DImode);
+   operands[4] = gen_reg_rtx (DImode);
+-  operands[5] = gen_reg_rtx (DImode);
+-  operands[6] = gen_reg_rtx (DImode);
+ })
+ 
+ (define_insn "*extxl_const"
+@@ -6065,7 +6046,7 @@
+       else
+ 	scratch = gen_rtx_REG (DImode, REGNO (operands[2]));
+ 
+-      addr = get_unaligned_address (operands[1], 0);
++      addr = get_unaligned_address (operands[1]);
+       operands[0] = gen_rtx_REG (DImode, REGNO (operands[0]));
+       seq = gen_unaligned_loadqi (operands[0], addr, scratch, operands[0]);
+       alpha_set_memflags (seq, operands[1]);
+@@ -6099,7 +6080,7 @@
+       else
+ 	scratch = gen_rtx_REG (DImode, REGNO (operands[2]));
+ 
+-      addr = get_unaligned_address (operands[1], 0);
++      addr = get_unaligned_address (operands[1]);
+       operands[0] = gen_rtx_REG (DImode, REGNO (operands[0]));
+       seq = gen_unaligned_loadhi (operands[0], addr, scratch, operands[0]);
+       alpha_set_memflags (seq, operands[1]);
+@@ -6123,7 +6104,7 @@
+     }
+   else
+     {
+-      rtx addr = get_unaligned_address (operands[0], 0);
++      rtx addr = get_unaligned_address (operands[0]);
+       rtx scratch1 = gen_rtx_REG (DImode, REGNO (operands[2]));
+       rtx scratch2 = gen_rtx_REG (DImode, REGNO (operands[2]) + 1);
+       rtx scratch3 = scratch1;
+@@ -6155,7 +6136,7 @@
+     }
+   else
+     {
+-      rtx addr = get_unaligned_address (operands[0], 0);
++      rtx addr = get_unaligned_address (operands[0]);
+       rtx scratch1 = gen_rtx_REG (DImode, REGNO (operands[2]));
+       rtx scratch2 = gen_rtx_REG (DImode, REGNO (operands[2]) + 1);
+       rtx scratch3 = scratch1;
+Index: gcc-4_2-branch/gcc/config/alpha/alpha-protos.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/alpha/alpha-protos.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/alpha/alpha-protos.h	(revision 124164)
+@@ -51,7 +51,8 @@
+ extern rtx split_small_symbolic_operand (rtx);
+ 
+ extern void get_aligned_mem (rtx, rtx *, rtx *);
+-extern rtx get_unaligned_address (rtx, int);
++extern rtx get_unaligned_address (rtx);
++extern rtx get_unaligned_offset (rtx, HOST_WIDE_INT);
+ extern enum reg_class alpha_preferred_reload_class (rtx, enum reg_class);
+ extern enum reg_class alpha_secondary_reload_class (enum reg_class,
+ 						    enum machine_mode, rtx,
+Index: gcc-4_2-branch/gcc/config/s390/s390.c
+===================================================================
+--- gcc-4_2-branch/gcc/config/s390/s390.c	(revision 123014)
++++ gcc-4_2-branch/gcc/config/s390/s390.c	(revision 124164)
+@@ -3555,7 +3555,7 @@
+       if (temp != count)
+         emit_move_insn (count, temp);
+ 
+-      temp = expand_binop (mode, ashr_optab, count, GEN_INT (8), blocks, 1, 0);
++      temp = expand_binop (mode, lshr_optab, count, GEN_INT (8), blocks, 1, 0);
+       if (temp != blocks)
+         emit_move_insn (blocks, temp);
+ 
+@@ -3592,10 +3592,12 @@
+ void
+ s390_expand_setmem (rtx dst, rtx len, rtx val)
+ {
+-  gcc_assert (GET_CODE (len) != CONST_INT || INTVAL (len) > 0);
++  if (GET_CODE (len) == CONST_INT && INTVAL (len) == 0)
++    return;
++
+   gcc_assert (GET_CODE (val) == CONST_INT || GET_MODE (val) == QImode);
+   
+-  if (GET_CODE (len) == CONST_INT && INTVAL (len) <= 257)
++  if (GET_CODE (len) == CONST_INT && INTVAL (len) > 0 && INTVAL (len) <= 257)
+     {
+       if (val == const0_rtx && INTVAL (len) <= 256)
+         emit_insn (gen_clrmem_short (dst, GEN_INT (INTVAL (len) - 1)));
+@@ -3669,7 +3671,7 @@
+       if (temp != count)
+         emit_move_insn (count, temp);
+ 
+-      temp = expand_binop (mode, ashr_optab, count, GEN_INT (8), blocks, 1, 0);
++      temp = expand_binop (mode, lshr_optab, count, GEN_INT (8), blocks, 1, 0);
+       if (temp != blocks)
+         emit_move_insn (blocks, temp);
+ 
+@@ -3761,7 +3763,7 @@
+       if (temp != count)
+         emit_move_insn (count, temp);
+ 
+-      temp = expand_binop (mode, ashr_optab, count, GEN_INT (8), blocks, 1, 0);
++      temp = expand_binop (mode, lshr_optab, count, GEN_INT (8), blocks, 1, 0);
+       if (temp != blocks)
+         emit_move_insn (blocks, temp);
+ 
 Index: gcc-4_2-branch/gcc/config/i386/mmintrin.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/i386/mmintrin.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/i386/mmintrin.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/i386/mmintrin.h	(revision 124164)
 @@ -1,4 +1,4 @@
 -/* Copyright (C) 2002, 2003, 2004, 2005, 2006
 +/* Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007
@@ -2129,7 +4690,7 @@ Index: gcc-4_2-branch/gcc/config/i386/mmintrin.h
 Index: gcc-4_2-branch/gcc/config/i386/xmmintrin.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/i386/xmmintrin.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/i386/xmmintrin.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/i386/xmmintrin.h	(revision 124164)
 @@ -1,4 +1,4 @@
 -/* Copyright (C) 2002, 2003, 2004, 2005, 2006
 +/* Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007
@@ -2151,8 +4712,124 @@ Index: gcc-4_2-branch/gcc/config/i386/xmmintrin.h
 Index: gcc-4_2-branch/gcc/config/i386/sse.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/i386/sse.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/i386/sse.md	(revision 123843)
-@@ -2778,7 +2778,7 @@
++++ gcc-4_2-branch/gcc/config/i386/sse.md	(revision 124164)
+@@ -304,7 +304,7 @@
+ (define_insn "sse_vmaddv4sf3"
+   [(set (match_operand:V4SF 0 "register_operand" "=x")
+ 	(vec_merge:V4SF
+-	  (plus:V4SF (match_operand:V4SF 1 "nonimmediate_operand" "%0")
++	  (plus:V4SF (match_operand:V4SF 1 "register_operand" "0")
+ 		     (match_operand:V4SF 2 "nonimmediate_operand" "xm"))
+ 	  (match_dup 1)
+ 	  (const_int 1)))]
+@@ -360,7 +360,7 @@
+ (define_insn "sse_vmmulv4sf3"
+   [(set (match_operand:V4SF 0 "register_operand" "=x")
+ 	(vec_merge:V4SF
+-	  (mult:V4SF (match_operand:V4SF 1 "nonimmediate_operand" "%0")
++	  (mult:V4SF (match_operand:V4SF 1 "register_operand" "0")
+ 		     (match_operand:V4SF 2 "nonimmediate_operand" "xm"))
+ 	  (match_dup 1)
+ 	  (const_int 1)))]
+@@ -492,19 +492,6 @@
+   [(set_attr "type" "sse")
+    (set_attr "mode" "V4SF")])
+ 
+-(define_insn "*sse_vmsmaxv4sf3_finite"
+-  [(set (match_operand:V4SF 0 "register_operand" "=x")
+-	(vec_merge:V4SF
+-	 (smax:V4SF (match_operand:V4SF 1 "nonimmediate_operand" "%0")
+-		    (match_operand:V4SF 2 "nonimmediate_operand" "xm"))
+-	 (match_dup 1)
+-	 (const_int 1)))]
+-  "TARGET_SSE && flag_finite_math_only
+-   && ix86_binary_operator_ok (SMAX, V4SFmode, operands)"
+-  "maxss\t{%2, %0|%0, %2}"
+-  [(set_attr "type" "sse")
+-   (set_attr "mode" "SF")])
+-
+ (define_insn "sse_vmsmaxv4sf3"
+   [(set (match_operand:V4SF 0 "register_operand" "=x")
+ 	(vec_merge:V4SF
+@@ -547,19 +534,6 @@
+   [(set_attr "type" "sse")
+    (set_attr "mode" "V4SF")])
+ 
+-(define_insn "*sse_vmsminv4sf3_finite"
+-  [(set (match_operand:V4SF 0 "register_operand" "=x")
+-	(vec_merge:V4SF
+-	 (smin:V4SF (match_operand:V4SF 1 "nonimmediate_operand" "%0")
+-		    (match_operand:V4SF 2 "nonimmediate_operand" "xm"))
+-	 (match_dup 1)
+-	 (const_int 1)))]
+-  "TARGET_SSE && flag_finite_math_only
+-   && ix86_binary_operator_ok (SMIN, V4SFmode, operands)"
+-  "minss\t{%2, %0|%0, %2}"
+-  [(set_attr "type" "sse")
+-   (set_attr "mode" "SF")])
+-
+ (define_insn "sse_vmsminv4sf3"
+   [(set (match_operand:V4SF 0 "register_operand" "=x")
+ 	(vec_merge:V4SF
+@@ -1398,7 +1372,7 @@
+ (define_insn "sse2_vmaddv2df3"
+   [(set (match_operand:V2DF 0 "register_operand" "=x")
+ 	(vec_merge:V2DF
+-	  (plus:V2DF (match_operand:V2DF 1 "nonimmediate_operand" "%0")
++	  (plus:V2DF (match_operand:V2DF 1 "register_operand" "0")
+ 		     (match_operand:V2DF 2 "nonimmediate_operand" "xm"))
+ 	  (match_dup 1)
+ 	  (const_int 1)))]
+@@ -1454,7 +1428,7 @@
+ (define_insn "sse2_vmmulv2df3"
+   [(set (match_operand:V2DF 0 "register_operand" "=x")
+ 	(vec_merge:V2DF
+-	  (mult:V2DF (match_operand:V2DF 1 "nonimmediate_operand" "%0")
++	  (mult:V2DF (match_operand:V2DF 1 "register_operand" "0")
+ 		     (match_operand:V2DF 2 "nonimmediate_operand" "xm"))
+ 	  (match_dup 1)
+ 	  (const_int 1)))]
+@@ -1544,19 +1518,6 @@
+   [(set_attr "type" "sseadd")
+    (set_attr "mode" "V2DF")])
+ 
+-(define_insn "*sse2_vmsmaxv2df3_finite"
+-  [(set (match_operand:V2DF 0 "register_operand" "=x")
+-	(vec_merge:V2DF
+-	  (smax:V2DF (match_operand:V2DF 1 "nonimmediate_operand" "%0")
+-		     (match_operand:V2DF 2 "nonimmediate_operand" "xm"))
+-	  (match_dup 1)
+-	  (const_int 1)))]
+-  "TARGET_SSE2 && flag_finite_math_only
+-   && ix86_binary_operator_ok (SMAX, V2DFmode, operands)"
+-  "maxsd\t{%2, %0|%0, %2}"
+-  [(set_attr "type" "sseadd")
+-   (set_attr "mode" "DF")])
+-
+ (define_insn "sse2_vmsmaxv2df3"
+   [(set (match_operand:V2DF 0 "register_operand" "=x")
+ 	(vec_merge:V2DF
+@@ -1599,19 +1560,6 @@
+   [(set_attr "type" "sseadd")
+    (set_attr "mode" "V2DF")])
+ 
+-(define_insn "*sse2_vmsminv2df3_finite"
+-  [(set (match_operand:V2DF 0 "register_operand" "=x")
+-	(vec_merge:V2DF
+-	  (smin:V2DF (match_operand:V2DF 1 "nonimmediate_operand" "%0")
+-		     (match_operand:V2DF 2 "nonimmediate_operand" "xm"))
+-	  (match_dup 1)
+-	  (const_int 1)))]
+-  "TARGET_SSE2 && flag_finite_math_only
+-   && ix86_binary_operator_ok (SMIN, V2DFmode, operands)"
+-  "minsd\t{%2, %0|%0, %2}"
+-  [(set_attr "type" "sseadd")
+-   (set_attr "mode" "DF")])
+-
+ (define_insn "sse2_vmsminv2df3"
+   [(set (match_operand:V2DF 0 "register_operand" "=x")
+ 	(vec_merge:V2DF
+@@ -2778,7 +2726,7 @@
    [(set (match_operand:SSEMODE24 0 "register_operand" "=x")
  	(ashiftrt:SSEMODE24
  	  (match_operand:SSEMODE24 1 "register_operand" "0")
@@ -2161,7 +4838,7 @@ Index: gcc-4_2-branch/gcc/config/i386/sse.md
    "TARGET_SSE2"
    "psra<ssevecsize>\t{%2, %0|%0, %2}"
    [(set_attr "type" "sseishft")
-@@ -2788,7 +2788,7 @@
+@@ -2788,7 +2736,7 @@
    [(set (match_operand:SSEMODE248 0 "register_operand" "=x")
  	(lshiftrt:SSEMODE248
  	  (match_operand:SSEMODE248 1 "register_operand" "0")
@@ -2170,7 +4847,7 @@ Index: gcc-4_2-branch/gcc/config/i386/sse.md
    "TARGET_SSE2"
    "psrl<ssevecsize>\t{%2, %0|%0, %2}"
    [(set_attr "type" "sseishft")
-@@ -2798,7 +2798,7 @@
+@@ -2798,7 +2746,7 @@
    [(set (match_operand:SSEMODE248 0 "register_operand" "=x")
  	(ashift:SSEMODE248
  	  (match_operand:SSEMODE248 1 "register_operand" "0")
@@ -2179,7 +4856,7 @@ Index: gcc-4_2-branch/gcc/config/i386/sse.md
    "TARGET_SSE2"
    "psll<ssevecsize>\t{%2, %0|%0, %2}"
    [(set_attr "type" "sseishft")
-@@ -2942,7 +2942,7 @@
+@@ -2942,7 +2890,7 @@
  	(umin:V16QI (match_operand:V16QI 1 "nonimmediate_operand" "")
  		    (match_operand:V16QI 2 "nonimmediate_operand" "")))]
    "TARGET_SSE2"
@@ -2191,7 +4868,7 @@ Index: gcc-4_2-branch/gcc/config/i386/sse.md
 Index: gcc-4_2-branch/gcc/config/i386/emmintrin.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/i386/emmintrin.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/i386/emmintrin.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/i386/emmintrin.h	(revision 124164)
 @@ -1,4 +1,4 @@
 -/* Copyright (C) 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
 +/* Copyright (C) 2003, 2004, 2005, 2006, 2007 Free Software Foundation, Inc.
@@ -2346,7 +5023,7 @@ Index: gcc-4_2-branch/gcc/config/i386/emmintrin.h
 Index: gcc-4_2-branch/gcc/config/i386/sync.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/i386/sync.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/i386/sync.md	(revision 123843)
++++ gcc-4_2-branch/gcc/config/i386/sync.md	(revision 124164)
 @@ -98,6 +98,15 @@
    ""
    "lock\;cmpxchg<doublemodesuffix>b\t%1")
@@ -2393,7 +5070,16 @@ Index: gcc-4_2-branch/gcc/config/i386/sync.md
 Index: gcc-4_2-branch/gcc/config/i386/i386.c
 ===================================================================
 --- gcc-4_2-branch/gcc/config/i386/i386.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/i386/i386.c	(revision 123843)
++++ gcc-4_2-branch/gcc/config/i386/i386.c	(revision 124164)
+@@ -14666,7 +14666,7 @@
+     BUILTIN_DESC_SWAP_OPERANDS },
+   { MASK_SSE, CODE_FOR_sse_vmmaskcmpv4sf3, "__builtin_ia32_cmpngess", IX86_BUILTIN_CMPNGESS, UNGT,
+     BUILTIN_DESC_SWAP_OPERANDS },
+-  { MASK_SSE, CODE_FOR_sse_vmmaskcmpv4sf3, "__builtin_ia32_cmpordss", IX86_BUILTIN_CMPORDSS, UNORDERED, 0 },
++  { MASK_SSE, CODE_FOR_sse_vmmaskcmpv4sf3, "__builtin_ia32_cmpordss", IX86_BUILTIN_CMPORDSS, ORDERED, 0 },
+ 
+   { MASK_SSE, CODE_FOR_sminv4sf3, "__builtin_ia32_minps", IX86_BUILTIN_MINPS, 0, 0 },
+   { MASK_SSE, CODE_FOR_smaxv4sf3, "__builtin_ia32_maxps", IX86_BUILTIN_MAXPS, 0, 0 },
 @@ -15206,12 +15206,6 @@
    tree v8hi_ftype_v8hi_int
      = build_function_type_list (V8HI_type_node,
@@ -2430,7 +5116,32 @@ Index: gcc-4_2-branch/gcc/config/i386/i386.c
  
    def_builtin (MASK_SSE2, "__builtin_ia32_pslldqi128", v2di_ftype_v2di_int, IX86_BUILTIN_PSLLDQI128);
    def_builtin (MASK_SSE2, "__builtin_ia32_psllwi128", v8hi_ftype_v8hi_int, IX86_BUILTIN_PSLLWI128);
-@@ -16204,9 +16198,106 @@
+@@ -15968,7 +15962,7 @@
+   enum machine_mode tmode, mode1;
+   tree arg0, arg1, arg2;
+   int elt;
+-  rtx op0, op1;
++  rtx op0, op1, target;
+ 
+   arg0 = TREE_VALUE (arglist);
+   arg1 = TREE_VALUE (TREE_CHAIN (arglist));
+@@ -15988,9 +15982,13 @@
+   op0 = force_reg (tmode, op0);
+   op1 = force_reg (mode1, op1);
+ 
+-  ix86_expand_vector_set (true, op0, op1, elt);
++  /* OP0 is the source of these builtin functions and shouldn't be
++     modified.  Create a copy, use it and return it as target.  */
++  target = gen_reg_rtx (tmode);
++  emit_move_insn (target, op0);
++  ix86_expand_vector_set (true, target, op1, elt);
+ 
+-  return op0;
++  return target;
+ }
+ 
+ /* Expand an expression EXP that calls a built-in function,
+@@ -16204,9 +16202,106 @@
        emit_insn (pat);
        return target;
  
@@ -2538,7 +5249,7 @@ Index: gcc-4_2-branch/gcc/config/i386/i386.c
  	       : CODE_FOR_sse2_lshrti3);
        arg0 = TREE_VALUE (arglist);
        arg1 = TREE_VALUE (TREE_CHAIN (arglist));
-@@ -16227,7 +16318,8 @@
+@@ -16227,7 +16322,8 @@
  	  return const0_rtx;
  	}
        target = gen_reg_rtx (V2DImode);
@@ -2551,7 +5262,7 @@ Index: gcc-4_2-branch/gcc/config/i386/i386.c
 Index: gcc-4_2-branch/gcc/config/avr/predicates.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/avr/predicates.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/avr/predicates.md	(revision 123843)
++++ gcc-4_2-branch/gcc/config/avr/predicates.md	(revision 124164)
 @@ -1,5 +1,5 @@
  ;; Predicate definitions for ATMEL AVR micro controllers.
 -;; Copyright (C) 2006 Free Software Foundation, Inc.
@@ -2591,7 +5302,7 @@ Index: gcc-4_2-branch/gcc/config/avr/predicates.md
 Index: gcc-4_2-branch/gcc/config/avr/avr.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/avr/avr.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/avr/avr.md	(revision 123843)
++++ gcc-4_2-branch/gcc/config/avr/avr.md	(revision 124164)
 @@ -1,7 +1,7 @@
  ;; -*- Mode: Scheme -*-
  ;;   Machine description for GNU compiler,
@@ -2640,17 +5351,240 @@ Index: gcc-4_2-branch/gcc/config/avr/avr.md
 Index: gcc-4_2-branch/gcc/config/avr/avr.c
 ===================================================================
 --- gcc-4_2-branch/gcc/config/avr/avr.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/avr/avr.c	(revision 123843)
-@@ -208,7 +208,7 @@
-   { "at90pwm1",  4, "__AVR_AT90PWM1__" },
-   { "at90pwm2",  4, "__AVR_AT90PWM2__" },
-   { "at90pwm3",  4, "__AVR_AT90PWM3__" },
++++ gcc-4_2-branch/gcc/config/avr/avr.c	(revision 124164)
+@@ -1,5 +1,5 @@
+ /* Subroutines for insn-output.c for ATMEL AVR micro controllers
+-   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006
++   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007
+    Free Software Foundation, Inc.
+    Contributed by Denis Chertykov (denisc@overta.ru)
+ 
+@@ -141,12 +141,26 @@
+   { 1, 0, 0, 0,  NULL },  /* unknown device specified */
+   { 1, 0, 0, 0, "__AVR_ARCH__=1" },
+   { 0, 0, 0, 0, "__AVR_ARCH__=2" },
++  { 0, 0, 0, 1, "__AVR_ARCH__=25"},
+   { 0, 0, 1, 0, "__AVR_ARCH__=3" },
+   { 0, 1, 0, 1, "__AVR_ARCH__=4" },
+-  { 0, 1, 1, 1, "__AVR_ARCH__=5" },
+-  { 0, 0, 0, 1, "__AVR_ARCH__=25"}
++  { 0, 1, 1, 1, "__AVR_ARCH__=5" }
+ };
+ 
++/* These names are used as the index into the avr_arch_types[] table 
++   above.  */
++
++enum avr_arch
++{
++  ARCH_UNKNOWN,
++  ARCH_AVR1,
++  ARCH_AVR2,
++  ARCH_AVR25,
++  ARCH_AVR3,
++  ARCH_AVR4,
++  ARCH_AVR5
++};
++
+ struct mcu_type_s {
+   const char *const name;
+   int arch;  /* index in avr_arch_types[] */
+@@ -164,103 +178,103 @@
+ 
+ static const struct mcu_type_s avr_mcu_types[] = {
+     /* Classic, <= 8K.  */
+-  { "avr2",      2, NULL },
+-  { "at90s2313", 2, "__AVR_AT90S2313__" },
+-  { "at90s2323", 2, "__AVR_AT90S2323__" },
+-  { "at90s2333", 2, "__AVR_AT90S2333__" },
+-  { "at90s2343", 2, "__AVR_AT90S2343__" },
+-  { "attiny22",  2, "__AVR_ATtiny22__" },
+-  { "attiny26",  2, "__AVR_ATtiny26__" },
+-  { "at90s4414", 2, "__AVR_AT90S4414__" },
+-  { "at90s4433", 2, "__AVR_AT90S4433__" },
+-  { "at90s4434", 2, "__AVR_AT90S4434__" },
+-  { "at90s8515", 2, "__AVR_AT90S8515__" },
+-  { "at90c8534", 2, "__AVR_AT90C8534__" },
+-  { "at90s8535", 2, "__AVR_AT90S8535__" },
++  { "avr2",         ARCH_AVR2, NULL },
++  { "at90s2313",    ARCH_AVR2, "__AVR_AT90S2313__" },
++  { "at90s2323",    ARCH_AVR2, "__AVR_AT90S2323__" },
++  { "at90s2333",    ARCH_AVR2, "__AVR_AT90S2333__" },
++  { "at90s2343",    ARCH_AVR2, "__AVR_AT90S2343__" },
++  { "attiny22",     ARCH_AVR2, "__AVR_ATtiny22__" },
++  { "attiny26",     ARCH_AVR2, "__AVR_ATtiny26__" },
++  { "at90s4414",    ARCH_AVR2, "__AVR_AT90S4414__" },
++  { "at90s4433",    ARCH_AVR2, "__AVR_AT90S4433__" },
++  { "at90s4434",    ARCH_AVR2, "__AVR_AT90S4434__" },
++  { "at90s8515",    ARCH_AVR2, "__AVR_AT90S8515__" },
++  { "at90c8534",    ARCH_AVR2, "__AVR_AT90C8534__" },
++  { "at90s8535",    ARCH_AVR2, "__AVR_AT90S8535__" },
+     /* Classic + MOVW, <= 8K.  */
+-  { "avr25",      6, NULL },
+-  { "attiny13",   6, "__AVR_ATtiny13__" },
+-  { "attiny2313", 6, "__AVR_ATtiny2313__" },
+-  { "attiny24",   6, "__AVR_ATtiny24__" },
+-  { "attiny44",   6, "__AVR_ATtiny44__" },
+-  { "attiny84",   6, "__AVR_ATtiny84__" },
+-  { "attiny25",   6, "__AVR_ATtiny25__" },
+-  { "attiny45",   6, "__AVR_ATtiny45__" },
+-  { "attiny85",   6, "__AVR_ATtiny85__" },
+-  { "attiny261",  6, "__AVR_ATtiny261__" },
+-  { "attiny461",  6, "__AVR_ATtiny461__" },
+-  { "attiny861",  6, "__AVR_ATtiny861__" },
+-  { "at86rf401",  6, "__AVR_AT86RF401__" },
++  { "avr25",        ARCH_AVR25, NULL },
++  { "attiny13",     ARCH_AVR25, "__AVR_ATtiny13__" },
++  { "attiny2313",   ARCH_AVR25, "__AVR_ATtiny2313__" },
++  { "attiny24",     ARCH_AVR25, "__AVR_ATtiny24__" },
++  { "attiny44",     ARCH_AVR25, "__AVR_ATtiny44__" },
++  { "attiny84",     ARCH_AVR25, "__AVR_ATtiny84__" },
++  { "attiny25",     ARCH_AVR25, "__AVR_ATtiny25__" },
++  { "attiny45",     ARCH_AVR25, "__AVR_ATtiny45__" },
++  { "attiny85",     ARCH_AVR25, "__AVR_ATtiny85__" },
++  { "attiny261",    ARCH_AVR25, "__AVR_ATtiny261__" },
++  { "attiny461",    ARCH_AVR25, "__AVR_ATtiny461__" },
++  { "attiny861",    ARCH_AVR25, "__AVR_ATtiny861__" },
++  { "at86rf401",    ARCH_AVR25, "__AVR_AT86RF401__" },
+     /* Classic, > 8K.  */
+-  { "avr3",      3, NULL },
+-  { "atmega103", 3, "__AVR_ATmega103__" },
+-  { "atmega603", 3, "__AVR_ATmega603__" },
+-  { "at43usb320", 3, "__AVR_AT43USB320__" },
+-  { "at43usb355", 3, "__AVR_AT43USB355__" },
+-  { "at76c711",  3, "__AVR_AT76C711__" },
++  { "avr3",         ARCH_AVR3, NULL },
++  { "atmega103",    ARCH_AVR3, "__AVR_ATmega103__" },
++  { "atmega603",    ARCH_AVR3, "__AVR_ATmega603__" },
++  { "at43usb320",   ARCH_AVR3, "__AVR_AT43USB320__" },
++  { "at43usb355",   ARCH_AVR3, "__AVR_AT43USB355__" },
++  { "at76c711",     ARCH_AVR3, "__AVR_AT76C711__" },
+     /* Enhanced, <= 8K.  */
+-  { "avr4",      4, NULL },
+-  { "atmega8",   4, "__AVR_ATmega8__" },
+-  { "atmega48",   4, "__AVR_ATmega48__" },
+-  { "atmega88",   4, "__AVR_ATmega88__" },
+-  { "atmega8515", 4, "__AVR_ATmega8515__" },
+-  { "atmega8535", 4, "__AVR_ATmega8535__" },
+-  { "at90pwm1",  4, "__AVR_AT90PWM1__" },
+-  { "at90pwm2",  4, "__AVR_AT90PWM2__" },
+-  { "at90pwm3",  4, "__AVR_AT90PWM3__" },
 -  { "at90usb82",   5, "__AVR_AT90USB82__" },
-+  { "at90usb82",   4, "__AVR_AT90USB82__" },
++  { "avr4",         ARCH_AVR4, NULL },
++  { "atmega8",      ARCH_AVR4, "__AVR_ATmega8__" },
++  { "atmega48",     ARCH_AVR4, "__AVR_ATmega48__" },
++  { "atmega88",     ARCH_AVR4, "__AVR_ATmega88__" },
++  { "atmega8515",   ARCH_AVR4, "__AVR_ATmega8515__" },
++  { "atmega8535",   ARCH_AVR4, "__AVR_ATmega8535__" },
++  { "at90pwm1",     ARCH_AVR4, "__AVR_AT90PWM1__" },
++  { "at90pwm2",     ARCH_AVR4, "__AVR_AT90PWM2__" },
++  { "at90pwm3",     ARCH_AVR4, "__AVR_AT90PWM3__" },
++  { "at90usb82",    ARCH_AVR4, "__AVR_AT90USB82__" },
      /* Enhanced, > 8K.  */
-   { "avr5",      5, NULL },
-   { "atmega16",  5, "__AVR_ATmega16__" },
-@@ -316,6 +316,8 @@
+-  { "avr5",      5, NULL },
+-  { "atmega16",  5, "__AVR_ATmega16__" },
+-  { "atmega161", 5, "__AVR_ATmega161__" },
+-  { "atmega162", 5, "__AVR_ATmega162__" },
+-  { "atmega163", 5, "__AVR_ATmega163__" },
+-  { "atmega164p",5, "__AVR_ATmega164P__" },
+-  { "atmega165", 5, "__AVR_ATmega165__" },
+-  { "atmega165p",5, "__AVR_ATmega165P__" },
+-  { "atmega168", 5, "__AVR_ATmega168__" },
+-  { "atmega169", 5, "__AVR_ATmega169__" },
+-  { "atmega169p",5, "__AVR_ATmega169P__" },
+-  { "atmega32",  5, "__AVR_ATmega32__" },
+-  { "atmega323", 5, "__AVR_ATmega323__" },
+-  { "atmega324p",5, "__AVR_ATmega324P__" },
+-  { "atmega325", 5, "__AVR_ATmega325__" },
+-  { "atmega325p",  5, "__AVR_ATmega325P__" },
+-  { "atmega3250", 5, "__AVR_ATmega3250__" },
+-  { "atmega3250p", 5, "__AVR_ATmega3250P__" },
+-  { "atmega329", 5, "__AVR_ATmega329__" },
+-  { "atmega329p",  5, "__AVR_ATmega329P__" },
+-  { "atmega3290", 5, "__AVR_ATmega3290__" },
+-  { "atmega3290p", 5, "__AVR_ATmega3290P__" },
+-  { "atmega406", 5, "__AVR_ATmega406__" },
+-  { "atmega64",  5, "__AVR_ATmega64__" },
+-  { "atmega640", 5, "__AVR_ATmega640__" },
+-  { "atmega644", 5, "__AVR_ATmega644__" },
+-  { "atmega644p",5, "__AVR_ATmega644P__" },
+-  { "atmega645", 5, "__AVR_ATmega645__" },
+-  { "atmega6450", 5, "__AVR_ATmega6450__" },
+-  { "atmega649", 5, "__AVR_ATmega649__" },
+-  { "atmega6490", 5, "__AVR_ATmega6490__" },
+-  { "atmega128", 5, "__AVR_ATmega128__" },
+-  { "atmega1280",5, "__AVR_ATmega1280__" },
+-  { "atmega1281",5, "__AVR_ATmega1281__" },
+-  { "at90can32", 5, "__AVR_AT90CAN32__" },
+-  { "at90can64", 5, "__AVR_AT90CAN64__" },
+-  { "at90can128", 5, "__AVR_AT90CAN128__" },
+-  { "at90usb162",  5, "__AVR_AT90USB162__" },
+-  { "at90usb646", 5, "__AVR_AT90USB646__" },
+-  { "at90usb647", 5, "__AVR_AT90USB647__" },
+-  { "at90usb1286", 5, "__AVR_AT90USB1286__" },
+-  { "at90usb1287", 5, "__AVR_AT90USB1287__" },
+-  { "at94k",     5, "__AVR_AT94K__" },
++  { "avr5",         ARCH_AVR5, NULL },
++  { "atmega16",     ARCH_AVR5, "__AVR_ATmega16__" },
++  { "atmega161",    ARCH_AVR5, "__AVR_ATmega161__" },
++  { "atmega162",    ARCH_AVR5, "__AVR_ATmega162__" },
++  { "atmega163",    ARCH_AVR5, "__AVR_ATmega163__" },
++  { "atmega164p",   ARCH_AVR5, "__AVR_ATmega164P__" },
++  { "atmega165",    ARCH_AVR5, "__AVR_ATmega165__" },
++  { "atmega165p",   ARCH_AVR5, "__AVR_ATmega165P__" },
++  { "atmega168",    ARCH_AVR5, "__AVR_ATmega168__" },
++  { "atmega169",    ARCH_AVR5, "__AVR_ATmega169__" },
++  { "atmega169p",   ARCH_AVR5, "__AVR_ATmega169P__" },
++  { "atmega32",     ARCH_AVR5, "__AVR_ATmega32__" },
++  { "atmega323",    ARCH_AVR5, "__AVR_ATmega323__" },
++  { "atmega324p",   ARCH_AVR5, "__AVR_ATmega324P__" },
++  { "atmega325",    ARCH_AVR5, "__AVR_ATmega325__" },
++  { "atmega325p",   ARCH_AVR5, "__AVR_ATmega325P__" },
++  { "atmega3250",   ARCH_AVR5, "__AVR_ATmega3250__" },
++  { "atmega3250p",  ARCH_AVR5, "__AVR_ATmega3250P__" },
++  { "atmega329",    ARCH_AVR5, "__AVR_ATmega329__" },
++  { "atmega329p",   ARCH_AVR5, "__AVR_ATmega329P__" },
++  { "atmega3290",   ARCH_AVR5, "__AVR_ATmega3290__" },
++  { "atmega3290p",  ARCH_AVR5, "__AVR_ATmega3290P__" },
++  { "atmega406",    ARCH_AVR5, "__AVR_ATmega406__" },
++  { "atmega64",     ARCH_AVR5, "__AVR_ATmega64__" },
++  { "atmega640",    ARCH_AVR5, "__AVR_ATmega640__" },
++  { "atmega644",    ARCH_AVR5, "__AVR_ATmega644__" },
++  { "atmega644p",   ARCH_AVR5, "__AVR_ATmega644P__" },
++  { "atmega645",    ARCH_AVR5, "__AVR_ATmega645__" },
++  { "atmega6450",   ARCH_AVR5, "__AVR_ATmega6450__" },
++  { "atmega649",    ARCH_AVR5, "__AVR_ATmega649__" },
++  { "atmega6490",   ARCH_AVR5, "__AVR_ATmega6490__" },
++  { "atmega128",    ARCH_AVR5, "__AVR_ATmega128__" },
++  { "atmega1280",   ARCH_AVR5, "__AVR_ATmega1280__" },
++  { "atmega1281",   ARCH_AVR5, "__AVR_ATmega1281__" },
++  { "at90can32",    ARCH_AVR5, "__AVR_AT90CAN32__" },
++  { "at90can64",    ARCH_AVR5, "__AVR_AT90CAN64__" },
++  { "at90can128",   ARCH_AVR5, "__AVR_AT90CAN128__" },
++  { "at90usb162",   ARCH_AVR5, "__AVR_AT90USB162__" },
++  { "at90usb646",   ARCH_AVR5, "__AVR_AT90USB646__" },
++  { "at90usb647",   ARCH_AVR5, "__AVR_AT90USB647__" },
++  { "at90usb1286",  ARCH_AVR5, "__AVR_AT90USB1286__" },
++  { "at90usb1287",  ARCH_AVR5, "__AVR_AT90USB1287__" },
++  { "at94k",        ARCH_AVR5, "__AVR_AT94K__" },
+     /* Assembler only.  */
+-  { "avr1",      1, NULL },
+-  { "at90s1200", 1, "__AVR_AT90S1200__" },
+-  { "attiny11",  1, "__AVR_ATtiny11__" },
+-  { "attiny12",  1, "__AVR_ATtiny12__" },
+-  { "attiny15",  1, "__AVR_ATtiny15__" },
+-  { "attiny28",  1, "__AVR_ATtiny28__" },
+-  { NULL,        0, NULL }
++  { "avr1",         ARCH_AVR1, NULL },
++  { "at90s1200",    ARCH_AVR1, "__AVR_AT90S1200__" },
++  { "attiny11",     ARCH_AVR1, "__AVR_ATtiny11__" },
++  { "attiny12",     ARCH_AVR1, "__AVR_ATtiny12__" },
++  { "attiny15",     ARCH_AVR1, "__AVR_ATtiny15__" },
++  { "attiny28",     ARCH_AVR1, "__AVR_ATtiny28__" },
++  { NULL,           ARCH_UNKNOWN, NULL }
+ };
+ 
+ int avr_case_values_threshold = 30000;
+@@ -316,6 +330,8 @@
    const struct mcu_type_s *t;
    const struct base_arch_s *base;
  
@@ -2659,7 +5593,16 @@ Index: gcc-4_2-branch/gcc/config/avr/avr.c
    for (t = avr_mcu_types; t->name; t++)
      if (strcmp (t->name, avr_mcu_name) == 0)
        break;
-@@ -4698,7 +4700,7 @@
+@@ -1025,7 +1041,7 @@
+     case REG_Y: return "Y";
+     case REG_Z: return "Z";
+     default:
+-      gcc_unreachable ();
++      output_operand_lossage ("address operand requires constraint for X, Y, or Z register");
+     }
+   return NULL;
+ }
+@@ -4698,7 +4714,7 @@
      }
    else
      {
@@ -2668,7 +5611,7 @@ Index: gcc-4_2-branch/gcc/config/avr/avr.c
        const char *attr = IDENTIFIER_POINTER (name);
  
        /* If the function has the 'signal' or 'interrupt' attribute, test to
-@@ -5092,6 +5094,7 @@
+@@ -5092,6 +5108,7 @@
  	    *total = COSTS_N_INSNS (AVR_MEGA ? 2 : 1);
  	  else
  	    return false;
@@ -2676,7 +5619,7 @@ Index: gcc-4_2-branch/gcc/config/avr/avr.c
  
  	case HImode:
  	  if (AVR_ENHANCED)
-@@ -5100,6 +5103,7 @@
+@@ -5100,6 +5117,7 @@
  	    *total = COSTS_N_INSNS (AVR_MEGA ? 2 : 1);
  	  else
  	    return false;
@@ -2684,10 +5627,59 @@ Index: gcc-4_2-branch/gcc/config/avr/avr.c
  
  	default:
  	  return false;
+Index: gcc-4_2-branch/gcc/config/avr/avr.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/avr/avr.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/avr/avr.h	(revision 124164)
+@@ -661,7 +661,11 @@
+ #define ASM_OUTPUT_SKIP(STREAM, N)		\
+ fprintf (STREAM, "\t.skip %lu,0\n", (unsigned long)(N))
+ 
+-#define ASM_OUTPUT_ALIGN(STREAM, POWER)
++#define ASM_OUTPUT_ALIGN(STREAM, POWER)			\
++  do {							\
++      if ((POWER) > 1)					\
++          fprintf (STREAM, "\t.p2align\t%d\n", POWER);	\
++  } while (0)
+ 
+ #define CASE_VECTOR_MODE HImode
+ 
+@@ -758,9 +762,7 @@
+   mmcu=at76*:-m avr3}\
+ %{mmcu=atmega8*|\
+   mmcu=atmega48|\
+-  mmcu=at90pwm1|\
+-  mmcu=at90pwm2|\
+-  mmcu=at90pwm3:-m avr4}\
++  mmcu=at90pwm*:-m avr4}\
+ %{mmcu=atmega16*|\
+   mmcu=atmega32*|\
+   mmcu=atmega406|\
+@@ -771,18 +773,14 @@
+   mmcu=at94k:-m avr5}\
+ %{mmcu=atmega324*|\
+   mmcu=atmega325*|\
+-  mmcu=atmega3250*|\
+   mmcu=atmega329*|\
+-  mmcu=atmega3290*|\
+   mmcu=atmega406|\
+   mmcu=atmega48|\
+   mmcu=atmega88|\
+   mmcu=atmega64|\
+   mmcu=atmega644*|\
+-  mmcu=atmega645|\
+-  mmcu=atmega6450|\
+-  mmcu=atmega649|\
+-  mmcu=atmega6490|\
++  mmcu=atmega645*|\
++  mmcu=atmega649*|\
+   mmcu=atmega128|\
+   mmcu=atmega162|\
+   mmcu=atmega164*|\
 Index: gcc-4_2-branch/gcc/config/rs6000/darwin.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/rs6000/darwin.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/rs6000/darwin.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/rs6000/darwin.h	(revision 124164)
 @@ -280,8 +280,6 @@
  
  /* This says how to output an assembler line to define a global common
@@ -2700,7 +5692,7 @@ Index: gcc-4_2-branch/gcc/config/rs6000/darwin.h
 Index: gcc-4_2-branch/gcc/config/darwin.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/darwin.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/darwin.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/darwin.h	(revision 124164)
 @@ -652,11 +652,11 @@
        }									\
    } while (0)
@@ -2719,7 +5711,7 @@ Index: gcc-4_2-branch/gcc/config/darwin.h
 Index: gcc-4_2-branch/gcc/config/score/crti.asm
 ===================================================================
 --- gcc-4_2-branch/gcc/config/score/crti.asm	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/score/crti.asm	(revision 123843)
++++ gcc-4_2-branch/gcc/config/score/crti.asm	(revision 124164)
 @@ -43,8 +43,8 @@
          .mask   0x00000000, 0
  _start:
@@ -2745,7 +5737,7 @@ Index: gcc-4_2-branch/gcc/config/score/crti.asm
 Index: gcc-4_2-branch/gcc/config/score/misc.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/score/misc.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/score/misc.md	(revision 123843)
++++ gcc-4_2-branch/gcc/config/score/misc.md	(revision 124164)
 @@ -111,7 +111,7 @@
          (zero_extract (match_operand:SI 1 "memory_operand" "")
                        (match_operand:SI 2 "immediate_operand" "")
@@ -2947,7 +5939,7 @@ Index: gcc-4_2-branch/gcc/config/score/misc.md
 Index: gcc-4_2-branch/gcc/config/score/mac.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/score/mac.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/score/mac.md	(revision 123843)
++++ gcc-4_2-branch/gcc/config/score/mac.md	(revision 124164)
 @@ -26,7 +26,7 @@
    [(set (match_operand:SI 0 "register_operand" "=d")
          (smax:SI (match_operand:SI 1 "register_operand" "d")
@@ -3085,7 +6077,7 @@ Index: gcc-4_2-branch/gcc/config/score/mac.md
 Index: gcc-4_2-branch/gcc/config/score/score.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/score/score.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/score/score.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/score/score.h	(revision 124164)
 @@ -38,7 +38,9 @@
  
  #undef ASM_SPEC
@@ -3126,7 +6118,7 @@ Index: gcc-4_2-branch/gcc/config/score/score.h
 Index: gcc-4_2-branch/gcc/config/score/score.md
 ===================================================================
 --- gcc-4_2-branch/gcc/config/score/score.md	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/score/score.md	(revision 123843)
++++ gcc-4_2-branch/gcc/config/score/score.md	(revision 124164)
 @@ -1511,7 +1511,7 @@
     (use (match_operand 2 "" ""))    ; max iterations
     (use (match_operand 3 "" ""))    ; loop level
@@ -3147,7 +6139,7 @@ Index: gcc-4_2-branch/gcc/config/score/score.md
 Index: gcc-4_2-branch/gcc/config/score/score.opt
 ===================================================================
 --- gcc-4_2-branch/gcc/config/score/score.opt	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/score/score.opt	(revision 123843)
++++ gcc-4_2-branch/gcc/config/score/score.opt	(revision 124164)
 @@ -27,10 +27,22 @@
  Target RejectNegative Report Mask(LITTLE_ENDIAN)
  Generate little-endian code
@@ -3178,10 +6170,23 @@ Index: gcc-4_2-branch/gcc/config/score/score.opt
 +mscore7d
 +Target RejectNegative Report Mask(SCORE7D)
 +Support SCORE 7D ISA
+Index: gcc-4_2-branch/gcc/config/arm/linux-gas.h
+===================================================================
+--- gcc-4_2-branch/gcc/config/arm/linux-gas.h	(revision 123014)
++++ gcc-4_2-branch/gcc/config/arm/linux-gas.h	(revision 124164)
+@@ -28,7 +28,7 @@
+ #define DEFAULT_SIGNED_CHAR 0
+ 
+ #undef  SUBTARGET_CPP_SPEC
+-#define SUBTARGET_CPP_SPEC  "%{posix:-D_POSIX_SOURCE}"
++#define SUBTARGET_CPP_SPEC  "%{posix:-D_POSIX_SOURCE} %{pthread:-D_REENTRANT}"
+ 
+ #undef  SIZE_TYPE
+ #define SIZE_TYPE "unsigned int"
 Index: gcc-4_2-branch/gcc/config/pa/pa.c
 ===================================================================
 --- gcc-4_2-branch/gcc/config/pa/pa.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/pa/pa.c	(revision 123843)
++++ gcc-4_2-branch/gcc/config/pa/pa.c	(revision 124164)
 @@ -9276,7 +9276,7 @@
    gcc_assert (TARGET_SOM);
    if (TARGET_GAS)
@@ -3204,7 +6209,7 @@ Index: gcc-4_2-branch/gcc/config/pa/pa.c
 Index: gcc-4_2-branch/gcc/config/darwin9.h
 ===================================================================
 --- gcc-4_2-branch/gcc/config/darwin9.h	(revision 123014)
-+++ gcc-4_2-branch/gcc/config/darwin9.h	(revision 123843)
++++ gcc-4_2-branch/gcc/config/darwin9.h	(revision 124164)
 @@ -1,2 +1,13 @@
  /* The linker can generate branch islands.  */
  #define DARWIN_LINKER_GENERATES_ISLANDS 1
@@ -3222,7 +6227,7 @@ Index: gcc-4_2-branch/gcc/config/darwin9.h
 Index: gcc-4_2-branch/gcc/reload1.c
 ===================================================================
 --- gcc-4_2-branch/gcc/reload1.c	(revision 123014)
-+++ gcc-4_2-branch/gcc/reload1.c	(revision 123843)
++++ gcc-4_2-branch/gcc/reload1.c	(revision 124164)
 @@ -1167,20 +1167,6 @@
        {
  	rtx *pnote;
@@ -3271,7 +6276,7 @@ Index: gcc-4_2-branch/gcc/reload1.c
 Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h	(revision 124164)
 @@ -1,6 +1,6 @@
  // Versatile string utility -*- C++ -*-
  
@@ -3291,7 +6296,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring_util.h
 Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h	(revision 124164)
 @@ -1,6 +1,6 @@
  // Versatile string -*- C++ -*-
  
@@ -3321,7 +6326,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring.h
 Index: gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp	(revision 124164)
 @@ -52,6 +52,7 @@
  #include <utility>
  #include <tr1/type_traits>
@@ -3333,7 +6338,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/ext/pb_ds/detail/type_utils.hpp
 Index: gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h	(revision 124164)
 @@ -0,0 +1,98 @@
 +// -*- C++ -*-
 +
@@ -3436,7 +6441,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/ext/numeric_traits.h
 Index: gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h	(revision 124164)
 @@ -1,6 +1,6 @@
  // -*- C++ -*-
  
@@ -3509,7 +6514,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/ext/type_traits.h
 Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc	(revision 124164)
 @@ -1,6 +1,6 @@
  // Versatile string -*- C++ -*-
  
@@ -3570,7 +6575,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/ext/vstring.tcc
 Index: gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h	(revision 124164)
 @@ -1,6 +1,7 @@
  // Map implementation -*- C++ -*-
  
@@ -3603,7 +6608,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/bits/stl_map.h
 Index: gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h	(revision 124164)
 @@ -1,6 +1,7 @@
  // Components for manipulating sequences of characters -*- C++ -*-
  
@@ -3625,7 +6630,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.h
 Index: gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc	(revision 124164)
 @@ -283,38 +283,6 @@
  
    template<typename _CharT, typename _Traits>
@@ -3694,7 +6699,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/bits/ostream.tcc
 Index: gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc	(revision 124164)
 @@ -1,6 +1,7 @@
  // Components for manipulating sequences of characters -*- C++ -*-
  
@@ -3716,7 +6721,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/bits/basic_string.tcc
 Index: gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h	(revision 124164)
 @@ -0,0 +1,114 @@
 +// Helpers for ostream inserters -*- C++ -*-
 +
@@ -3835,7 +6840,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/bits/ostream_insert.h
 Index: gcc-4_2-branch/libstdc++-v3/include/Makefile.in
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/Makefile.in	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/Makefile.in	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/Makefile.in	(revision 124164)
 @@ -343,6 +343,7 @@
  	${bits_srcdir}/localefwd.h \
  	${bits_srcdir}/mask_array.h \
@@ -3855,7 +6860,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/Makefile.in
 Index: gcc-4_2-branch/libstdc++-v3/include/tr1/random
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/tr1/random	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/tr1/random	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/tr1/random	(revision 124164)
 @@ -43,6 +43,7 @@
  #include <tr1/type_traits>
  #include <tr1/cmath>
@@ -3867,7 +6872,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/tr1/random
 Index: gcc-4_2-branch/libstdc++-v3/include/Makefile.am
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/Makefile.am	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/Makefile.am	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/Makefile.am	(revision 124164)
 @@ -117,6 +117,7 @@
  	${bits_srcdir}/localefwd.h \
  	${bits_srcdir}/mask_array.h \
@@ -3887,7 +6892,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/Makefile.am
 Index: gcc-4_2-branch/libstdc++-v3/include/std/std_string.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/std/std_string.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/std/std_string.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/std/std_string.h	(revision 124164)
 @@ -1,6 +1,7 @@
  // Components for manipulating sequences of characters -*- C++ -*-
  
@@ -3908,7 +6913,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/std/std_string.h
 Index: gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h	(revision 124164)
 @@ -1,6 +1,7 @@
  // Output streams -*- C++ -*-
  
@@ -4030,7 +7035,7 @@ Index: gcc-4_2-branch/libstdc++-v3/include/std/std_ostream.h
 Index: gcc-4_2-branch/libstdc++-v3/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/ChangeLog	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/ChangeLog	(revision 124164)
 @@ -1,3 +1,73 @@
 +2007-04-12  Paolo Carlini  <pcarlini@suse.de>
 +
@@ -4108,7 +7113,7 @@ Index: gcc-4_2-branch/libstdc++-v3/ChangeLog
 Index: gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc	(revision 124164)
 @@ -55,6 +55,7 @@
    template ostream& operator<<(ostream&, _Setbase);
    template ostream& operator<<(ostream&, _Setprecision);
@@ -4128,7 +7133,7 @@ Index: gcc-4_2-branch/libstdc++-v3/src/ostream-inst.cc
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_t/4.cc	(revision 124164)
 @@ -0,0 +1,43 @@
 +// 2007-03-30  Paolo Carlini  <pcarlini@suse.de>
 +
@@ -4176,7 +7181,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/wchar_
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4.cc	(revision 124164)
 @@ -0,0 +1,43 @@
 +// 2007-03-30  Paolo Carlini  <pcarlini@suse.de>
 +
@@ -4224,7 +7229,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/21_strings/basic_string/find/char/4
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.cc	(revision 124164)
 @@ -0,0 +1,28 @@
 +// { dg-do compile }
 +// { dg-options "-pedantic" }
@@ -4257,7 +7262,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/numeric_traits/numeric_traits.c
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wchar_t/28277.cc	(revision 124164)
 @@ -0,0 +1,48 @@
 +// 2007-04-09  Paolo Carlini  <pcarlini@suse.de>
 +
@@ -4310,7 +7315,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/wc
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc	(revision 0)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/char/28277.cc	(revision 124164)
 @@ -0,0 +1,48 @@
 +// 2007-04-09  Paolo Carlini  <pcarlini@suse.de>
 +
@@ -4363,7 +7368,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/vstring/inserters_extractors/ch
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc	(revision 124164)
 @@ -1,28 +0,0 @@
 -// { dg-do compile }
 -// { dg-options "-pedantic" }
@@ -4396,7 +7401,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/numeric_traits.cc
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_integer_neg.cc	(revision 124164)
 @@ -1,7 +1,7 @@
  // { dg-do compile }
  // -*- C++ -*-
@@ -4415,7 +7420,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_int
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floating_neg.cc	(revision 124164)
 @@ -1,7 +1,7 @@
  // { dg-do compile }
  // -*- C++ -*-
@@ -4435,7 +7440,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_floati
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_floating_neg.cc	(revision 124164)
 @@ -1,7 +1,7 @@
  // { dg-do compile }
  // -*- C++ -*-
@@ -4455,7 +7460,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/remove_unsigned_flo
 Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_integer_neg.cc	(revision 124164)
 @@ -1,7 +1,7 @@
  // { dg-do compile }
  // -*- C++ -*-
@@ -4474,7 +7479,7 @@ Index: gcc-4_2-branch/libstdc++-v3/testsuite/ext/type_traits/add_unsigned_intege
 Index: gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver
 ===================================================================
 --- gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver	(revision 123014)
-+++ gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver	(revision 123843)
++++ gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver	(revision 124164)
 @@ -676,8 +676,7 @@
  
      _ZSt21__copy_streambufs_eofI[cw]St11char_traitsI[cw]EE[il]PSt15basic_streambuf*;
@@ -4488,7 +7493,7 @@ Index: gcc-4_2-branch/libstdc++-v3/config/abi/pre/gnu.ver
 Index: gcc-4_2-branch/libgfortran/configure
 ===================================================================
 --- gcc-4_2-branch/libgfortran/configure	(revision 123014)
-+++ gcc-4_2-branch/libgfortran/configure	(revision 123843)
++++ gcc-4_2-branch/libgfortran/configure	(revision 124164)
 @@ -10222,7 +10222,10 @@
  
  
@@ -4504,7 +7509,7 @@ Index: gcc-4_2-branch/libgfortran/configure
 Index: gcc-4_2-branch/libgfortran/intrinsics/stat.c
 ===================================================================
 --- gcc-4_2-branch/libgfortran/intrinsics/stat.c	(revision 123014)
-+++ gcc-4_2-branch/libgfortran/intrinsics/stat.c	(revision 123843)
++++ gcc-4_2-branch/libgfortran/intrinsics/stat.c	(revision 124164)
 @@ -49,6 +49,9 @@
  
  #include <errno.h>
@@ -4579,8 +7584,14 @@ Index: gcc-4_2-branch/libgfortran/intrinsics/stat.c
 Index: gcc-4_2-branch/libgfortran/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/libgfortran/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/libgfortran/ChangeLog	(revision 123843)
-@@ -1,3 +1,13 @@
++++ gcc-4_2-branch/libgfortran/ChangeLog	(revision 124164)
+@@ -1,3 +1,19 @@
++2007-04-17  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
++
++	PR libgfortran/31366
++	* io/transfer.c (read_block_direct): Do not generate error when reading
++	past EOF on a short record that is less than the RECL= specified.
++
 +2007-04-13  Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
 +
 +	PR libfortran/31335
@@ -4594,7 +7605,7 @@ Index: gcc-4_2-branch/libgfortran/ChangeLog
  2007-03-15  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
  
  	PR libgfortran/31099
-@@ -3,4 +13,9 @@
+@@ -3,4 +19,9 @@
  	* io/file_pos.c (st_rewind): Don't set bytes_left to zero.
  
 +2007-03-14  Jakub Jelinek  <jakub@redhat.com>
@@ -4607,7 +7618,7 @@ Index: gcc-4_2-branch/libgfortran/ChangeLog
 Index: gcc-4_2-branch/libgfortran/config.h.in
 ===================================================================
 --- gcc-4_2-branch/libgfortran/config.h.in	(revision 123014)
-+++ gcc-4_2-branch/libgfortran/config.h.in	(revision 123843)
++++ gcc-4_2-branch/libgfortran/config.h.in	(revision 124164)
 @@ -357,6 +357,9 @@
  /* libm includes frexpl */
  #undef HAVE_FREXPL
@@ -4641,7 +7652,7 @@ Index: gcc-4_2-branch/libgfortran/config.h.in
 Index: gcc-4_2-branch/libgfortran/configure.ac
 ===================================================================
 --- gcc-4_2-branch/libgfortran/configure.ac	(revision 123014)
-+++ gcc-4_2-branch/libgfortran/configure.ac	(revision 123843)
++++ gcc-4_2-branch/libgfortran/configure.ac	(revision 124164)
 @@ -177,7 +177,7 @@
  AC_CHECK_FUNCS(getrusage times mkstemp strtof strtold snprintf ftruncate chsize)
  AC_CHECK_FUNCS(chdir strerror getlogin gethostname kill link symlink perror)
@@ -4654,7 +7665,7 @@ Index: gcc-4_2-branch/libgfortran/configure.ac
 Index: gcc-4_2-branch/libgfortran/io/unix.c
 ===================================================================
 --- gcc-4_2-branch/libgfortran/io/unix.c	(revision 123014)
-+++ gcc-4_2-branch/libgfortran/io/unix.c	(revision 123843)
++++ gcc-4_2-branch/libgfortran/io/unix.c	(revision 124164)
 @@ -1186,7 +1186,7 @@
        break;
  
@@ -4681,10 +7692,348 @@ Index: gcc-4_2-branch/libgfortran/io/unix.c
       return fd;
  
    /* retry for read-only access */
+Index: gcc-4_2-branch/libgfortran/io/transfer.c
+===================================================================
+--- gcc-4_2-branch/libgfortran/io/transfer.c	(revision 123014)
++++ gcc-4_2-branch/libgfortran/io/transfer.c	(revision 124164)
+@@ -410,7 +410,6 @@
+ 	  /* Short read, e.g. if we hit EOF.  Apparently, we read
+ 	   more than was written to the last record.  */
+ 	  *nbytes = to_read_record;
+-	  generate_error (&dtp->common, ERROR_SHORT_RECORD, NULL);
+ 	  return;
+ 	}
+ 
+Index: gcc-4_2-branch/libffi/configure
+===================================================================
+--- gcc-4_2-branch/libffi/configure	(revision 123014)
++++ gcc-4_2-branch/libffi/configure	(revision 124164)
+@@ -5401,7 +5401,11 @@
+ sparc-*-linux* | sparc-*-netbsdelf* | sparc-*-knetbsd*-gnu) TARGET=SPARC; TARGETDIR=sparc;;
+ sparc*-*-rtems*) TARGET=SPARC; TARGETDIR=sparc;;
+ sparc64-*-linux* | sparc64-*-freebsd* | sparc64-*-netbsd* | sparc64-*-knetbsd*-gnu) TARGET=SPARC; TARGETDIR=sparc;;
+-alpha*-*-linux* | alpha*-*-osf* | alpha*-*-freebsd* | alpha*-*-kfreebsd*-gnu | alpha*-*-netbsd* | alpha*-*-knetbsd*-gnu) TARGET=ALPHA; TARGETDIR=alpha;;
++alpha*-*-linux* | alpha*-*-osf* | alpha*-*-freebsd* | alpha*-*-kfreebsd*-gnu | alpha*-*-netbsd* | alpha*-*-knetbsd*-gnu)
++	TARGET=ALPHA; TARGETDIR=alpha
++	# Support 128-bit long double, changable via command-line switch.
++	HAVE_LONG_DOUBLE='defined(__LONG_DOUBLE_128__)'
++	;;
+ ia64*-*-*) TARGET=IA64; TARGETDIR=ia64;;
+ m32r*-*-linux* ) TARGET=M32R; TARGETDIR=m32r;;
+ m68k-*-linux*) TARGET=M68K; TARGETDIR=m68k;;
+@@ -7142,15 +7146,17 @@
+ 
+ 
+ # Also AC_SUBST this variable for ffi.h.
+-HAVE_LONG_DOUBLE=0
+-if test $ac_cv_sizeof_double != $ac_cv_sizeof_long_double; then
+-  if test $ac_cv_sizeof_long_double != 0; then
+-    HAVE_LONG_DOUBLE=1
++if test -z "$HAVE_LONG_DOUBLE"; then
++  HAVE_LONG_DOUBLE=0
++  if test $ac_cv_sizeof_double != $ac_cv_sizeof_long_double; then
++    if test $ac_cv_sizeof_long_double != 0; then
++      HAVE_LONG_DOUBLE=1
+ 
+ cat >>confdefs.h <<\_ACEOF
+ #define HAVE_LONG_DOUBLE 1
+ _ACEOF
+ 
++    fi
+   fi
+ fi
+ 
+Index: gcc-4_2-branch/libffi/include/ffi.h.in
+===================================================================
+--- gcc-4_2-branch/libffi/include/ffi.h.in	(revision 123014)
++++ gcc-4_2-branch/libffi/include/ffi.h.in	(revision 124164)
+@@ -153,9 +153,13 @@
+ extern ffi_type ffi_type_sint64;
+ extern ffi_type ffi_type_float;
+ extern ffi_type ffi_type_double;
+-extern ffi_type ffi_type_longdouble;
+ extern ffi_type ffi_type_pointer;
+ 
++#if @HAVE_LONG_DOUBLE@
++extern ffi_type ffi_type_longdouble;
++#else
++#define ffi_type_longdouble ffi_type_double
++#endif
+ 
+ typedef enum {
+   FFI_OK = 0,
+Index: gcc-4_2-branch/libffi/src/alpha/ffi.c
+===================================================================
+--- gcc-4_2-branch/libffi/src/alpha/ffi.c	(revision 123014)
++++ gcc-4_2-branch/libffi/src/alpha/ffi.c	(revision 124164)
+@@ -25,13 +25,24 @@
+ 
+ #include <ffi.h>
+ #include <ffi_common.h>
+-
+ #include <stdlib.h>
+ 
+-extern void ffi_call_osf(void *, unsigned long, unsigned, void *, void (*)());
+-extern void ffi_closure_osf(void);
++/* Force FFI_TYPE_LONGDOUBLE to be different than FFI_TYPE_DOUBLE;
++   all further uses in this file will refer to the 128-bit type.  */
++#if defined(__LONG_DOUBLE_128__)
++# if FFI_TYPE_LONGDOUBLE != 4
++#  error FFI_TYPE_LONGDOUBLE out of date
++# endif
++#else
++# undef FFI_TYPE_LONGDOUBLE
++# define FFI_TYPE_LONGDOUBLE 4
++#endif
+ 
++extern void ffi_call_osf(void *, unsigned long, unsigned, void *, void (*)())
++  FFI_HIDDEN;
++extern void ffi_closure_osf(void) FFI_HIDDEN;
+ 
++
+ ffi_status
+ ffi_prep_cif_machdep(ffi_cif *cif)
+ {
+@@ -49,6 +60,11 @@
+       cif->flags = cif->rtype->type;
+       break;
+ 
++    case FFI_TYPE_LONGDOUBLE:
++      /* 128-bit long double is returned in memory, like a struct.  */
++      cif->flags = FFI_TYPE_STRUCT;
++      break;
++
+     default:
+       cif->flags = FFI_TYPE_INT;
+       break;
+@@ -57,6 +73,7 @@
+   return FFI_OK;
+ }
+ 
++
+ void
+ ffi_call(ffi_cif *cif, void (*fn)(), void *rvalue, void **avalue)
+ {
+@@ -64,8 +81,6 @@
+   long i, avn;
+   ffi_type **arg_types;
+   
+-  FFI_ASSERT (cif->abi == FFI_OSF);
+-
+   /* If the return value is a struct and we don't have a return
+      value address then we need to make one.  */
+   if (rvalue == NULL && cif->flags == FFI_TYPE_STRUCT)
+@@ -84,6 +99,8 @@
+ 
+   while (i < avn)
+     {
++      size_t size = (*arg_types)->size;
++
+       switch ((*arg_types)->type)
+ 	{
+ 	case FFI_TYPE_SINT8:
+@@ -129,6 +146,12 @@
+ 	  *(double *) argp = *(double *)(* avalue);
+ 	  break;
+ 
++	case FFI_TYPE_LONGDOUBLE:
++	  /* 128-bit long double is passed by reference.  */
++	  *(long double **) argp = (long double *)(* avalue);
++	  size = sizeof (long double *);
++	  break;
++
+ 	case FFI_TYPE_STRUCT:
+ 	  memcpy(argp, *avalue, (*arg_types)->size);
+ 	  break;
+@@ -137,7 +160,7 @@
+ 	  FFI_ASSERT(0);
+ 	}
+ 
+-      argp += ALIGN((*arg_types)->size, FFI_SIZEOF_ARG) / FFI_SIZEOF_ARG;
++      argp += ALIGN(size, FFI_SIZEOF_ARG) / FFI_SIZEOF_ARG;
+       i++, arg_types++, avalue++;
+     }
+ 
+@@ -153,8 +176,6 @@
+ {
+   unsigned int *tramp;
+ 
+-  FFI_ASSERT (cif->abi == FFI_OSF);
+-
+   tramp = (unsigned int *) &closure->tramp[0];
+   tramp[0] = 0x47fb0401;	/* mov $27,$1		*/
+   tramp[1] = 0xa77b0010;	/* ldq $27,16($27)	*/
+@@ -177,7 +198,8 @@
+   return FFI_OK;
+ }
+ 
+-int
++
++long FFI_HIDDEN
+ ffi_closure_osf_inner(ffi_closure *closure, void *rvalue, unsigned long *argp)
+ {
+   ffi_cif *cif;
+@@ -205,6 +227,8 @@
+   /* Grab the addresses of the arguments from the stack frame.  */
+   while (i < avn)
+     {
++      size_t size = arg_types[i]->size;
++
+       switch (arg_types[i]->type)
+ 	{
+ 	case FFI_TYPE_SINT8:
+@@ -236,16 +260,22 @@
+ 	  avalue[i] = &argp[argn - (argn < 6 ? 6 : 0)];
+ 	  break;
+ 
++	case FFI_TYPE_LONGDOUBLE:
++	  /* 128-bit long double is passed by reference.  */
++	  avalue[i] = (long double *) argp[argn];
++	  size = sizeof (long double *);
++	  break;
++
+ 	default:
+-	  FFI_ASSERT(0);
++	  abort ();
+ 	}
+ 
+-      argn += ALIGN(arg_types[i]->size, FFI_SIZEOF_ARG) / FFI_SIZEOF_ARG;
++      argn += ALIGN(size, FFI_SIZEOF_ARG) / FFI_SIZEOF_ARG;
+       i++;
+     }
+ 
+   /* Invoke the closure.  */
+-  (closure->fun) (cif, rvalue, avalue, closure->user_data);
++  closure->fun (cif, rvalue, avalue, closure->user_data);
+ 
+   /* Tell ffi_closure_osf how to perform return type promotions.  */
+   return cif->rtype->type;
+Index: gcc-4_2-branch/libffi/src/alpha/osf.S
+===================================================================
+--- gcc-4_2-branch/libffi/src/alpha/osf.S	(revision 123014)
++++ gcc-4_2-branch/libffi/src/alpha/osf.S	(revision 124164)
+@@ -1,10 +1,8 @@
+ /* -----------------------------------------------------------------------
+-   osf.S - Copyright (c) 1998, 2001 Red Hat
++   osf.S - Copyright (c) 1998, 2001, 2007 Red Hat
+    
+    Alpha/OSF Foreign Function Interface 
+ 
+-   $Id$
+-
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    ``Software''), to deal in the Software without restriction, including
+@@ -42,6 +40,8 @@
+ 	.align	3
+ 	.globl	ffi_call_osf
+ 	.ent	ffi_call_osf
++	FFI_HIDDEN(ffi_call_osf)
++
+ ffi_call_osf:
+ 	.frame	$15, 32, $26, 0
+ 	.mask   0x4008000, -32
+@@ -129,6 +129,8 @@
+ 	.align	3
+ 	.globl	ffi_closure_osf
+ 	.ent	ffi_closure_osf
++	FFI_HIDDEN(ffi_closure_osf)
++
+ ffi_closure_osf:
+ 	.frame	$30, 16*8, $26, 0
+ 	.mask	0x4000000, -16*8
+@@ -265,7 +267,7 @@
+ 	.gprel32 $load_32	# FFI_TYPE_INT
+ 	.gprel32 $load_float	# FFI_TYPE_FLOAT
+ 	.gprel32 $load_double	# FFI_TYPE_DOUBLE
+-	.gprel32 $load_double	# FFI_TYPE_LONGDOUBLE
++	.gprel32 $load_none	# FFI_TYPE_LONGDOUBLE
+ 	.gprel32 $load_u8	# FFI_TYPE_UINT8
+ 	.gprel32 $load_s8	# FFI_TYPE_SINT8
+ 	.gprel32 $load_u16	# FFI_TYPE_UINT16
+Index: gcc-4_2-branch/libffi/src/types.c
+===================================================================
+--- gcc-4_2-branch/libffi/src/types.c	(revision 123014)
++++ gcc-4_2-branch/libffi/src/types.c	(revision 124164)
+@@ -57,4 +57,17 @@
+ 
+ FFI_TYPEDEF(float, float, FFI_TYPE_FLOAT);
+ FFI_TYPEDEF(double, double, FFI_TYPE_DOUBLE);
++
++#ifdef __alpha__
++/* Even if we're not configured to default to 128-bit long double, 
++   maintain binary compatibility, as -mlong-double-128 can be used
++   at any time.  */
++/* Validate the hard-coded number below.  */
++# if defined(__LONG_DOUBLE_128__) && FFI_TYPE_LONGDOUBLE != 4
++#  error FFI_TYPE_LONGDOUBLE out of date
++# endif
++# undef ffi_type_longdouble
++ffi_type ffi_type_longdouble = { 16, 16, 4, NULL };
++#elif FFI_TYPE_LONGDOUBLE != FFI_TYPE_DOUBLE
+ FFI_TYPEDEF(longdouble, long double, FFI_TYPE_LONGDOUBLE);
++#endif
+Index: gcc-4_2-branch/libffi/ChangeLog
+===================================================================
+--- gcc-4_2-branch/libffi/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/libffi/ChangeLog	(revision 124164)
+@@ -1,3 +1,16 @@
++2007-04-20  Richard Henderson  <rth@redhat.com>
++
++	* configure.ac (alpha*-*-*): Define HAVE_LONG_DOUBLE.
++	* configure: Regenerate.
++	* include/ffi.h.in (ffi_type_longdouble): Define as ffi_type_double
++	if HAVE_LONG_DOUBLE is false.
++	* src/alpha/ffi.c (ffi_prep_cif_machdep): Support the 128-bit
++	long double type.
++	(ffi_call_osf, ffi_closure_osf): Likewise.
++	* src/alpha/osf.S (ffi_call_osf, ffi_closure_osf): Mark hidden.
++	* src/types.c (ffi_type_longdouble): For alpha, always generate
++	for the 128-bit long double type.
++
+ 2007-02-13  Andreas Krebbel  <krebbel1@de.ibm.com>
+ 
+ 	* src/s390/ffi.c (ffi_prep_args, ffi_prep_cif_machdep,
+Index: gcc-4_2-branch/libffi/configure.ac
+===================================================================
+--- gcc-4_2-branch/libffi/configure.ac	(revision 123014)
++++ gcc-4_2-branch/libffi/configure.ac	(revision 124164)
+@@ -59,7 +59,11 @@
+ sparc-*-linux* | sparc-*-netbsdelf* | sparc-*-knetbsd*-gnu) TARGET=SPARC; TARGETDIR=sparc;;
+ sparc*-*-rtems*) TARGET=SPARC; TARGETDIR=sparc;;
+ sparc64-*-linux* | sparc64-*-freebsd* | sparc64-*-netbsd* | sparc64-*-knetbsd*-gnu) TARGET=SPARC; TARGETDIR=sparc;;
+-alpha*-*-linux* | alpha*-*-osf* | alpha*-*-freebsd* | alpha*-*-kfreebsd*-gnu | alpha*-*-netbsd* | alpha*-*-knetbsd*-gnu) TARGET=ALPHA; TARGETDIR=alpha;;
++alpha*-*-linux* | alpha*-*-osf* | alpha*-*-freebsd* | alpha*-*-kfreebsd*-gnu | alpha*-*-netbsd* | alpha*-*-knetbsd*-gnu)
++	TARGET=ALPHA; TARGETDIR=alpha
++	# Support 128-bit long double, changable via command-line switch.
++	HAVE_LONG_DOUBLE='defined(__LONG_DOUBLE_128__)'
++	;;
+ ia64*-*-*) TARGET=IA64; TARGETDIR=ia64;;
+ m32r*-*-linux* ) TARGET=M32R; TARGETDIR=m32r;;
+ m68k-*-linux*) TARGET=M68K; TARGETDIR=m68k;;
+@@ -132,11 +136,13 @@
+ AC_CHECK_SIZEOF(long double)
+ 
+ # Also AC_SUBST this variable for ffi.h.
+-HAVE_LONG_DOUBLE=0
+-if test $ac_cv_sizeof_double != $ac_cv_sizeof_long_double; then
+-  if test $ac_cv_sizeof_long_double != 0; then
+-    HAVE_LONG_DOUBLE=1
+-    AC_DEFINE(HAVE_LONG_DOUBLE, 1, [Define if you have the long double type and it is bigger than a double])
++if test -z "$HAVE_LONG_DOUBLE"; then
++  HAVE_LONG_DOUBLE=0
++  if test $ac_cv_sizeof_double != $ac_cv_sizeof_long_double; then
++    if test $ac_cv_sizeof_long_double != 0; then
++      HAVE_LONG_DOUBLE=1
++      AC_DEFINE(HAVE_LONG_DOUBLE, 1, [Define if you have the long double type and it is bigger than a double])
++    fi
+   fi
+ fi
+ AC_SUBST(HAVE_LONG_DOUBLE)
 Index: gcc-4_2-branch/contrib/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/contrib/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/contrib/ChangeLog	(revision 123843)
++++ gcc-4_2-branch/contrib/ChangeLog	(revision 124164)
 @@ -1,3 +1,18 @@
 +2007-04-04  Eric Christopher  <echristo@apple.com>
 +
@@ -4724,7 +8073,7 @@ Index: gcc-4_2-branch/contrib/ChangeLog
 Index: gcc-4_2-branch/contrib/texi2pod.pl
 ===================================================================
 --- gcc-4_2-branch/contrib/texi2pod.pl	(revision 123014)
-+++ gcc-4_2-branch/contrib/texi2pod.pl	(revision 123843)
++++ gcc-4_2-branch/contrib/texi2pod.pl	(revision 124164)
 @@ -162,6 +162,8 @@
  	} elsif ($ended =~ /^(?:itemize|enumerate|[fv]?table)$/) {
  	    $_ = "\n=back\n";
@@ -4795,7 +8144,7 @@ Index: gcc-4_2-branch/contrib/texi2pod.pl
 Index: gcc-4_2-branch/libjava/configure
 ===================================================================
 --- gcc-4_2-branch/libjava/configure	(revision 123014)
-+++ gcc-4_2-branch/libjava/configure	(revision 123843)
++++ gcc-4_2-branch/libjava/configure	(revision 124164)
 @@ -7687,7 +7687,7 @@
    # See if we find them without any special options.
    # Don't add to $LIBS permanently.
@@ -4833,7 +8182,7 @@ Index: gcc-4_2-branch/libjava/configure
 Index: gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc
 ===================================================================
 --- gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc	(revision 123014)
-+++ gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc	(revision 123843)
++++ gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc	(revision 124164)
 @@ -178,8 +178,6 @@
        throw new ::java::io::FileNotFoundException (msg->toString ());
      }
@@ -4846,7 +8195,7 @@ Index: gcc-4_2-branch/libjava/gnu/java/nio/channels/natFileChannelPosix.cc
 Index: gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc
 ===================================================================
 --- gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc	(revision 123014)
-+++ gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc	(revision 123843)
++++ gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc	(revision 124164)
 @@ -72,8 +72,6 @@
        throw new ::java::io::IOException (JvNewStringUTF (strerr));
      }
@@ -4868,7 +8217,7 @@ Index: gcc-4_2-branch/libjava/gnu/java/net/natPlainSocketImplPosix.cc
 Index: gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc
 ===================================================================
 --- gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc	(revision 123014)
-+++ gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc	(revision 123843)
++++ gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc	(revision 124164)
 @@ -83,8 +83,6 @@
        throw new ::java::net::SocketException (JvNewStringUTF (strerr));
      }
@@ -4881,7 +8230,7 @@ Index: gcc-4_2-branch/libjava/gnu/java/net/natPlainDatagramSocketImplPosix.cc
 Index: gcc-4_2-branch/libjava/configure.ac
 ===================================================================
 --- gcc-4_2-branch/libjava/configure.ac	(revision 123014)
-+++ gcc-4_2-branch/libjava/configure.ac	(revision 123843)
++++ gcc-4_2-branch/libjava/configure.ac	(revision 124164)
 @@ -906,10 +906,10 @@
  		   access stat lstat mkdir rename rmdir unlink utime chmod readlink \
  		   nl_langinfo setlocale \
@@ -4898,7 +8247,7 @@ Index: gcc-4_2-branch/libjava/configure.ac
 Index: gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc
 ===================================================================
 --- gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc	(revision 123014)
-+++ gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc	(revision 123843)
++++ gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc	(revision 124164)
 @@ -17,6 +17,9 @@
  #include <fcntl.h>
  #include <sys/types.h>
@@ -4957,7 +8306,7 @@ Index: gcc-4_2-branch/libjava/java/lang/natPosixProcess.cc
 Index: gcc-4_2-branch/libjava/include/posix.h
 ===================================================================
 --- gcc-4_2-branch/libjava/include/posix.h	(revision 123014)
-+++ gcc-4_2-branch/libjava/include/posix.h	(revision 123843)
++++ gcc-4_2-branch/libjava/include/posix.h	(revision 124164)
 @@ -91,15 +91,6 @@
  extern void _Jv_platform_initialize (void);
  extern void _Jv_platform_initProperties (java::util::Properties*);
@@ -4977,7 +8326,7 @@ Index: gcc-4_2-branch/libjava/include/posix.h
 Index: gcc-4_2-branch/libjava/include/config.h.in
 ===================================================================
 --- gcc-4_2-branch/libjava/include/config.h.in	(revision 123014)
-+++ gcc-4_2-branch/libjava/include/config.h.in	(revision 123843)
++++ gcc-4_2-branch/libjava/include/config.h.in	(revision 124164)
 @@ -124,6 +124,9 @@
  /* Define to 1 if you have the `getpwuid_r' function. */
  #undef HAVE_GETPWUID_R
@@ -5001,7 +8350,7 @@ Index: gcc-4_2-branch/libjava/include/config.h.in
 Index: gcc-4_2-branch/libjava/ChangeLog
 ===================================================================
 --- gcc-4_2-branch/libjava/ChangeLog	(revision 123014)
-+++ gcc-4_2-branch/libjava/ChangeLog	(revision 123843)
++++ gcc-4_2-branch/libjava/ChangeLog	(revision 124164)
 @@ -1,3 +1,19 @@
 +2007-03-25  David Daney  <ddaney@avtrex.com>
 +
@@ -5022,3 +8371,43 @@ Index: gcc-4_2-branch/libjava/ChangeLog
  2007-01-29  Kaloian Doganov  <kaloian@doganov.org>
  
  	PR libgcj/30600:
+Index: gcc-4_2-branch/libcpp/ChangeLog
+===================================================================
+--- gcc-4_2-branch/libcpp/ChangeLog	(revision 123014)
++++ gcc-4_2-branch/libcpp/ChangeLog	(revision 124164)
+@@ -1,3 +1,9 @@
++2007-04-23  Tom Tromey  <tromey@redhat.com>
++
++	PR preprocessor/30468:
++	* mkdeps.c (apply_vpath): Strip successive '/'s if we stripped
++	'./'.
++
+ 2006-12-29  Jakub Jelinek  <jakub@redhat.com>
+ 
+ 	PR preprocessor/29612
+Index: gcc-4_2-branch/libcpp/mkdeps.c
+===================================================================
+--- gcc-4_2-branch/libcpp/mkdeps.c	(revision 123014)
++++ gcc-4_2-branch/libcpp/mkdeps.c	(revision 124164)
+@@ -1,5 +1,5 @@
+ /* Dependency generator for Makefile fragments.
+-   Copyright (C) 2000, 2001, 2003 Free Software Foundation, Inc.
++   Copyright (C) 2000, 2001, 2003, 2007 Free Software Foundation, Inc.
+    Contributed by Zack Weinberg, Mar 2000
+ 
+ This program is free software; you can redistribute it and/or modify it
+@@ -141,7 +141,13 @@
+ 
+   /* Remove leading ./ in any case.  */
+   while (t[0] == '.' && IS_DIR_SEPARATOR (t[1]))
+-    t += 2;
++    {
++      t += 2;
++      /* If we removed a leading ./, then also remove any /s after the
++	 first.  */
++      while (IS_DIR_SEPARATOR (t[0]))
++	++t;
++    }
+ 
+   return t;
+ }
