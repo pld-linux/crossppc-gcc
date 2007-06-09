@@ -1,7 +1,7 @@
 Index: configure
 ===================================================================
---- configure	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ configure	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- configure	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ configure	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -7337,6 +7337,12 @@
  #line 7338 "configure"
  #include "confdefs.h"
@@ -17,8 +17,8 @@ Index: configure
  ; return 0; }
 Index: gcc/tree-vrp.c
 ===================================================================
---- gcc/tree-vrp.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/tree-vrp.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/tree-vrp.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/tree-vrp.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -195,7 +195,28 @@
  	      || operand_equal_p (val, TYPE_MIN_VALUE (TREE_TYPE (val)), 0)));
  }
@@ -85,7 +85,18 @@ Index: gcc/tree-vrp.c
  }
  
  
-@@ -1028,6 +1036,8 @@
+@@ -763,7 +771,9 @@
+       if (!TYPE_OVERFLOW_UNDEFINED (TREE_TYPE (val1)))
+ 	return -2;
+ 
+-      if (strict_overflow_p != NULL)
++      if (strict_overflow_p != NULL
++	  && (code1 == SSA_NAME || !TREE_NO_WARNING (val1))
++	  && (code2 == SSA_NAME || !TREE_NO_WARNING (val2)))
+ 	*strict_overflow_p = true;
+ 
+       if (code1 == SSA_NAME)
+@@ -1028,6 +1038,8 @@
        cond_code = swap_tree_comparison (TREE_CODE (cond));
      }
  
@@ -94,7 +105,25 @@ Index: gcc/tree-vrp.c
    type = TREE_TYPE (limit);
    gcc_assert (limit != var);
  
-@@ -1619,7 +1629,7 @@
+@@ -1167,6 +1179,8 @@
+ 	    {
+ 	      tree one = build_int_cst (type, 1);
+ 	      max = fold_build2 (MINUS_EXPR, type, max, one);
++	      if (EXPR_P (max))
++		TREE_NO_WARNING (max) = 1;
+ 	    }
+ 
+ 	  set_value_range (vr_p, VR_RANGE, min, max, vr_p->equiv);
+@@ -1200,6 +1214,8 @@
+ 	    {
+ 	      tree one = build_int_cst (type, 1);
+ 	      min = fold_build2 (PLUS_EXPR, type, min, one);
++	      if (EXPR_P (min))
++		TREE_NO_WARNING (min) = 1;
+ 	    }
+ 
+ 	  set_value_range (vr_p, VR_RANGE, min, max, vr_p->equiv);
+@@ -1619,7 +1635,7 @@
    if (TREE_CODE (op0) == SSA_NAME)
      vr0 = *(get_value_range (op0));
    else if (is_gimple_min_invariant (op0))
@@ -103,7 +132,7 @@ Index: gcc/tree-vrp.c
    else
      set_value_range_to_varying (&vr0);
  
-@@ -1627,7 +1637,7 @@
+@@ -1627,7 +1643,7 @@
    if (TREE_CODE (op1) == SSA_NAME)
      vr1 = *(get_value_range (op1));
    else if (is_gimple_min_invariant (op1))
@@ -112,7 +141,7 @@ Index: gcc/tree-vrp.c
    else
      set_value_range_to_varying (&vr1);
  
-@@ -2006,7 +2016,7 @@
+@@ -2006,7 +2022,7 @@
    if (TREE_CODE (op0) == SSA_NAME)
      vr0 = *(get_value_range (op0));
    else if (is_gimple_min_invariant (op0))
@@ -121,7 +150,7 @@ Index: gcc/tree-vrp.c
    else
      set_value_range_to_varying (&vr0);
  
-@@ -2393,7 +2403,10 @@
+@@ -2393,7 +2409,10 @@
  	 its type may be different from _Bool.  Convert VAL to EXPR's
  	 type.  */
        val = fold_convert (TREE_TYPE (expr), val);
@@ -133,7 +162,7 @@ Index: gcc/tree-vrp.c
      }
    else
      set_value_range_to_varying (vr);
-@@ -2424,7 +2437,7 @@
+@@ -2424,7 +2443,7 @@
    else if (TREE_CODE_CLASS (code) == tcc_comparison)
      extract_range_from_comparison (vr, expr);
    else if (is_gimple_min_invariant (expr))
@@ -142,7 +171,84 @@ Index: gcc/tree-vrp.c
    else
      set_value_range_to_varying (vr);
  
-@@ -4156,7 +4169,7 @@
+@@ -2545,6 +2564,13 @@
+ 	      if (compare_values (min, max) == 1)
+ 		return;
+ 	    }
++
++	  /* According to the loop information, the variable does not
++	     overflow.  If we think it does, probably because of an
++	     overflow due to arithmetic on a different INF value,
++	     reset now.  */
++	  if (is_negative_overflow_infinity (min))
++	    min = tmin;
+ 	}
+       else
+ 	{
+@@ -2557,13 +2583,62 @@
+ 	      if (compare_values (min, max) == 1)
+ 		return;
+ 	    }
++
++	  if (is_positive_overflow_infinity (max))
++	    max = tmax;
+ 	}
+ 
+       set_value_range (vr, VR_RANGE, min, max, vr->equiv);
+     }
+ }
+ 
++/* Return true if VAR may overflow at STMT.  This checks any available
++   loop information to see if we can determine that VAR does not
++   overflow.  */
+ 
++static bool
++vrp_var_may_overflow (tree var, tree stmt)
++{
++  struct loop *l;
++  tree chrec, init, step;
++
++  if (current_loops == NULL)
++    return true;
++
++  l = loop_containing_stmt (stmt);
++  if (l == NULL)
++    return true;
++
++  chrec = instantiate_parameters (l, analyze_scalar_evolution (l, var));
++  if (TREE_CODE (chrec) != POLYNOMIAL_CHREC)
++    return true;
++
++  init = initial_condition_in_loop_num (chrec, l->num);
++  step = evolution_part_in_loop_num (chrec, l->num);
++
++  if (step == NULL_TREE
++      || !is_gimple_min_invariant (step)
++      || !valid_value_p (init))
++    return true;
++
++  /* If we get here, we know something useful about VAR based on the
++     loop information.  If it wraps, it may overflow.  */
++
++  if (scev_probably_wraps_p (init, step, stmt,
++			     current_loops->parray[CHREC_VARIABLE (chrec)],
++			     true))
++    return true;
++
++  if (dump_file && (dump_flags & TDF_DETAILS) != 0)
++    {
++      print_generic_expr (dump_file, var, 0);
++      fprintf (dump_file, ": loop information indicates does not overflow\n");
++    }
++
++  return false;
++}
++
++
+ /* Given two numeric value ranges VR0, VR1 and a comparison code COMP:
+    
+    - Return BOOLEAN_TRUE_NODE if VR0 COMP VR1 always returns true for
+@@ -4156,7 +4231,7 @@
        t = retval = NULL_TREE;
        EXECUTE_IF_SET_IN_BITMAP (e2, 0, i2, bi2)
  	{
@@ -151,17 +257,55 @@ Index: gcc/tree-vrp.c
  
  	  value_range_t vr2 = *(vr_value[i2]);
  
+@@ -4773,7 +4848,8 @@
+ 	      if (vrp_val_is_max (vr_result.max))
+ 		goto varying;
+ 
+-	      if (!needs_overflow_infinity (TREE_TYPE (vr_result.min)))
++	      if (!needs_overflow_infinity (TREE_TYPE (vr_result.min))
++		  || !vrp_var_may_overflow (lhs, phi))
+ 		vr_result.min = TYPE_MIN_VALUE (TREE_TYPE (vr_result.min));
+ 	      else if (supports_overflow_infinity (TREE_TYPE (vr_result.min)))
+ 		vr_result.min =
+@@ -4791,7 +4867,8 @@
+ 	      if (vrp_val_is_min (vr_result.min))
+ 		goto varying;
+ 
+-	      if (!needs_overflow_infinity (TREE_TYPE (vr_result.max)))
++	      if (!needs_overflow_infinity (TREE_TYPE (vr_result.max))
++		  || !vrp_var_may_overflow (lhs, phi))
+ 		vr_result.max = TYPE_MAX_VALUE (TREE_TYPE (vr_result.max));
+ 	      else if (supports_overflow_infinity (TREE_TYPE (vr_result.max)))
+ 		vr_result.max =
+@@ -4971,6 +5048,8 @@
+ 	{
+ 	  tree one = build_int_cst (TREE_TYPE (op0), 1);
+ 	  max = fold_build2 (MINUS_EXPR, TREE_TYPE (op0), max, one);
++	  if (EXPR_P (max))
++	    TREE_NO_WARNING (max) = 1;
+ 	}
+     }
+   else if (cond_code == GE_EXPR || cond_code == GT_EXPR)
+@@ -4984,6 +5063,8 @@
+ 	{
+ 	  tree one = build_int_cst (TREE_TYPE (op0), 1);
+ 	  min = fold_build2 (PLUS_EXPR, TREE_TYPE (op0), min, one);
++	  if (EXPR_P (min))
++	    TREE_NO_WARNING (min) = 1;
+ 	}
+     }
+ 
 Index: gcc/DATESTAMP
 ===================================================================
---- gcc/DATESTAMP	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/DATESTAMP	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/DATESTAMP	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/DATESTAMP	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1 +1 @@
 -20070514
-+20070603
++20070609
 Index: gcc/pointer-set.c
 ===================================================================
---- gcc/pointer-set.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/pointer-set.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/pointer-set.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/pointer-set.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -22,13 +22,12 @@
  #include "system.h"
  #include "pointer-set.h"
@@ -385,8 +529,8 @@ Index: gcc/pointer-set.c
 +}
 Index: gcc/pointer-set.h
 ===================================================================
---- gcc/pointer-set.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/pointer-set.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/pointer-set.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/pointer-set.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -22,11 +22,21 @@
  #define POINTER_SET_H
  
@@ -412,9 +556,50 @@ Index: gcc/pointer-set.h
  #endif  /* POINTER_SET_H  */
 Index: gcc/fold-const.c
 ===================================================================
---- gcc/fold-const.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fold-const.c	(.../branches/gcc-4_2-branch)	(revision 125292)
-@@ -12634,9 +12634,14 @@
+--- gcc/fold-const.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fold-const.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -4450,13 +4450,24 @@
+ 	{
+ 	  low = range_successor (high1);
+ 	  high = high0;
+-	  in_p = (low != 0);
++	  in_p = 1;
++	  if (low == 0)
++	    {
++	      /* We are in the weird situation where high0 > high1 but
++		 high1 has no successor.  Punt.  */
++	      return 0;
++	    }
+ 	}
+       else if (! subset || highequal)
+ 	{
+ 	  low = low0;
+ 	  high = range_predecessor (low1);
+-	  in_p = (high != 0);
++	  in_p = 1;
++	  if (high == 0)
++	    {
++	      /* low0 < low1 but low1 has no predecessor.  Punt.  */
++	      return 0;
++	    }
+ 	}
+       else
+ 	return 0;
+@@ -4476,7 +4487,12 @@
+ 	{
+ 	  low = range_successor (high0);
+ 	  high = high1;
+-	  in_p = (low != 0);
++	  in_p = 1;
++	  if (low == 0)
++	    {
++	      /* high1 > high0 but high0 has no successor.  Punt.  */
++	      return 0;
++	    }
+ 	}
+     }
+ 
+@@ -12634,9 +12650,14 @@
        /* ... fall through ...  */
  
      default:
@@ -434,15 +619,42 @@ Index: gcc/fold-const.c
    /* We don't know sign of `t', so be conservative and return false.  */
 Index: gcc/DEV-PHASE
 ===================================================================
---- gcc/DEV-PHASE	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/DEV-PHASE	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/DEV-PHASE	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/DEV-PHASE	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1 @@
 +prerelease
 Index: gcc/ChangeLog
 ===================================================================
---- gcc/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
-@@ -1,3 +1,174 @@
+--- gcc/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -1,3 +1,201 @@
++2007-06-08  Kaz Kojima  <kkojima@gcc.gnu.org>
++
++	PR target/32163
++	Backport from mainline.
++	* config/sh/sh.md (symGOT_load): Don't schedule insns when
++	the symbol is generated with the stack protector.
++
++2007-06-06  Ian Lance Taylor  <iant@google.com>
++
++	* fold-const.c (merge_ranges): If range_successor or
++	range_predecessor fail, just return 0.
++
++2007-06-05  Ian Lance Taylor  <iant@google.com>
++
++	* tree-vrp.c (compare_values_warnv): Check TREE_NO_WARNING on a
++	PLUS_EXPR or MINUS_EXPR node before setting *strict_overflow_p.
++	(extract_range_from_assert): Set TREE_NO_WARNING when creating an
++	expression.
++	(test_for_singularity): Likewise.
++
++2007-06-04  Ian Lance Taylor  <iant@google.com>
++
++	* tree-vrp.c (adjust_range_with_scev): When loop is not expected
++	to overflow, reduce overflow infinity to regular infinity.
++	(vrp_var_may_overflow): New static function.
++	(vrp_visit_phi_node): Check vrp_var_may_overflow.
++
 +2007-05-31  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from mainline:
@@ -617,7 +829,7 @@ Index: gcc/ChangeLog
  2007-05-13  Release Manager
  
  	* GCC 4.2.0 released.
-@@ -307,7 +478,8 @@
+@@ -307,7 +505,8 @@
  2007-04-03  Stuart Hastings  <stuart@apple.com>
  
  	PR 31281
@@ -629,8 +841,8 @@ Index: gcc/ChangeLog
  2007-04-03  Jakub Jelinek  <jakub@redhat.com>
 Index: gcc/testsuite/gcc.c-torture/execute/vrp-7.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/vrp-7.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.c-torture/execute/vrp-7.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.c-torture/execute/vrp-7.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.c-torture/execute/vrp-7.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,20 @@
 +
 +void abort (void);
@@ -654,8 +866,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/vrp-7.c
 +}
 Index: gcc/testsuite/gcc.c-torture/execute/20070517-1.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/20070517-1.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.c-torture/execute/20070517-1.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.c-torture/execute/20070517-1.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.c-torture/execute/20070517-1.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,41 @@
 +/* PR rtl-optimization/31691 */
 +/* Origin: Chi-Hua Chen <stephaniechc-gccbug@yahoo.com> */
@@ -700,8 +912,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/20070517-1.c
 +}
 Index: gcc/testsuite/gcc.c-torture/compile/pr31953.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/compile/pr31953.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr31953.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.c-torture/compile/pr31953.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.c-torture/compile/pr31953.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,14 @@
 +struct WView
 +{
@@ -719,8 +931,8 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr31953.c
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-vec-3.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-vec-3.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-vec-3.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-vec-3.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-vec-3.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,37 @@
 +/* { dg-do run { target i?86-*-* x86_64-*-* } } */
 +/* { dg-options "-O2 -msse2" } */
@@ -761,8 +973,8 @@ Index: gcc/testsuite/gcc.target/i386/sse2-vec-3.c
 +}
 Index: gcc/testsuite/gcc.target/i386/pr31167.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr31167.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/pr31167.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/pr31167.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/pr31167.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,20 @@
 +/* { dg-do compile { target x86_64-*-* } } */
 +/* { dg-options "-O" } */
@@ -786,8 +998,8 @@ Index: gcc/testsuite/gcc.target/i386/pr31167.c
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-vec-4.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-vec-4.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-vec-4.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-vec-4.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-vec-4.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,41 @@
 +/* { dg-do run { target i?86-*-* x86_64-*-* } } */
 +/* { dg-options "-O2 -msse2" } */
@@ -832,8 +1044,8 @@ Index: gcc/testsuite/gcc.target/i386/sse2-vec-4.c
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-check.h
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-check.h	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-check.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-check.h	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-check.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,20 @@
 +#include <stdio.h>
 +#include <stdlib.h>
@@ -857,8 +1069,8 @@ Index: gcc/testsuite/gcc.target/i386/sse2-check.h
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-vec-1.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-vec-1.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-vec-1.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-vec-1.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-vec-1.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,35 @@
 +/* { dg-do run { target i?86-*-* x86_64-*-* } } */
 +/* { dg-options "-O2 -msse2" } */
@@ -897,8 +1109,8 @@ Index: gcc/testsuite/gcc.target/i386/sse2-vec-1.c
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-vec-5.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-vec-5.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-vec-5.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-vec-5.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-vec-5.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,49 @@
 +/* { dg-do run { target i?86-*-* x86_64-*-* } } */
 +/* { dg-options "-O2 -msse2" } */
@@ -951,8 +1163,8 @@ Index: gcc/testsuite/gcc.target/i386/sse2-vec-5.c
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-vec-2.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-vec-2.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-vec-2.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-vec-2.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-vec-2.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,35 @@
 +/* { dg-do run { target i?86-*-* x86_64-*-* } } */
 +/* { dg-options "-O2 -msse2" } */
@@ -991,8 +1203,8 @@ Index: gcc/testsuite/gcc.target/i386/sse2-vec-2.c
 +}
 Index: gcc/testsuite/gcc.target/i386/sse2-vec-6.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse2-vec-6.c	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/sse2-vec-6.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gcc.target/i386/sse2-vec-6.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/sse2-vec-6.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,69 @@
 +/* { dg-do run { target i?86-*-* x86_64-*-* } } */
 +/* { dg-options "-O2 -msse2" } */
@@ -1063,11 +1275,78 @@ Index: gcc/testsuite/gcc.target/i386/sse2-vec-6.c
 +	abort ();
 +    }
 +}
+Index: gcc/testsuite/gcc.dg/Wstrict-overflow-18.c
+===================================================================
+--- gcc/testsuite/gcc.dg/Wstrict-overflow-18.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.dg/Wstrict-overflow-18.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -0,0 +1,22 @@
++/* { dg-do compile } */
++/* { dg-options "-fstrict-overflow -O2 -Wstrict-overflow" } */
++
++/* Don't warn about an overflow when folding i > 0.  The loop analysis
++   should determine that i does not wrap.  */
++
++struct c { unsigned int a; unsigned int b; };
++extern void bar (struct c *);
++int
++foo (struct c *p)
++{
++  int i;
++  int sum = 0;
++
++  for (i = 0; i < p->a - p->b; ++i)
++    {
++      if (i > 0)
++	sum += 2;
++      bar (p);
++    }
++  return sum;
++}
+Index: gcc/testsuite/gcc.dg/Wstrict-overflow-19.c
+===================================================================
+--- gcc/testsuite/gcc.dg/Wstrict-overflow-19.c	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.dg/Wstrict-overflow-19.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -0,0 +1,15 @@
++/* { dg-do compile } */
++/* { dg-options "-fstrict-overflow -O2 -Wstrict-overflow" } */
++
++/* Don't warn about an overflow when threading jumps.  We used to get
++   a warning from comparing bounds generated by VRP.  */
++
++int
++bar(int a, int b, int n)
++{
++  if (b > a)
++    n = a - b;
++  if (a >= b)
++    n = 1;
++  return n;
++}
 Index: gcc/testsuite/ChangeLog
 ===================================================================
---- gcc/testsuite/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
-@@ -1,3 +1,104 @@
+--- gcc/testsuite/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -1,3 +1,124 @@
++2007-06-08  Dirk Mueller  <dmueller@suse.de>
++
++	PR c++/31809
++	Backport from mainline:
++	2007-05-30  Jakub Jelinek  <jakub@redhat.com>
++
++	* g++.dg/opt/static5.C: New test.
++
++2007-06-06  Ian Lance Taylor  <iant@google.com>
++
++	* g++.dg/conversion/enum1.C: New test.
++
++2007-06-05  Ian Lance Taylor  <iant@google.com>
++
++	* gcc.dg/Wstrict-overflow-19.c: New test.
++
++2007-06-04  Ian Lance Taylor  <iant@google.com>
++
++	* gcc.dg/Wstrict-overflow-18.c: New test.
++
 +2007-05-31  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from mainline:
@@ -1174,8 +1453,8 @@ Index: gcc/testsuite/ChangeLog
  	* GCC 4.2.0 released.
 Index: gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_bitops.f90
 ===================================================================
---- gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_bitops.f90	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_bitops.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_bitops.f90	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_bitops.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -8,7 +8,8 @@
     i = 2
     j = 3
@@ -1193,10 +1472,25 @@ Index: gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_bitops.f90
 +   if (ishftc (a, 1, bit_size(a)) .ne. 10) call abort
 +   if (ishftc (1, 1, 32) .ne. 2) call abort
  end program
+Index: gcc/testsuite/g++.dg/conversion/enum1.C
+===================================================================
+--- gcc/testsuite/g++.dg/conversion/enum1.C	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/g++.dg/conversion/enum1.C	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -0,0 +1,10 @@
++// { dg-do run }
++// { dg-options "-O2 -finline-functions" }
++
++enum E { V = 1 };
++static const E E_MIN = V;
++static const E E_MAX = V;
++
++bool valid(E v) { return v >= E_MIN && v <= E_MAX; }
++
++int main() { return valid(E(2)); }
 Index: gcc/testsuite/g++.dg/gomp/pr31769.C
 ===================================================================
---- gcc/testsuite/g++.dg/gomp/pr31769.C	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/g++.dg/gomp/pr31769.C	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/g++.dg/gomp/pr31769.C	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/g++.dg/gomp/pr31769.C	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,61 @@
 +// PR tree-optimization/31769
 +// { dg-options "-O2 -fopenmp" }
@@ -1259,10 +1553,44 @@ Index: gcc/testsuite/g++.dg/gomp/pr31769.C
 +  {
 +  }
 +}
+Index: gcc/testsuite/g++.dg/opt/static5.C
+===================================================================
+--- gcc/testsuite/g++.dg/opt/static5.C	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/g++.dg/opt/static5.C	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -0,0 +1,29 @@
++// PR c++/31809
++// { dg-do run }
++// { dg-options "-O2" }
++
++struct S
++{
++  unsigned v;
++  static inline S f (unsigned a);
++};
++
++inline S
++S::f (unsigned a)
++{
++  static S t = { a };
++  return t;
++}
++
++const static S s = S::f (26);
++
++extern "C" void abort (void);
++
++int
++main ()
++{
++  S t = s;
++  if (t.v != 26)
++    abort ();
++  return 0;
++}
 Index: gcc/testsuite/gfortran.dg/char_length_5.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/char_length_5.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/char_length_5.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/char_length_5.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/char_length_5.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,61 @@
 +! { dg-do run }
 +! Tests the fix for PR31867, in which the interface evaluation
@@ -1327,8 +1655,8 @@ Index: gcc/testsuite/gfortran.dg/char_length_5.f90
 +! { dg-final { cleanup-modules "util_mod" } }
 Index: gcc/testsuite/gfortran.dg/array_reference_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/array_reference_1.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/array_reference_1.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/array_reference_1.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/array_reference_1.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,35 @@
 +! { dg-do run }
 +! Tests the fix for PR31994, aka 31867, in which the offset
@@ -1367,8 +1695,8 @@ Index: gcc/testsuite/gfortran.dg/array_reference_1.f90
 +END program main
 Index: gcc/testsuite/gfortran.dg/reshape_transpose_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/reshape_transpose_1.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/reshape_transpose_1.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/reshape_transpose_1.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/reshape_transpose_1.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,18 @@
 +! { dg-do run }
 +! PR 31196 - reshape of transposed derived types generated
@@ -1390,8 +1718,8 @@ Index: gcc/testsuite/gfortran.dg/reshape_transpose_1.f90
 +END program main
 Index: gcc/testsuite/gfortran.dg/fmt_colon.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/fmt_colon.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/fmt_colon.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/fmt_colon.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/fmt_colon.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,14 @@
 +! { dg-do run }
 +! PR31395 Colon edit descriptor is ignored.
@@ -1407,11 +1735,11 @@ Index: gcc/testsuite/gfortran.dg/fmt_colon.f90
 + 20 format('i =',I2:' this should print',I2)
 +    if (astring.ne."i = 1 this should print 1") call abort
 +END PROGRAM test
-\ No newline at end of file
+\ brakuje znaku końca linii na końcu pliku 
 Index: gcc/testsuite/gfortran.dg/char_result_13.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/char_result_13.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/char_result_13.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/char_result_13.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/char_result_13.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,13 @@
 +! { dg-do compile }
 +! tests the fix for PR31540, in which the character lengths in
@@ -1428,8 +1756,8 @@ Index: gcc/testsuite/gfortran.dg/char_result_13.f90
 +        end
 Index: gcc/testsuite/gfortran.dg/altreturn_5.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/altreturn_5.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/altreturn_5.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/altreturn_5.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/altreturn_5.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,30 @@
 +! { dg-do run }
 +! Tests the fix for PR31483, in which dummy argument procedures
@@ -1461,11 +1789,11 @@ Index: gcc/testsuite/gfortran.dg/altreturn_5.f90
 +      CALL PHLOAD (R, 2, res)
 +      if (res .ne. "two") call abort ()
 +      END
-\ No newline at end of file
+\ brakuje znaku końca linii na końcu pliku 
 Index: gcc/testsuite/gfortran.dg/substr_4.f
 ===================================================================
---- gcc/testsuite/gfortran.dg/substr_4.f	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/substr_4.f	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/substr_4.f	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/substr_4.f	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,69 @@
 +! { dg-do run }
 +      subroutine test_lower
@@ -1538,8 +1866,8 @@ Index: gcc/testsuite/gfortran.dg/substr_4.f
 +      end program test
 Index: gcc/testsuite/gfortran.dg/fmt_t_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/fmt_t_3.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/fmt_t_3.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/fmt_t_3.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/fmt_t_3.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,15 @@
 +! { dg-do run }
 +! PR31051 bug with x and t format descriptors.
@@ -1558,8 +1886,8 @@ Index: gcc/testsuite/gfortran.dg/fmt_t_3.f90
 +end program t
 Index: gcc/testsuite/gfortran.dg/backspace_8.f
 ===================================================================
---- gcc/testsuite/gfortran.dg/backspace_8.f	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/backspace_8.f	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/backspace_8.f	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/backspace_8.f	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,18 @@
 +C { dg-do run }
 +C PR libfortran/31618 - backspace after an error didn't work.
@@ -1581,8 +1909,8 @@ Index: gcc/testsuite/gfortran.dg/backspace_8.f
 +      end
 Index: gcc/testsuite/gfortran.dg/func_assign.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/func_assign.f90	(.../tags/gcc_4_2_0_release)	(revision 0)
-+++ gcc/testsuite/gfortran.dg/func_assign.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/func_assign.f90	(.../tags/gcc_4_2_0_release)	(wersja 0)
++++ gcc/testsuite/gfortran.dg/func_assign.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -0,0 +1,33 @@
 +! { dg-do compile }
 +!
@@ -1619,18 +1947,65 @@ Index: gcc/testsuite/gfortran.dg/func_assign.f90
 +end
 Index: gcc/testsuite/gfortran.dg/unf_io_convert_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/unf_io_convert_3.f90	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/testsuite/gfortran.dg/unf_io_convert_3.f90	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/testsuite/gfortran.dg/unf_io_convert_3.f90	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/testsuite/gfortran.dg/unf_io_convert_3.f90	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,4 +1,4 @@
 -! { dg-do run}
 +! { dg-do run }
  ! { dg-require-effective-target fortran_large_real }
  program main
    integer,parameter :: k = selected_real_kind (precision (0.0_8) + 1)
+Index: gcc/cp/decl.c
+===================================================================
+--- gcc/cp/decl.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/cp/decl.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -5368,7 +5368,18 @@
+ 	     initializer.  It is not legal to redeclare a static data
+ 	     member, so this issue does not arise in that case.  */
+ 	  if (var_definition_p && TREE_STATIC (decl))
+-	    expand_static_init (decl, init);
++	    {
++              /* If a TREE_READONLY variable needs initialization
++		 at runtime, it is no longer readonly and we need to
++		 avoid MEM_READONLY_P being set on RTL created for it.  */
++	      if (init)
++		{
++		  if (TREE_READONLY (decl))
++		    TREE_READONLY (decl) = 0;
++		  was_readonly = 0;
++		}
++	      expand_static_init (decl, init);
++	    }
+ 	}
+     }
+ 
+Index: gcc/cp/ChangeLog
+===================================================================
+--- gcc/cp/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/cp/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -1,3 +1,18 @@
++2007-06-08  Dirk Mueller  <dmueller@suse.de>
++
++	PR c++/31809
++	PR c++/31806
++	Backport from mainline:
++	2007-05-31  Jakub Jelinek  <jakub@redhat.com>
++
++	* decl.c (cp_finish_decl): Also clear was_readonly if a static var
++	needs runtime initialization.
++
++	2007-05-30  Jakub Jelinek  <jakub@redhat.com>
++
++	* decl.c (cp_finish_decl): Clear TREE_READONLY flag on TREE_STATIC
++	variables that need runtime initialization.
++
+ 2007-05-13  Release Manager
+ 
+ 	* GCC 4.2.0 released.
 Index: gcc/fortran/trans-expr.c
 ===================================================================
---- gcc/fortran/trans-expr.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fortran/trans-expr.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/fortran/trans-expr.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fortran/trans-expr.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -255,6 +255,10 @@
      gfc_conv_string_parameter (se);
    else
@@ -1685,8 +2060,8 @@ Index: gcc/fortran/trans-expr.c
    fntype = TREE_TYPE (TREE_TYPE (se->expr));
 Index: gcc/fortran/trans-array.c
 ===================================================================
---- gcc/fortran/trans-array.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fortran/trans-array.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/fortran/trans-array.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fortran/trans-array.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -4422,6 +4422,8 @@
  
        if (se->direct_byref)
@@ -1731,8 +2106,8 @@ Index: gcc/fortran/trans-array.c
  	  tmp = gfc_conv_descriptor_offset (parm);
 Index: gcc/fortran/gfortran.texi
 ===================================================================
---- gcc/fortran/gfortran.texi	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fortran/gfortran.texi	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/fortran/gfortran.texi	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fortran/gfortran.texi	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -611,7 +611,7 @@
  to change the representation of data for unformatted files.
  The syntax for the @env{GFORTRAN_CONVERT_UNIT} variable is:
@@ -1757,8 +2132,8 @@ Index: gcc/fortran/gfortran.texi
  @c =====================================================================
 Index: gcc/fortran/ChangeLog
 ===================================================================
---- gcc/fortran/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fortran/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/fortran/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fortran/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,3 +1,30 @@
 +2007-05-31  Paul Thomas  <pault@gcc.gnu.org>
 +
@@ -1792,8 +2167,8 @@ Index: gcc/fortran/ChangeLog
  	* GCC 4.2.0 released.
 Index: gcc/fortran/resolve.c
 ===================================================================
---- gcc/fortran/resolve.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fortran/resolve.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/fortran/resolve.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fortran/resolve.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -5742,6 +5742,11 @@
    if (sym->ts.type == BT_CHARACTER)
      {
@@ -1808,8 +2183,8 @@ Index: gcc/fortran/resolve.c
  	  if (sym->attr.proc == PROC_ST_FUNCTION)
 Index: gcc/fortran/primary.c
 ===================================================================
---- gcc/fortran/primary.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/fortran/primary.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/fortran/primary.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/fortran/primary.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -2415,7 +2415,8 @@
  
      case FL_PROCEDURE:
@@ -1822,15 +2197,15 @@ Index: gcc/fortran/primary.c
  	     type may still have to be resolved.  */
 Index: gcc/BASE-VER
 ===================================================================
---- gcc/BASE-VER	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/BASE-VER	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/BASE-VER	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/BASE-VER	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1 +1 @@
 -4.2.0
 +4.2.1
 Index: gcc/except.c
 ===================================================================
---- gcc/except.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/except.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/except.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/except.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1005,7 +1005,11 @@
      for (prev_try = VEC_index (eh_region, cfun->eh->region_array, outer_region);
           prev_try && prev_try->type != ERT_TRY;
@@ -1846,8 +2221,8 @@ Index: gcc/except.c
       duplicate entire subtrees, all of the referenced regions will have
 Index: gcc/combine.c
 ===================================================================
---- gcc/combine.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/combine.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/combine.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/combine.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -5341,14 +5341,14 @@
  	}
        else if (GET_MODE (op0) == compare_mode && op1 == const0_rtx)
@@ -1870,8 +2245,8 @@ Index: gcc/combine.c
    else
 Index: gcc/Makefile.in
 ===================================================================
---- gcc/Makefile.in	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/Makefile.in	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/Makefile.in	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/Makefile.in	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1839,7 +1839,7 @@
  tree-ssa-structalias.o: tree-ssa-structalias.c tree-ssa-structalias.h \
     $(SYSTEM_H) $(CONFIG_H) $(GGC_H) $(TREE_H) $(TREE_FLOW_H) \
@@ -1883,8 +2258,8 @@ Index: gcc/Makefile.in
     toplev.h $(FUNCTION_H) $(TIMEVAR_H) $(TM_H) coretypes.h \
 Index: gcc/tree-ssa-structalias.c
 ===================================================================
---- gcc/tree-ssa-structalias.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/tree-ssa-structalias.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/tree-ssa-structalias.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/tree-ssa-structalias.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -51,10 +51,11 @@
  #include "params.h"
  #include "tree-ssa-structalias.h"
@@ -5928,8 +6303,8 @@ Index: gcc/tree-ssa-structalias.c
  #include "gt-tree-ssa-structalias.h"
 Index: gcc/config/i386/i386.md
 ===================================================================
---- gcc/config/i386/i386.md	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/i386/i386.md	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/i386/i386.md	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/i386/i386.md	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -4749,7 +4749,7 @@
  (define_insn "*addti3_1"
    [(set (match_operand:TI 0 "nonimmediate_operand" "=r,o")
@@ -5986,8 +6361,8 @@ Index: gcc/config/i386/i386.md
    [(parallel
 Index: gcc/config/i386/sse.md
 ===================================================================
---- gcc/config/i386/sse.md	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/i386/sse.md	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/i386/sse.md	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/i386/sse.md	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -2055,11 +2055,11 @@
  	    (match_dup 1))
  	  (parallel [(const_int 0)
@@ -6016,8 +6391,8 @@ Index: gcc/config/i386/sse.md
  ;; Not sure this is ever used, but it doesn't hurt to have it. -aoliva
 Index: gcc/config/i386/i386.c
 ===================================================================
---- gcc/config/i386/i386.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/i386/i386.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/i386/i386.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/i386/i386.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -15539,13 +15539,13 @@
    /* Access to the vec_extract patterns.  */
    ftype = build_function_type_list (double_type_node, V2DF_type_node,
@@ -6060,8 +6435,8 @@ Index: gcc/config/i386/i386.c
    ftype = build_function_type_list (V4HI_type_node, V4HI_type_node,
 Index: gcc/config/sh/sh.c
 ===================================================================
---- gcc/config/sh/sh.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/sh/sh.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/sh/sh.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/sh/sh.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -5295,7 +5295,13 @@
  	      temp = scavenge_reg (&temps);
  	    }
@@ -6098,8 +6473,8 @@ Index: gcc/config/sh/sh.c
  	cost++;
 Index: gcc/config/sh/sh.md
 ===================================================================
---- gcc/config/sh/sh.md	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/sh/sh.md	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/sh/sh.md	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/sh/sh.md	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -413,10 +413,12 @@
  	 (eq_attr "type" "jump")
  	 (cond [(eq_attr "med_branch_p" "yes")
@@ -6258,7 +6633,28 @@ Index: gcc/config/sh/sh.md
    operands[2] = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
    operands[3] = force_reg (GET_MODE (sh_compare_op1), sh_compare_op1);
  }")
-@@ -9112,6 +9059,8 @@
+@@ -8397,6 +8344,20 @@
+ 					     operands[2],
+ 					     gen_rtx_REG (Pmode, PIC_REG)));
+ 
++  /* When stack protector inserts codes after the result is set to
++     R0, @(rX, r12) will cause a spill failure for R0.  Don't schedule
++     insns to avoid combining (set A (plus rX r12)) and (set op0 (mem A))
++     when rX is a GOT address for the guard symbol.  Ugly but doesn't
++     matter because this is a rare situation.  */
++  if (!TARGET_SHMEDIA
++      && flag_stack_protect
++      && GET_CODE (operands[1]) == CONST
++      && GET_CODE (XEXP (operands[1], 0)) == UNSPEC
++      && GET_CODE (XVECEXP (XEXP (operands[1], 0), 0, 0)) == SYMBOL_REF
++      && strcmp (XSTR (XVECEXP (XEXP (operands[1], 0), 0, 0), 0),
++		 \"__stack_chk_guard\") == 0)
++    emit_insn (gen_blockage ());
++
+   /* N.B. This is not constant for a GOTPLT relocation.  */
+   mem = gen_rtx_MEM (Pmode, operands[3]);
+   MEM_NOTRAP_P (mem) = 1;
+@@ -9112,6 +9073,8 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6267,7 +6663,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9126,26 +9075,26 @@
+@@ -9126,26 +9089,26 @@
  	  switch (GET_MODE (sh_compare_op0))
  	    {
  	    case SImode:
@@ -6298,7 +6694,7 @@ Index: gcc/config/sh/sh.md
  					      sh_compare_op0, sh_compare_op1));
  	      break;
  
-@@ -9155,38 +9104,44 @@
+@@ -9155,38 +9118,44 @@
  	  DONE;
  	}
  
@@ -6349,7 +6745,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
    if (sh_expand_t_scc (EQ, operands[0]))
-@@ -9204,8 +9159,8 @@
+@@ -9204,8 +9173,8 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6360,7 +6756,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9213,35 +9168,44 @@
+@@ -9213,35 +9182,44 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6409,7 +6805,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
    if (! currently_expanding_to_rtl)
-@@ -9258,8 +9222,8 @@
+@@ -9258,8 +9236,8 @@
  
    if (TARGET_SHMEDIA)
      {
@@ -6420,7 +6816,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9267,45 +9231,54 @@
+@@ -9267,45 +9245,54 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6481,7 +6877,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
  
-@@ -9323,8 +9296,12 @@
+@@ -9323,8 +9310,12 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6496,7 +6892,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9335,32 +9312,36 @@
+@@ -9335,32 +9326,36 @@
        switch (GET_MODE (sh_compare_op0))
  	{
  	case SImode:
@@ -6537,7 +6933,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
    if (! currently_expanding_to_rtl)
-@@ -9376,12 +9357,15 @@
+@@ -9376,12 +9371,15 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6555,7 +6951,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (mode, sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (mode, sh_compare_op1);
-@@ -9390,41 +9374,45 @@
+@@ -9390,41 +9388,45 @@
  	{
  	case SImode:
  	  {
@@ -6607,7 +7003,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
  
-@@ -9456,8 +9444,12 @@
+@@ -9456,8 +9458,12 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6622,7 +7018,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9465,8 +9457,11 @@
+@@ -9465,8 +9471,11 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6635,7 +7031,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
    if (! currently_expanding_to_rtl)
-@@ -9482,8 +9477,12 @@
+@@ -9482,8 +9491,12 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6650,7 +7046,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9491,8 +9490,11 @@
+@@ -9491,8 +9504,11 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6663,7 +7059,7 @@ Index: gcc/config/sh/sh.md
        DONE;
      }
    if (! currently_expanding_to_rtl)
-@@ -9508,10 +9510,12 @@
+@@ -9508,10 +9524,12 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6679,7 +7075,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9519,10 +9523,12 @@
+@@ -9519,10 +9537,12 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6694,7 +7090,7 @@ Index: gcc/config/sh/sh.md
  
        DONE;
      }
-@@ -9539,10 +9545,12 @@
+@@ -9539,10 +9559,12 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6710,7 +7106,7 @@ Index: gcc/config/sh/sh.md
        sh_compare_op0 = force_reg (GET_MODE (sh_compare_op0), sh_compare_op0);
        if (sh_compare_op1 != const0_rtx)
  	sh_compare_op1 = force_reg (GET_MODE (sh_compare_op1) == VOIDmode
-@@ -9550,10 +9558,12 @@
+@@ -9550,10 +9572,12 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6725,7 +7121,7 @@ Index: gcc/config/sh/sh.md
  
        DONE;
      }
-@@ -9584,11 +9594,12 @@
+@@ -9584,11 +9608,12 @@
  {
    if (TARGET_SHMEDIA)
      {
@@ -6742,7 +7138,7 @@ Index: gcc/config/sh/sh.md
        if (! TARGET_SHMEDIA_FPU
  	  && GET_MODE (sh_compare_op0) != DImode
  	  && GET_MODE (sh_compare_op0) != SImode)
-@@ -9601,10 +9612,12 @@
+@@ -9601,10 +9626,12 @@
  				    : GET_MODE (sh_compare_op1),
  				    sh_compare_op1);
  
@@ -6757,7 +7153,7 @@ Index: gcc/config/sh/sh.md
  
        DONE;
      }
-@@ -9618,8 +9631,8 @@
+@@ -9618,8 +9645,8 @@
  }")
  
  (define_expand "sunordered"
@@ -6768,7 +7164,7 @@ Index: gcc/config/sh/sh.md
    "TARGET_SHMEDIA_FPU"
    "
  {
-@@ -10378,14 +10391,6 @@
+@@ -10378,14 +10405,6 @@
     (set_attr "fp_mode" "single")])
  
  (define_insn "cmpeqsf_media"
@@ -6783,7 +7179,7 @@ Index: gcc/config/sh/sh.md
    [(set (match_operand:SI 0 "register_operand" "=r")
  	(eq:SI (match_operand:SF 1 "fp_arith_reg_operand" "f")
  	       (match_operand:SF 2 "fp_arith_reg_operand" "f")))]
-@@ -10394,24 +10399,24 @@
+@@ -10394,24 +10413,24 @@
    [(set_attr "type" "fcmp_media")])
  
  (define_insn "cmpgtsf_media"
@@ -6814,7 +7210,7 @@ Index: gcc/config/sh/sh.md
  		      (match_operand:SF 2 "fp_arith_reg_operand" "f")))]
    "TARGET_SHMEDIA_FPU"
    "fcmpun.s	%1, %2, %0"
-@@ -10884,14 +10889,6 @@
+@@ -10884,14 +10903,6 @@
     (set_attr "fp_mode" "double")])
  
  (define_insn "cmpeqdf_media"
@@ -6829,7 +7225,7 @@ Index: gcc/config/sh/sh.md
    [(set (match_operand:SI 0 "register_operand" "=r")
  	(eq:SI (match_operand:DF 1 "fp_arith_reg_operand" "f")
  	       (match_operand:DF 2 "fp_arith_reg_operand" "f")))]
-@@ -10900,24 +10897,24 @@
+@@ -10900,24 +10911,24 @@
    [(set_attr "type" "fcmp_media")])
  
  (define_insn "cmpgtdf_media"
@@ -6862,8 +7258,8 @@ Index: gcc/config/sh/sh.md
    "fcmpun.d	%1,%2,%0"
 Index: gcc/config/score/predicates.md
 ===================================================================
---- gcc/config/score/predicates.md	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/score/predicates.md	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/score/predicates.md	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/score/predicates.md	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -75,14 +75,3 @@
    return IMM_IN_RANGE (INTVAL (op), 15, 1);
  })
@@ -6881,8 +7277,8 @@ Index: gcc/config/score/predicates.md
 -})
 Index: gcc/config/score/misc.md
 ===================================================================
---- gcc/config/score/misc.md	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/score/misc.md	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/score/misc.md	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/score/misc.md	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -380,38 +380,3 @@
    [(set_attr "type" "arith")
     (set_attr "mode" "SI")])
@@ -6924,8 +7320,8 @@ Index: gcc/config/score/misc.md
 -   (set_attr "mode" "SI")])
 Index: gcc/config/score/score.c
 ===================================================================
---- gcc/config/score/score.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/score/score.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/score/score.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/score/score.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1168,7 +1168,7 @@
      {
        gcc_assert (code == CONST_INT);
@@ -6946,8 +7342,8 @@ Index: gcc/config/score/score.c
          output_addr_const (file, op);
 Index: gcc/config/score/score.h
 ===================================================================
---- gcc/config/score/score.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/score/score.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/score/score.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/score/score.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -785,6 +785,7 @@
     output anything and let undefined symbol become external. However
     the assembler uses length information on externals to allocate in
@@ -6958,8 +7354,8 @@ Index: gcc/config/score/score.h
  
 Index: gcc/config/pa/pa.md
 ===================================================================
---- gcc/config/pa/pa.md	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/pa/pa.md	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/pa/pa.md	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/pa/pa.md	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -39,6 +39,9 @@
     (UNSPEC_TLSLDBASE	7)
     (UNSPEC_TLSIE	8)
@@ -7073,8 +7469,8 @@ Index: gcc/config/pa/pa.md
          (plus:SI (unspec:SI [(match_operand 1 "tle_symbolic_operand" "")] 
 Index: gcc/config/pa/pa.c
 ===================================================================
---- gcc/config/pa/pa.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/pa/pa.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/pa/pa.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/pa/pa.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -726,7 +726,10 @@
      {
        case TLS_MODEL_GLOBAL_DYNAMIC:
@@ -7113,8 +7509,8 @@ Index: gcc/config/pa/pa.c
  
 Index: gcc/config/soft-fp/quad.h
 ===================================================================
---- gcc/config/soft-fp/quad.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/quad.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/quad.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/quad.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Definitions for IEEE Quad Precision.
@@ -7149,8 +7545,8 @@ Index: gcc/config/soft-fp/quad.h
  };
 Index: gcc/config/soft-fp/floatunsidf.c
 ===================================================================
---- gcc/config/soft-fp/floatunsidf.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/floatunsidf.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/floatunsidf.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/floatunsidf.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Convert a 32bit unsigned integer to IEEE double
@@ -7171,8 +7567,8 @@ Index: gcc/config/soft-fp/floatunsidf.c
    FP_DECL_D(A);
 Index: gcc/config/soft-fp/floatundidf.c
 ===================================================================
---- gcc/config/soft-fp/floatundidf.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/floatundidf.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/floatundidf.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/floatundidf.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Convert a 64bit unsigned integer to IEEE double
@@ -7193,8 +7589,8 @@ Index: gcc/config/soft-fp/floatundidf.c
    FP_DECL_D(A);
 Index: gcc/config/soft-fp/extended.h
 ===================================================================
---- gcc/config/soft-fp/extended.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/extended.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/extended.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/extended.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Definitions for IEEE Extended Precision.
@@ -7341,8 +7737,8 @@ Index: gcc/config/soft-fp/extended.h
  #define FP_ISSIGNAN_E(X)	_FP_ISSIGNAN(E,2,X)
 Index: gcc/config/soft-fp/floatunsisf.c
 ===================================================================
---- gcc/config/soft-fp/floatunsisf.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/floatunsisf.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/floatunsisf.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/floatunsisf.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Convert a 32bit unsigned integer to IEEE single
@@ -7363,8 +7759,8 @@ Index: gcc/config/soft-fp/floatunsisf.c
    FP_DECL_S(A);
 Index: gcc/config/soft-fp/op-common.h
 ===================================================================
---- gcc/config/soft-fp/op-common.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/op-common.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/op-common.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/op-common.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1153,7 +1153,8 @@
    if (_FP_FRACBITS_##dfs < _FP_FRACBITS_##sfs				 \
        || (_FP_EXPMAX_##dfs - _FP_EXPBIAS_##dfs				 \
@@ -7444,8 +7840,8 @@ Index: gcc/config/soft-fp/op-common.h
        else								     \
 Index: gcc/config/soft-fp/floatundisf.c
 ===================================================================
---- gcc/config/soft-fp/floatundisf.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/floatundisf.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/floatundisf.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/floatundisf.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Convert a 64bit unsigned integer to IEEE single
@@ -7466,8 +7862,8 @@ Index: gcc/config/soft-fp/floatundisf.c
    FP_DECL_S(A);
 Index: gcc/config/soft-fp/op-2.h
 ===================================================================
---- gcc/config/soft-fp/op-2.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/op-2.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/op-2.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/op-2.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Basic two-word fraction declaration and manipulation.
@@ -7484,8 +7880,8 @@ Index: gcc/config/soft-fp/op-2.h
 +#define _FP_FRAC_COPY_2_2(D,S)		_FP_FRAC_COPY_2(D,S)
 Index: gcc/config/soft-fp/op-4.h
 ===================================================================
---- gcc/config/soft-fp/op-4.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/op-4.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/op-4.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/op-4.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Basic four-word fraction declaration and manipulation.
@@ -7502,8 +7898,8 @@ Index: gcc/config/soft-fp/op-4.h
 +#define _FP_FRAC_COPY_4_4(D,S)	_FP_FRAC_COPY_4(D,S)
 Index: gcc/config/soft-fp/double.h
 ===================================================================
---- gcc/config/soft-fp/double.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ gcc/config/soft-fp/double.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- gcc/config/soft-fp/double.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ gcc/config/soft-fp/double.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,6 +1,6 @@
  /* Software floating-point emulation.
     Definitions for IEEE Double Precision
@@ -7534,8 +7930,8 @@ Index: gcc/config/soft-fp/double.h
  };
 Index: libstdc++-v3/configure
 ===================================================================
---- libstdc++-v3/configure	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libstdc++-v3/configure	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libstdc++-v3/configure	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/configure	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -5764,8 +5764,6 @@
  
  
@@ -8023,8 +8419,8 @@ Index: libstdc++-v3/configure
      echo "$as_me:$LINENO: checking for ld that supports -Wl,--gc-sections" >&5
 Index: libstdc++-v3/include/bits/ostream.tcc
 ===================================================================
---- libstdc++-v3/include/bits/ostream.tcc	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libstdc++-v3/include/bits/ostream.tcc	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libstdc++-v3/include/bits/ostream.tcc	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/include/bits/ostream.tcc	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -334,7 +334,6 @@
    extern template ostream& operator<<(ostream&, const char*);
    extern template ostream& operator<<(ostream&, const unsigned char*);
@@ -8044,8 +8440,8 @@ Index: libstdc++-v3/include/bits/ostream.tcc
    extern template wostream& wostream::_M_insert(unsigned long);
 Index: libstdc++-v3/include/bits/ostream_insert.h
 ===================================================================
---- libstdc++-v3/include/bits/ostream_insert.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libstdc++-v3/include/bits/ostream_insert.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libstdc++-v3/include/bits/ostream_insert.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/include/bits/ostream_insert.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -109,6 +109,18 @@
        return __out;
      }
@@ -8065,11 +8461,71 @@ Index: libstdc++-v3/include/bits/ostream_insert.h
  _GLIBCXX_END_NAMESPACE
  
  #endif /* _OSTREAM_INSERT_H */
+Index: libstdc++-v3/include/std/std_fstream.h
+===================================================================
+--- libstdc++-v3/include/std/std_fstream.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/include/std/std_fstream.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -1,6 +1,7 @@
+ // File based streams -*- C++ -*-
+ 
+-// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005
++// Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
++// 2006, 2007
+ // Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+@@ -257,9 +258,30 @@
+        *  Otherwise it tries to open the file named @a s using the flags
+        *  given in @a mode.
+        *
+-       *  [Table 92 gives the relation between openmode combinations and the
+-       *  equivalent fopen() flags, but the table has not been copied yet.]
+-      */
++       *  Table 92, adapted here, gives the relation between openmode
++       *  combinations and the equivalent fopen() flags.
++       *  (NB: lines in|out|app and binary|in|out|app per DR 596)
++       *  +---------------------------------------------------------+
++       *  | ios_base Flag combination            stdio equivalent   |
++       *  |binary  in  out  trunc  app                              |
++       *  +---------------------------------------------------------+
++       *  |             +                        "w"                |
++       *  |             +           +            "a"                |
++       *  |             +     +                  "w"                |
++       *  |         +                            "r"                |
++       *  |         +   +                        "r+"               |
++       *  |         +   +     +                  "w+"               |
++       *  |         +   +           +            "a+"               |
++       *  +---------------------------------------------------------+
++       *  |   +         +                        "wb"               |
++       *  |   +         +           +            "ab"               |
++       *  |   +         +     +                  "wb"               |
++       *  |   +     +                            "rb"               |
++       *  |   +     +   +                        "r+b"              |
++       *  |   +     +   +     +                  "w+b"              |
++       *  |   +     +   +           +            "a+b"              |
++       *  +---------------------------------------------------------+
++       */
+       __filebuf_type*
+       open(const char* __s, ios_base::openmode __mode);
+ 
 Index: libstdc++-v3/ChangeLog
 ===================================================================
---- libstdc++-v3/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
-@@ -1,3 +1,26 @@
+--- libstdc++-v3/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -1,3 +1,39 @@
++2007-06-08  Paolo Carlini  <pcarlini@suse.de>
++
++	* docs/html/install.html: Adjust consistently with libstdc++/31717.
++
++2007-06-08  Francesco Palagi  <palagi@arcetri.astro.it>
++
++	* include/std/std_fstream.h: Add Table 92 in comment.
++
++2007-06-06  Benjamin Kosnik  <bkoz@redhat.com>
++	    Frank Mori Hess  <frank.hess@nist.gov>
++	
++	* docs/html/debug.html: Correct link.
++
 +2007-05-28  Benjamin Kosnik  <bkoz@redhat.com>
 +
 +	PR libstdc++/31717 
@@ -8096,10 +8552,39 @@ Index: libstdc++-v3/ChangeLog
  2007-05-13  Release Manager
  
  	* GCC 4.2.0 released.
+Index: libstdc++-v3/docs/html/debug.html
+===================================================================
+--- libstdc++-v3/docs/html/debug.html	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/docs/html/debug.html	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -420,7 +420,7 @@
+ 
+ 
+ <h3 class="left"><a name="verbterm">Tracking uncaught exceptions</a></h3>
+-<p>The <a href="19_diagnostics/howto.html#4">verbose termination handler</a>
++<p>The <a href="18_support/howto.html#4">verbose termination handler</a>
+    gives information about uncaught exceptions which are killing the
+    program.  It is described in the linked-to page.
+ </p>
+Index: libstdc++-v3/docs/html/install.html
+===================================================================
+--- libstdc++-v3/docs/html/install.html	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/docs/html/install.html	(.../branches/gcc-4_2-branch)	(wersja 125589)
+@@ -80,8 +80,9 @@
+       information must be installed.
+ 
+       <p>
+-      The configure option --enable-clocale can be used force a
+-      particular behavior.
++      Note that those sanity checks are also perfomed when an explicit
++      --enable-clocale=gnu configure option is used:  this behavior is
++      new in gcc 4.2.1 and defends against misconfigurations.
+       </p>
+ 
+       <p>
 Index: libstdc++-v3/config.h.in
 ===================================================================
---- libstdc++-v3/config.h.in	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libstdc++-v3/config.h.in	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libstdc++-v3/config.h.in	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/config.h.in	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -298,6 +298,12 @@
  /* Define to 1 if you have the <stdlib.h> header file. */
  #undef HAVE_STDLIB_H
@@ -8125,8 +8610,8 @@ Index: libstdc++-v3/config.h.in
  
 Index: libstdc++-v3/acinclude.m4
 ===================================================================
---- libstdc++-v3/acinclude.m4	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libstdc++-v3/acinclude.m4	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libstdc++-v3/acinclude.m4	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libstdc++-v3/acinclude.m4	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -251,11 +251,9 @@
      # NB: This flag only works reliably after 2.16.1. Configure tests
      # for this are difficult, so hard wire a value that should work.
@@ -8307,8 +8792,8 @@ Index: libstdc++-v3/acinclude.m4
        AC_MSG_RESULT(generic)
 Index: libgfortran/runtime/environ.c
 ===================================================================
---- libgfortran/runtime/environ.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libgfortran/runtime/environ.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libgfortran/runtime/environ.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libgfortran/runtime/environ.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -861,14 +861,13 @@
  static int
  do_parse (void)
@@ -8354,8 +8839,8 @@ Index: libgfortran/runtime/environ.c
  	    goto error;
 Index: libgfortran/intrinsics/reshape_generic.c
 ===================================================================
---- libgfortran/intrinsics/reshape_generic.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libgfortran/intrinsics/reshape_generic.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libgfortran/intrinsics/reshape_generic.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libgfortran/intrinsics/reshape_generic.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -266,7 +266,7 @@
            else
              {
@@ -8367,8 +8852,8 @@ Index: libgfortran/intrinsics/reshape_generic.c
      }
 Index: libgfortran/intrinsics/ishftc.c
 ===================================================================
---- libgfortran/intrinsics/ishftc.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libgfortran/intrinsics/ishftc.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libgfortran/intrinsics/ishftc.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libgfortran/intrinsics/ishftc.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -36,8 +36,7 @@
  GFC_INTEGER_4
  ishftc4 (GFC_INTEGER_4 i, GFC_INTEGER_4 shift, GFC_INTEGER_4 size)
@@ -8454,8 +8939,8 @@ Index: libgfortran/intrinsics/ishftc.c
  #endif
 Index: libgfortran/ChangeLog
 ===================================================================
---- libgfortran/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libgfortran/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libgfortran/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libgfortran/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,3 +1,53 @@
 +2007-05-23  Jerry DeLisle  <jvdelisle@gcc.gnu.org>
 +
@@ -8512,8 +8997,8 @@ Index: libgfortran/ChangeLog
  	* GCC 4.2.0 released.
 Index: libgfortran/io/transfer.c
 ===================================================================
---- libgfortran/io/transfer.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libgfortran/io/transfer.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libgfortran/io/transfer.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libgfortran/io/transfer.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -493,11 +493,11 @@
  	    }
  	  else
@@ -8758,8 +9243,8 @@ Index: libgfortran/io/transfer.c
    if ((cf & IOPARM_DT_HAS_REC) != 0)
 Index: libgfortran/io/format.c
 ===================================================================
---- libgfortran/io/format.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libgfortran/io/format.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libgfortran/io/format.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libgfortran/io/format.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -860,10 +860,11 @@
      case FMT_SLASH:
        get_fnode (fmt, &head, &tail, FMT_SLASH);
@@ -8776,8 +9261,8 @@ Index: libgfortran/io/format.c
      case FMT_END:
 Index: boehm-gc/darwin_stop_world.c
 ===================================================================
---- boehm-gc/darwin_stop_world.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/darwin_stop_world.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/darwin_stop_world.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/darwin_stop_world.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -10,7 +10,7 @@
     be allocated, is called the red zone. This area as shown in Figure 3-2 may
     be used for any purpose as long as a new stack frame does not need to be
@@ -8924,8 +9409,8 @@ Index: boehm-gc/darwin_stop_world.c
  	lo = (void*)info . THREAD_FLD (esp);
 Index: boehm-gc/Makefile.in
 ===================================================================
---- boehm-gc/Makefile.in	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/Makefile.in	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/Makefile.in	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/Makefile.in	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -224,6 +224,7 @@
  build_vendor = @build_vendor@
  datadir = @datadir@
@@ -8945,8 +9430,8 @@ Index: boehm-gc/Makefile.in
  AM_CXXFLAGS = @GC_CFLAGS@
 Index: boehm-gc/configure.ac
 ===================================================================
---- boehm-gc/configure.ac	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/configure.ac	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/configure.ac	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/configure.ac	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -248,33 +248,46 @@
  case "$host" in
    powerpc*-*-darwin*)
@@ -9026,8 +9511,8 @@ Index: boehm-gc/configure.ac
  target_all=libgcjgc.la
 Index: boehm-gc/include/Makefile.in
 ===================================================================
---- boehm-gc/include/Makefile.in	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/include/Makefile.in	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/include/Makefile.in	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/include/Makefile.in	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -149,6 +149,7 @@
  build_vendor = @build_vendor@
  datadir = @datadir@
@@ -9038,8 +9523,8 @@ Index: boehm-gc/include/Makefile.in
  host_cpu = @host_cpu@
 Index: boehm-gc/include/gc_config.h.in
 ===================================================================
---- boehm-gc/include/gc_config.h.in	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/include/gc_config.h.in	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/include/gc_config.h.in	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/include/gc_config.h.in	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -54,12 +54,6 @@
  /* support for win32 threads */
  #undef GC_WIN32_THREADS
@@ -9074,8 +9559,8 @@ Index: boehm-gc/include/gc_config.h.in
  
 Index: boehm-gc/include/private/gc_priv.h
 ===================================================================
---- boehm-gc/include/private/gc_priv.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/include/private/gc_priv.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/include/private/gc_priv.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/include/private/gc_priv.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -286,6 +286,53 @@
  #endif
  
@@ -9186,8 +9671,8 @@ Index: boehm-gc/include/private/gc_priv.h
  /* Word-size-dependent defines   */
 Index: boehm-gc/include/private/gcconfig.h
 ===================================================================
---- boehm-gc/include/private/gcconfig.h	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/include/private/gcconfig.h	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/include/private/gcconfig.h	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/include/private/gcconfig.h	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -302,7 +302,10 @@
  #   if defined(__ppc__)  || defined(__ppc64__)
  #    define POWERPC
@@ -9304,8 +9789,8 @@ Index: boehm-gc/include/private/gcconfig.h
  #	ifndef GC_FREEBSD_THREADS
 Index: boehm-gc/ChangeLog
 ===================================================================
---- boehm-gc/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,3 +1,67 @@
 +2007-05-22  Andreas Tobler  <a.tobler@schweiz.org>
 +
@@ -9376,8 +9861,8 @@ Index: boehm-gc/ChangeLog
  	* GCC 4.2.0 released.
 Index: boehm-gc/configure
 ===================================================================
---- boehm-gc/configure	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/configure	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/configure	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/configure	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -309,7 +309,7 @@
  # include <unistd.h>
  #endif"
@@ -9843,8 +10328,8 @@ Index: boehm-gc/configure
  s,@CPLUSPLUS_TRUE@,$CPLUSPLUS_TRUE,;t t
 Index: boehm-gc/os_dep.c
 ===================================================================
---- boehm-gc/os_dep.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/os_dep.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/os_dep.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/os_dep.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -3371,7 +3371,7 @@
        1. Apple's mach/xnu documentation
        2. Timothy J. Wood's "Mach Exception Handlers 101" post to the
@@ -9899,8 +10384,8 @@ Index: boehm-gc/os_dep.c
  #endif
 Index: boehm-gc/Makefile.am
 ===================================================================
---- boehm-gc/Makefile.am	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/Makefile.am	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/Makefile.am	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/Makefile.am	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -33,11 +33,13 @@
  rs6000_mach_dep.s sparc_mach_dep.S sparc_netbsd_mach_dep.s \
  sparc_sunos4_mach_dep.s ia64_save_regs_in_stack.s
@@ -9918,8 +10403,8 @@ Index: boehm-gc/Makefile.am
  libgcjgc_convenience_la_DEPENDENCIES = @addobjs@
 Index: boehm-gc/dyn_load.c
 ===================================================================
---- boehm-gc/dyn_load.c	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ boehm-gc/dyn_load.c	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- boehm-gc/dyn_load.c	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ boehm-gc/dyn_load.c	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1152,7 +1152,7 @@
  };
      
@@ -9972,8 +10457,8 @@ Index: boehm-gc/dyn_load.c
          start = slide + sec->addr;
 Index: configure.in
 ===================================================================
---- configure.in	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ configure.in	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- configure.in	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ configure.in	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -2419,7 +2419,13 @@
    # Pass -fkeep-inline-functions for stage 1 if the GCC version supports it.
    CFLAGS="$CFLAGS -fkeep-inline-functions"
@@ -9991,8 +10476,8 @@ Index: configure.in
  
 Index: ChangeLog
 ===================================================================
---- ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,3 +1,9 @@
 +2007-05-30  Jakub Jelinek  <jakub@redhat.com>
 +
@@ -10005,8 +10490,8 @@ Index: ChangeLog
  	* GCC 4.2.0 released.
 Index: libjava/java/lang/natClassLoader.cc
 ===================================================================
---- libjava/java/lang/natClassLoader.cc	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libjava/java/lang/natClassLoader.cc	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libjava/java/lang/natClassLoader.cc	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libjava/java/lang/natClassLoader.cc	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -235,6 +235,15 @@
  
    new_class->engine = &_Jv_soleIndirectCompiledEngine;
@@ -10025,8 +10510,8 @@ Index: libjava/java/lang/natClassLoader.cc
    
 Index: libjava/ChangeLog
 ===================================================================
---- libjava/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ libjava/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- libjava/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ libjava/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,3 +1,8 @@
 +2007-05-31  Andrew Haley  <aph@redhat.com>
 +
@@ -10038,8 +10523,8 @@ Index: libjava/ChangeLog
  	* GCC 4.2.0 released.
 Index: maintainer-scripts/ChangeLog
 ===================================================================
---- maintainer-scripts/ChangeLog	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ maintainer-scripts/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- maintainer-scripts/ChangeLog	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ maintainer-scripts/ChangeLog	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -1,3 +1,7 @@
 +2007-05-28  Mark Mitchell  <mark@codesourcery.com>
 +
@@ -10050,8 +10535,8 @@ Index: maintainer-scripts/ChangeLog
  	* GCC 4.2.0 released.
 Index: maintainer-scripts/gcc_release
 ===================================================================
---- maintainer-scripts/gcc_release	(.../tags/gcc_4_2_0_release)	(revision 125292)
-+++ maintainer-scripts/gcc_release	(.../branches/gcc-4_2-branch)	(revision 125292)
+--- maintainer-scripts/gcc_release	(.../tags/gcc_4_2_0_release)	(wersja 125589)
++++ maintainer-scripts/gcc_release	(.../branches/gcc-4_2-branch)	(wersja 125589)
 @@ -699,10 +699,10 @@
    # and minor release numbers.
    SVNBRANCH="branches/gcc-${RELEASE_MAJOR}_${RELEASE_MINOR}-branch"
