@@ -1,5 +1,5 @@
---- gcc-4.0-20040919.orig/gcc/doc/cpp.texi	2004-09-17 10:22:36.000000000 +0200
-+++ gcc-4.0-20040919/gcc/doc/cpp.texi	2004-09-26 10:58:58.166721432 +0200
+--- a/gcc/doc/cpp.texi	2004-09-17 10:22:36.000000000 +0200
++++ b/gcc/doc/cpp.texi	2004-09-26 10:58:58.166721432 +0200
 @@ -52,9 +52,9 @@
  @set cppmanual
  
@@ -12,8 +12,8 @@
  @end direntry
  @end ifinfo
  
---- gcc-4.0-20040919.orig/gcc/doc/cppinternals.texi	2004-07-03 01:57:11.000000000 +0200
-+++ gcc-4.0-20040919/gcc/doc/cppinternals.texi	2004-09-26 10:58:58.208715048 +0200
+--- a/gcc/doc/cppinternals.texi	2004-07-03 01:57:11.000000000 +0200
++++ b/gcc/doc/cppinternals.texi	2004-09-26 10:58:58.208715048 +0200
 @@ -3,9 +3,9 @@
  @settitle The GNU C Preprocessor Internals
  
@@ -26,9 +26,9 @@
  @end direntry
  @end ifinfo
  
---- gcc-4.0-20040919.orig/gcc/doc/gcc.texi	2004-07-22 22:12:20.000000000 +0200
-+++ gcc-4.0-20040919/gcc/doc/gcc.texi	2004-09-26 10:58:58.218713528 +0200
-@@ -62,9 +62,9 @@
+--- a/gcc/doc/gcc.texi	2004-07-22 22:12:20.000000000 +0200
++++ b/gcc/doc/gcc.texi	2004-09-26 10:58:58.218713528 +0200
+@@ -62,10 +62,10 @@
       funds for GNU development.
  @end copying
  @ifnottex
@@ -36,12 +36,14 @@
 +@dircategory Programming Languages:
  @direntry
 -* gcc: (gcc).                  The GNU Compiler Collection.
+-* g++: (gcc).                  The GNU C++ compiler.
 +* gcc: (gcc).				The GNU Compiler Collection
++* g++: (gcc).				The GNU C++ compiler
  @end direntry
  This file documents the use of the GNU compilers.
  @sp 1
---- gcc-4.0-20040919.orig/gcc/doc/gccint.texi	2004-05-24 00:54:29.000000000 +0200
-+++ gcc-4.0-20040919/gcc/doc/gccint.texi	2004-09-26 10:58:58.222712920 +0200
+--- a/gcc/doc/gccint.texi	2004-05-24 00:54:29.000000000 +0200
++++ b/gcc/doc/gccint.texi	2004-09-26 10:58:58.222712920 +0200
 @@ -46,9 +46,9 @@
       funds for GNU development.
  @end copying
@@ -54,8 +56,8 @@
  @end direntry
  This file documents the internals of the GNU compilers.
  @sp 1
---- gcc-4.0-20040919.orig/gcc/ada/gnat-style.texi	2004-09-01 13:51:52.000000000 +0200
-+++ gcc-4.0-20040919/gcc/ada/gnat-style.texi	2004-09-26 10:58:58.342694680 +0200
+--- a/gcc/ada/gnat-style.texi	2004-09-01 13:51:52.000000000 +0200
++++ b/gcc/ada/gnat-style.texi	2004-09-26 10:58:58.342694680 +0200
 @@ -28,9 +28,9 @@
  @setchapternewpage odd
  
@@ -68,8 +70,8 @@
  @end direntry
  
  @macro syntax{element}
---- gcc-4_1-branch/gcc/ada/gnat_ugn.texi.orig	2005-12-06 23:45:52.983574000 +0100
-+++ gcc-4_1-branch/gcc/ada/gnat_ugn.texi	2005-12-11 02:35:45.580878360 +0100
+--- a/gcc/ada/gnat_ugn.texi	2005-12-06 23:45:52.983574000 +0100
++++ b/gcc/ada/gnat_ugn.texi	2005-12-11 02:35:45.580878360 +0100
 @@ -99,9 +99,9 @@
  @end ifset
  
@@ -82,8 +84,8 @@
  @end direntry
  
  @include gcc-common.texi
---- gcc-4.0-20040919.orig/gcc/fortran/gfortran.texi	2004-09-16 15:13:39.000000000 +0200
-+++ gcc-4.0-20040919/gcc/fortran/gfortran.texi	2004-09-26 11:05:50.258074024 +0200
+--- a/gcc/fortran/gfortran.texi	2004-09-16 15:13:39.000000000 +0200
++++ b/gcc/fortran/gfortran.texi	2004-09-26 11:05:50.258074024 +0200
 @@ -62,9 +62,9 @@
  @end copying
  
@@ -96,9 +98,9 @@
  @end direntry
  This file documents the use and the internals of
  the GNU Fortran compiler, (@command{gfortran}).
---- trunk/gcc/java/gcj.texi.orig	2006-07-02 15:30:47.000000000 +0200
-+++ trunk/gcc/java/gcj.texi	2006-07-02 21:15:25.663463500 +0200
-@@ -57,30 +57,22 @@
+--- a/gcc/java/gcj.texi	2006-07-02 15:30:47.000000000 +0200
++++ b/gcc/java/gcj.texi	2006-07-02 21:15:25.663463500 +0200
+@@ -54,24 +54,19 @@
  
  @ifinfo
  @format
@@ -112,12 +114,6 @@
 -@dircategory Individual utilities
 +@dircategory Programming tools:
  @direntry
--* gcjh: (gcj)Invoking gcjh.
--                            Generate header files from Java class files
--* gjnih: (gcj)Invoking gjnih.
--                            Generate JNI header files from Java class files
--* jv-scan: (gcj)Invoking jv-scan.
--                            Print information about Java source files
 -* jcf-dump: (gcj)Invoking jcf-dump.
 -                            Print information about Java class files
 -* gij: (gcj)Invoking gij.   GNU interpreter for Java bytecode
@@ -127,21 +123,18 @@
 -                            Convert file from one encoding to another
 -* grmic: (gcj)Invoking grmic.
 -                            Generate stubs for Remote Method Invocation.
--* grmiregistry: (gcj)Invoking grmiregistry.
--                            The remote object registry.
-+* gcjh: (gcj)gcjh.			Generate header files from Java class files
-+* gjnih: (gcj)Invoking gjnih.		Generate JNI header files from Java class files
-+* jv-scan: (gcj)jv-scan.		Print information about Java source files
+-* gc-analyze: (gcj)Invoking gc-analyze.
+-                            Analyze Garbage Collector (GC) memory dumps.
 +* jcf-dump: (gcj)jcf-dump.		Print information about Java class files
 +* gij: (gcj)gij.			GNU interpreter for Java bytecode
 +* jv-convert: (gcj)jv-convert.		Convert file from one encoding to another
 +* gcj-dbtool: (gcj)gcj-dbtool.		Db tool.
 +* grmic: (gcj)grmic.			Generate stubs for Remote Method Invocation.
-+* grmiregistry: (gcj)grmiregistry.	The remote object registry.
++* gc-analyze: (gcj)gc-analyze.		Analyze Garbage Collector (GC) memory dumps.
  @end direntry
  @end format
  
-@@ -114,20 +106,20 @@
+@@ -104,17 +99,17 @@
  @file{.class} files.
  
  @menu
@@ -152,28 +145,22 @@
 -* Invoking gcj::	Compiler options supported by @command{gcj}
 +* gcj::			Compiler options supported by @command{gcj}
  * Compatibility::	Compatibility between gcj and other tools for Java
--* Invoking gcjh::       Generate header files from class files
--* Invoking gjnih::      Generate JNI header files from class files
--* Invoking jv-scan::    Print information about source files
 -* Invoking jcf-dump::   Print information about class files
 -* Invoking gij::	Interpreting Java bytecodes
 -* Invoking gcj-dbtool:: Tool for manipulating class file databases.
 -* Invoking jv-convert:: Converting from one encoding to another
 -* Invoking grmic::      Generate stubs for Remote Method Invocation.
--* Invoking grmiregistry:: The remote object registry.
-+* gcjh::		Generate header files from class files
-+* gjnih::		Generate JNI header files from class files
-+* jv-scan::		Print information about source files
+-* Invoking gc-analyze:: Analyze Garbage Collector (GC) memory dumps.
 +* jcf-dump::		Print information about class files
 +* gij::			Interpreting Java bytecodes
 +* jv-convert::		Converting from one encoding to another
 +* gcj-dbtool::		Db tool.
 +* grmic::		Generate stubs for Remote Method Invocation.
-+* grmiregistry::	The remote object registry.
++* gc-analyze::		Analyze Garbage Collector (GC) memory dumps.
  * About CNI::           Description of the Compiled Native Interface
  * System properties::   Modifying runtime behavior of the libgcj library
  * Resources::		Where to look for more information
-@@ -140,7 +132,7 @@
+@@ -127,7 +122,7 @@
  @include fdl.texi
  
  
@@ -182,7 +169,7 @@
  @chapter Invoking gcj
  
  @c man title gcj Ahead-of-time compiler for the Java language
-@@ -674,8 +666,8 @@
+@@ -670,8 +665,8 @@
  @code{-findirect-dispatch} then add them to the system-wide
  classmap.db file using @code{gcj-dbtool}, they will be automatically
  loaded by the @code{libgcj} system classloader.  This is the new,
@@ -193,43 +180,16 @@
  
  @item
  The old classname-to-library lookup mechanism is still supported
-@@ -722,7 +714,7 @@
+@@ -718,7 +713,7 @@
  @end itemize
  
- 
--@node Invoking gcjh
-+@node gcjh
- @chapter Invoking gcjh
- 
- @c man title gcjh generate header files from Java class files
-@@ -838,7 +830,7 @@
- 
- @c man end
- 
--@node Invoking gjnih
-+@node gjnih
- @chapter Invoking gjnih
- 
- @c man title gjnih generate JNI header files from Java class files
-@@ -952,7 +944,7 @@
- 
- @c man end
- 
--@node Invoking jv-scan
-+@node jv-scan
- @chapter Invoking jv-scan
- 
- @c man title jv-scan print information about Java source file
-@@ -1015,7 +1007,7 @@
- 
- @c man end
  
 -@node Invoking jcf-dump
 +@node jcf-dump
  @chapter Invoking jcf-dump
  
  @c man title jcf-dump print information about Java class files
-@@ -1075,7 +1067,7 @@
+@@ -778,7 +773,7 @@
  
  @c man end
  
@@ -238,7 +198,7 @@
  @chapter Invoking gij
  
  @c man title gij GNU interpreter for Java bytecode
-@@ -1204,7 +1196,7 @@
+@@ -907,7 +902,7 @@
  
  @c man end
  
@@ -247,7 +207,7 @@
  @chapter Invoking gcj-dbtool.
  
  @c man title gcj-dbtool Manipulate class file mapping databases for libgcj
-@@ -1295,7 +1287,7 @@
+@@ -998,7 +993,7 @@
  
  @c man end
  
@@ -256,7 +216,7 @@
  @chapter Invoking jv-convert
  
  @c man title jv-convert Convert file from one encoding to another
-@@ -1354,7 +1346,7 @@
+@@ -1057,7 +1052,7 @@
  
  @c man end
  
@@ -265,17 +225,17 @@
  @chapter Invoking grmic
  
  @c man title grmic Generate stubs for Remote Method Invocation
-@@ -1433,7 +1425,7 @@
+@@ -1136,7 +1131,7 @@
  @c man end
  
  
--@node Invoking grmiregistry
-+@node grmiregistry
- @chapter Invoking grmiregistry
+-@node Invoking gc-analyze
++@node gc-analyze
+ @chapter Invoking gc-analyze
  
- @c man title grmiregistry Remote object registry
---- gcc-4_1-branch/gcc/ada/gnat_rm.texi.orig	2005-11-30 12:12:06.000000000 +0100
-+++ gcc-4_1-branch/gcc/ada/gnat_rm.texi	2005-12-11 02:36:14.863426736 +0100
+ @c man title gc-analyze Analyze Garbage Collector (GC) memory dumps
+--- a/gcc/ada/gnat_rm.texi	2005-11-30 12:12:06.000000000 +0100
++++ b/gcc/ada/gnat_rm.texi	2005-12-11 02:36:14.863426736 +0100
 @@ -26,9 +26,9 @@
  
  @include gcc-common.texi
@@ -288,8 +248,8 @@
  @end direntry
  
  @copying
---- gcc-4_1-branch/gcc/doc/install.texi.orig	2005-11-30 12:02:42.000000000 +0100
-+++ gcc-4_1-branch/gcc/doc/install.texi	2005-12-11 02:44:22.598279768 +0100
+--- a/gcc/doc/install.texi	2005-11-30 12:02:42.000000000 +0100
++++ b/gcc/doc/install.texi	2005-12-11 02:44:22.598279768 +0100
 @@ -87,9 +87,9 @@
  @ifinfo
  @insertcopying

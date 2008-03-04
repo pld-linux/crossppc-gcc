@@ -1,5 +1,5 @@
---- gcc-4.0-20040919/gcc/ada/link.c.orig	2004-09-13 12:18:40.000000000 +0200
-+++ gcc-4.0-20040919/gcc/ada/link.c	2004-09-26 12:24:29.079704096 +0200
+--- a/gcc/ada/link.c	2004-09-13 12:18:40.000000000 +0200
++++ b/gcc/ada/link.c	2004-09-26 12:24:29.079704096 +0200
 @@ -164,9 +164,9 @@
  
  #elif defined (linux)
@@ -13,20 +13,20 @@
  unsigned char __gnat_objlist_file_supported = 1;
  unsigned char __gnat_using_gnu_linker = 1;
  const char *__gnat_object_library_extension = ".a";
---- gcc-4.0-20040919/gcc/ada/Make-lang.in.orig	2004-09-01 12:46:47.000000000 +0200
-+++ gcc-4.0-20040919/gcc/ada/Make-lang.in	2004-09-26 12:21:15.135188144 +0200
+--- a/gcc/ada/Make-lang.in	2004-09-01 12:46:47.000000000 +0200
++++ b/gcc/ada/Make-lang.in	2004-09-26 12:21:15.135188144 +0200
 @@ -378,7 +378,7 @@
  ada/doctools/xgnatugn$(build_exeext): ada/xgnatugn.adb
  	-$(MKDIR) ada/doctools
  	$(CP) $^ ada/doctools
--	cd ada/doctools && gnatmake -q xgnatugn
-+	cd ada/doctools && gnatmake -q xgnatugn -a0../rts
+-	cd ada/doctools && $(GNATMAKE) -q xgnatugn
++	cd ada/doctools && $(GNATMAKE) -q xgnatugn -a0../rts
  
  # Note that gnat_ugn_unw.texi does not depend on xgnatugn 
  # being built so we can distribute a pregenerated gnat_ugn_unw.info
---- gcc-4.1-20050522/gcc/ada/Makefile.in.orig	2005-05-26 10:48:40.000000000 +0000
-+++ gcc-4.1-20050522/gcc/ada/Makefile.in	2005-05-26 10:59:25.000000000 +0000
-@@ -139,7 +139,7 @@
+--- a/gcc/ada/Makefile.in	2005-05-26 10:48:40.000000000 +0000
++++ b/gcc/ada/Makefile.in	2005-05-26 10:59:25.000000000 +0000
+@@ -138,7 +138,7 @@
  objext = .o
  exeext =
  arext  = .a
@@ -35,16 +35,16 @@
  shext  =
  hyphen = -
  
-@@ -1364,7 +1414,7 @@
-  s-[a-o]*.adb s-[p-z]*.adb s-[a-o]*.ads s-[p-z]*.ads  
+@@ -1669,7 +1669,7 @@
  
  LIBGNAT=../rts/libgnat.a 
+ 
 -GCC_LINK=$(CC) -static-libgcc $(ADA_INCLUDES)
 +GCC_LINK=$(CC) $(ADA_INCLUDES)
  
  # when compiling the tools, the runtime has to be first on the path so that
  # it hides the runtime files lying with the rest of the sources
-@@ -1644,7 +1694,8 @@
+@@ -1948,7 +1948,8 @@
  		-o libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		$(GNATRTL_TASKING_OBJS) \
  		$(SO_OPTS)libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
@@ -54,7 +54,7 @@
  	cd rts; $(LN_S) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		libgnat$(soext)
  	cd rts; $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
-@@ -1691,7 +1742,7 @@
+@@ -1995,7 +1996,7 @@
  	     THREAD_KIND="$(THREAD_KIND)" \
               gnatlib
  	$(RM) rts/libgna*$(soext)
