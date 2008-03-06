@@ -10,8 +10,20 @@
  	AC_CHECK_PROG(MOC, [moc-qt4], [moc-qt4])
      fi
      if test "x$HAVE_QT4" = "xno"; then
---- trunk/libjava/classpath/native/jni/qt-peer/Makefile.am	2007-06-03 23:18:43.000000000 +0000
-+++ trunk/libjava/classpath/native/jni/qt-peer/Makefile.am	2008-03-04 20:41:55.000000000 +0000
+--- trunk/libjava/classpath/native/jni/qt-peer/Makefile.am	2007-06-04 01:18:43.000000000 +0200
++++ trunk/libjava/classpath/native/jni/qt-peer/Makefile.am	2008-03-06 16:32:36.000000000 +0100
+@@ -1,8 +1,7 @@
+ # Qt AWT backend for Classpath
+ #
+ 
+-## GCJ LOCAL: don't install this library
+-noinst_LTLIBRARIES = libqtpeer.la
++nativeexeclib_LTLIBRARIES = libqtpeer.la
+ 
+ AM_LDFLAGS = @CLASSPATH_MODULE@ @QT_LIBS@
+ AM_CPPFLAGS = @CLASSPATH_INCLUDES@
+--- trunk/libjava/classpath/native/jni/qt-peer/Makefile.in	2007-08-04 12:53:49.000000000 +0200
++++ trunk/libjava/classpath/native/jni/qt-peer/Makefile.in	2008-03-06 15:24:38.000000000 +0100
 @@ -64,7 +64,8 @@
  mkinstalldirs = $(SHELL) $(top_srcdir)/../../mkinstalldirs
  CONFIG_HEADER = $(top_builddir)/include/config.h
