@@ -1,724 +1,3557 @@
-Index: gcc/tree-vrp.c
+Index: libgomp/ChangeLog
 ===================================================================
---- gcc/tree-vrp.c	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/tree-vrp.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -2486,6 +2486,10 @@
-   if (TREE_CODE (chrec) != POLYNOMIAL_CHREC)
-     return;
- 
-+  /* Don't adjust ranges from pointer CHRECs.  */
-+  if (POINTER_TYPE_P (TREE_TYPE (chrec)))
-+    return;
+--- libgomp/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libgomp/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,17 @@
++2008-03-13  Jakub Jelinek  <jakub@redhat.com>
 +
-   init = initial_condition_in_loop_num (chrec, loop->num);
-   step = evolution_part_in_loop_num (chrec, loop->num);
++	PR middle-end/35185
++	* testsuite/libgomp.c++/pr35185.C: New test.
++
++2008-03-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/35549
++	* testsuite/libgomp.c/pr35549.c: New test.
++
++2008-03-06  Jakub Jelinek  <jakub@redhat.com>
++
++	* testsuite/libgomp.c/atomic-3.c: New test.
++
+ 2008-03-05  Release Manager
  
+ 	* GCC 4.3.0 released.
+Index: libgomp/testsuite/libgomp.c++/pr35185.C
+===================================================================
+--- libgomp/testsuite/libgomp.c++/pr35185.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ libgomp/testsuite/libgomp.c++/pr35185.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,33 @@
++// PR middle-end/35185
++// { dg-do run }
++
++extern "C" void abort ();
++
++struct S
++{
++  S () : s (6) {}
++  ~S () {}
++  int s;
++};
++
++__attribute__((noinline))
++bool
++bar (S s)
++{
++  return s.s != 6;
++}
++
++int
++main ()
++{
++  S s;
++  int err = 0;
++#pragma omp parallel shared (s)
++  {
++    if (bar (s))
++      #pragma omp atomic
++	err++;
++  }
++  if (err)
++    abort ();
++}
+Index: libgomp/testsuite/libgomp.c/pr35549.c
+===================================================================
+--- libgomp/testsuite/libgomp.c/pr35549.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ libgomp/testsuite/libgomp.c/pr35549.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,30 @@
++/* PR middle-end/35549 */
++/* { dg-do run } */
++
++#include <omp.h>
++#include <stdlib.h>
++
++int
++main (void)
++{
++  int i = 6, n = 0;
++  omp_set_dynamic (0);
++  omp_set_nested (1);
++  #pragma omp parallel shared (i) num_threads (3)
++  {
++    if (omp_get_num_threads () != 3)
++      #pragma omp atomic
++	n += 1;
++    #pragma omp parallel shared (i) num_threads (4)
++    {
++      if (omp_get_num_threads () != 4)
++	#pragma omp atomic
++	  n += 1;
++      #pragma omp critical
++	i += 1;
++    }
++  }
++  if (n == 0 && i != 6 + 3 * 4)
++    abort ();
++  return 0;
++}
+Index: libgomp/testsuite/libgomp.c/atomic-3.c
+===================================================================
+--- libgomp/testsuite/libgomp.c/atomic-3.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ libgomp/testsuite/libgomp.c/atomic-3.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,50 @@
++/* { dg-do run } */
++/* { dg-options "-fopenmp -O0" } */
++
++#include <omp.h>
++#include <stdlib.h>
++
++short e[64];
++int g;
++_Complex double d, f;
++int num_threads;
++
++__attribute__((noinline)) void
++foo (int x, long long y)
++{
++#pragma omp parallel num_threads (4)
++  {
++    int i;
++    #pragma omp barrier
++    for (i = 0; i < 2400; i++)
++      {
++	if (i == 0)
++	  num_threads = omp_get_num_threads ();
++	#pragma omp atomic
++	  e[0] += x;
++	#pragma omp atomic
++	  e[16] += x;
++	#pragma omp atomic
++	  g += y;
++	#pragma omp atomic
++	  __real__ d += x;
++	#pragma omp atomic
++	  __imag__ f += x;
++      }
++  }
++}
++
++int
++main (void)
++{
++  int i;
++  foo (3, 3LL);
++  if (g != 3 * 2400 * num_threads
++      || __real__ d != g || __imag__ d != 0
++      || __real__ f != 0 || __imag__ f != g)
++    abort ();
++  for (i = 0; i < 64; i++)
++    if (e[i] != ((i && i != 16) ? 0 : g))
++      abort ();
++  return 0;
++}
+Index: gcc/doc/include/texinfo.tex
+===================================================================
+--- gcc/doc/include/texinfo.tex	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/doc/include/texinfo.tex	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -3,7 +3,7 @@
+ % Load plain if necessary, i.e., if running under initex.
+ \expandafter\ifx\csname fmtname\endcsname\relax\input plain\fi
+ %
+-\def\texinfoversion{2008-02-04.16}
++\def\texinfoversion{2008-03-07.10}
+ %
+ % Copyright (C) 1985, 1986, 1988, 1990, 1991, 1992, 1993, 1994, 1995,
+ % 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
+@@ -917,16 +917,21 @@
+   \temp
+ }
+ 
+-% @include file    insert text of that file as input.
++% @include FILE -- \input text of FILE.
+ %
+ \def\include{\parseargusing\filenamecatcodes\includezzz}
+ \def\includezzz#1{%
+   \pushthisfilestack
+   \def\thisfile{#1}%
+   {%
+-    \makevalueexpandable
+-    \input #1
+-  }%
++    \makevalueexpandable  % we want to expand any @value in FILE.  
++    \turnoffactive        % and allow special characters in the expansion
++    \edef\temp{\noexpand\input #1 }%
++    %
++    % This trickery is to read FILE outside of a group, in case it makes
++    % definitions, etc.
++    \expandafter
++  }\temp
+   \popthisfilestack
+ }
+ \def\filenamecatcodes{%
+@@ -5725,7 +5730,7 @@
+   \let\/=\ptexslash
+   \let\*=\ptexstar
+   \let\t=\ptext
+-  \expandafter \let\csname top \endcsname=\ptextop  % outer
++  \expandafter \let\csname top\endcsname=\ptextop  % outer
+   \let\frenchspacing=\plainfrenchspacing
+   %
+   \def\endldots{\mathinner{\ldots\ldots\ldots\ldots}}%
+Index: gcc/java/jcf-parse.c
+===================================================================
+--- gcc/java/jcf-parse.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/java/jcf-parse.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1208,7 +1208,7 @@
+ #ifdef USE_MAPPED_LOCATION
+       {
+       tree source_name = identifier_subst (class_name, "", '.', '/', ".java");
+-      const char *sfname = IDENTIFIER_POINTER (source_name);
++      const char *sfname = find_sourcefile (IDENTIFIER_POINTER (source_name));
+       linemap_add (line_table, LC_ENTER, false, sfname, 0);
+       input_location = linemap_line_start (line_table, 0, 1);
+       file_start_location = input_location;
+Index: gcc/java/ChangeLog
+===================================================================
+--- gcc/java/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/java/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,8 @@
++2008-03-06  Andrew Haley  <aph@redhat.com>
++
++	* jcf-parse.c (give_name_to_class): Call find_sourcefile to find
++	full pathname of source file.
++
+ 2008-03-05  Release Manager
+ 
+ 	* GCC 4.3.0 released.
 Index: gcc/DATESTAMP
 ===================================================================
---- gcc/DATESTAMP	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/DATESTAMP	(.../branches/gcc-4_2-branch)	(revision 129201)
+--- gcc/DATESTAMP	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/DATESTAMP	(.../branches/gcc-4_3-branch)	(revision 133190)
 @@ -1 +1 @@
--20071007
-+20071010
+-20080305
++20080313
+Index: gcc/tree.c
+===================================================================
+--- gcc/tree.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/tree.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -4067,6 +4067,16 @@
+       return NULL_TREE;
+     }
+ 
++  if (TREE_CODE (node) == TYPE_DECL
++      && TREE_CODE (TREE_TYPE (node)) != RECORD_TYPE
++      && TREE_CODE (TREE_TYPE (node)) != UNION_TYPE)
++    {
++      *no_add_attrs = true;
++      warning (OPT_Wattributes, "%qs attribute ignored",
++	       IDENTIFIER_POINTER (name));
++      return NULL_TREE;
++    }
++
+   /* Report error on dllimport ambiguities seen now before they cause
+      any damage.  */
+   else if (is_attribute_p ("dllimport", name))
+Index: gcc/fold-const.c
+===================================================================
+--- gcc/fold-const.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/fold-const.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -5066,9 +5066,10 @@
+ 
+      Note that all these transformations are correct if A is
+      NaN, since the two alternatives (A and -A) are also NaNs.  */
+-  if ((FLOAT_TYPE_P (TREE_TYPE (arg01))
+-       ? real_zerop (arg01)
+-       : integer_zerop (arg01))
++  if (!HONOR_SIGNED_ZEROS (TYPE_MODE (type))
++      && (FLOAT_TYPE_P (TREE_TYPE (arg01))
++	  ? real_zerop (arg01)
++	  : integer_zerop (arg01))
+       && ((TREE_CODE (arg2) == NEGATE_EXPR
+ 	   && operand_equal_p (TREE_OPERAND (arg2, 0), arg1, 0))
+ 	     /* In the case that A is of the form X-Y, '-A' (arg2) may
+@@ -5121,7 +5122,8 @@
+      both transformations are correct when A is NaN: A != 0
+      is then true, and A == 0 is false.  */
+ 
+-  if (integer_zerop (arg01) && integer_zerop (arg2))
++  if (!HONOR_SIGNED_ZEROS (TYPE_MODE (type))
++      && integer_zerop (arg01) && integer_zerop (arg2))
+     {
+       if (comp_code == NE_EXPR)
+ 	return pedantic_non_lvalue (fold_convert (type, arg1));
+@@ -5155,7 +5157,8 @@
+      a number and A is not.  The conditions in the original
+      expressions will be false, so all four give B.  The min()
+      and max() versions would give a NaN instead.  */
+-  if (operand_equal_for_comparison_p (arg01, arg2, arg00)
++  if (!HONOR_SIGNED_ZEROS (TYPE_MODE (type))
++      && operand_equal_for_comparison_p (arg01, arg2, arg00)
+       /* Avoid these transformations if the COND_EXPR may be used
+ 	 as an lvalue in the C++ front-end.  PR c++/19199.  */
+       && (in_gimple_form
+Index: gcc/omp-low.c
+===================================================================
+--- gcc/omp-low.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/omp-low.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -456,7 +456,7 @@
+ }
+ 
+ static inline tree
+-maybe_lookup_decl (tree var, omp_context *ctx)
++maybe_lookup_decl (const_tree var, omp_context *ctx)
+ {
+   tree *n;
+   n = (tree *) pointer_map_contains (ctx->cb.decl_map, var);
+@@ -479,18 +479,18 @@
+   return n ? (tree) n->value : NULL_TREE;
+ }
+ 
+-/* Return true if DECL should be copied by pointer.  SHARED_P is true
+-   if DECL is to be shared.  */
++/* Return true if DECL should be copied by pointer.  SHARED_CTX is
++   the parallel context if DECL is to be shared.  */
+ 
+ static bool
+-use_pointer_for_field (const_tree decl, bool shared_p)
++use_pointer_for_field (const_tree decl, omp_context *shared_ctx)
+ {
+   if (AGGREGATE_TYPE_P (TREE_TYPE (decl)))
+     return true;
+ 
+   /* We can only use copy-in/copy-out semantics for shared variables
+      when we know the value is not accessible from an outer scope.  */
+-  if (shared_p)
++  if (shared_ctx)
+     {
+       /* ??? Trivially accessible from anywhere.  But why would we even
+ 	 be passing an address in this case?  Should we simply assert
+@@ -510,6 +510,34 @@
+ 	 address taken.  */
+       if (TREE_ADDRESSABLE (decl))
+ 	return true;
++
++      /* Disallow copy-in/out in nested parallel if
++	 decl is shared in outer parallel, otherwise
++	 each thread could store the shared variable
++	 in its own copy-in location, making the
++	 variable no longer really shared.  */
++      if (!TREE_READONLY (decl) && shared_ctx->is_nested)
++	{
++	  omp_context *up;
++
++	  for (up = shared_ctx->outer; up; up = up->outer)
++	    if (maybe_lookup_decl (decl, up))
++	      break;
++
++	  if (up && is_parallel_ctx (up))
++	    {
++	      tree c;
++
++	      for (c = OMP_PARALLEL_CLAUSES (up->stmt);
++		   c; c = OMP_CLAUSE_CHAIN (c))
++		if (OMP_CLAUSE_CODE (c) == OMP_CLAUSE_SHARED
++		    && OMP_CLAUSE_DECL (c) == decl)
++		  break;
++
++	      if (c)
++		return true;
++	    }
++	}
+     }
+ 
+   return false;
+@@ -596,7 +624,7 @@
+     }
+   else if (is_parallel_ctx (ctx))
+     {
+-      bool by_ref = use_pointer_for_field (var, false);
++      bool by_ref = use_pointer_for_field (var, NULL);
+       x = build_receiver_ref (var, by_ref, ctx);
+     }
+   else if (ctx->outer)
+@@ -966,7 +994,7 @@
+ 	  gcc_assert (is_parallel_ctx (ctx));
+ 	  decl = OMP_CLAUSE_DECL (c);
+ 	  gcc_assert (!is_variable_sized (decl));
+-	  by_ref = use_pointer_for_field (decl, true);
++	  by_ref = use_pointer_for_field (decl, ctx);
+ 	  /* Global variables don't need to be copied,
+ 	     the receiver side will use them directly.  */
+ 	  if (is_global_var (maybe_lookup_decl_in_outer_ctx (decl, ctx)))
+@@ -1001,7 +1029,7 @@
+ 		   && ! is_global_var (maybe_lookup_decl_in_outer_ctx (decl,
+ 								       ctx)))
+ 	    {
+-	      by_ref = use_pointer_for_field (decl, false);
++	      by_ref = use_pointer_for_field (decl, NULL);
+ 	      install_var_field (decl, by_ref, ctx);
+ 	    }
+ 	  install_var_local (decl, ctx);
+@@ -1014,7 +1042,7 @@
+ 
+ 	case OMP_CLAUSE_COPYIN:
+ 	  decl = OMP_CLAUSE_DECL (c);
+-	  by_ref = use_pointer_for_field (decl, false);
++	  by_ref = use_pointer_for_field (decl, NULL);
+ 	  install_var_field (decl, by_ref, ctx);
+ 	  break;
+ 
+@@ -1751,7 +1779,7 @@
+ 	      /* Set up the DECL_VALUE_EXPR for shared variables now.  This
+ 		 needs to be delayed until after fixup_child_record_type so
+ 		 that we get the correct type during the dereference.  */
+-	      by_ref = use_pointer_for_field (var, true);
++	      by_ref = use_pointer_for_field (var, ctx);
+ 	      x = build_receiver_ref (var, by_ref, ctx);
+ 	      SET_DECL_VALUE_EXPR (new_var, x);
+ 	      DECL_HAS_VALUE_EXPR_P (new_var) = 1;
+@@ -1794,7 +1822,7 @@
+ 	      break;
+ 
+ 	    case OMP_CLAUSE_COPYIN:
+-	      by_ref = use_pointer_for_field (var, false);
++	      by_ref = use_pointer_for_field (var, NULL);
+ 	      x = build_receiver_ref (var, by_ref, ctx);
+ 	      x = lang_hooks.decls.omp_clause_assign_op (c, new_var, x);
+ 	      append_to_statement_list (x, &copyin_seq);
+@@ -2007,7 +2035,7 @@
+ 	continue;
+ 
+       var = OMP_CLAUSE_DECL (c);
+-      by_ref = use_pointer_for_field (var, false);
++      by_ref = use_pointer_for_field (var, NULL);
+ 
+       ref = build_sender_ref (var, ctx);
+       x = lookup_decl_in_outer_ctx (var, ctx);
+@@ -2059,7 +2087,7 @@
+ 	continue;
+       if (is_variable_sized (val))
+ 	continue;
+-      by_ref = use_pointer_for_field (val, false);
++      by_ref = use_pointer_for_field (val, NULL);
+ 
+       switch (OMP_CLAUSE_CODE (c))
+ 	{
+@@ -2129,7 +2157,7 @@
+ 	 mapping for OVAR.  */
+       var = lookup_decl_in_outer_ctx (ovar, ctx);
+ 
+-      if (use_pointer_for_field (ovar, true))
++      if (use_pointer_for_field (ovar, ctx))
+ 	{
+ 	  x = build_sender_ref (ovar, ctx);
+ 	  var = build_fold_addr_expr (var);
+@@ -4852,184 +4880,177 @@
+   pop_gimplify_context (NULL_TREE);
+ }
+ 
++/* Callback for lower_omp_1.  Return non-NULL if *tp needs to be
++   regimplified.  */
+ 
+-/* Pass *TP back through the gimplifier within the context determined by WI.
+-   This handles replacement of DECL_VALUE_EXPR, as well as adjusting the 
+-   flags on ADDR_EXPR.  */
+-
+-static void
+-lower_regimplify (tree *tp, struct walk_stmt_info *wi)
++static tree
++lower_omp_2 (tree *tp, int *walk_subtrees, void *data ATTRIBUTE_UNUSED)
+ {
+-  enum gimplify_status gs;
+-  tree pre = NULL;
++  tree t = *tp;
+ 
+-  if (wi->is_lhs)
+-    gs = gimplify_expr (tp, &pre, NULL, is_gimple_lvalue, fb_lvalue);
+-  else if (wi->val_only)
+-    gs = gimplify_expr (tp, &pre, NULL, is_gimple_val, fb_rvalue);
+-  else
+-    gs = gimplify_expr (tp, &pre, NULL, is_gimple_formal_tmp_var, fb_rvalue);
+-  gcc_assert (gs == GS_ALL_DONE);
++  /* Any variable with DECL_VALUE_EXPR needs to be regimplified.  */
++  if (TREE_CODE (t) == VAR_DECL && DECL_HAS_VALUE_EXPR_P (t))
++    return t;
+ 
+-  if (pre)
+-    tsi_link_before (&wi->tsi, pre, TSI_SAME_STMT);
+-}
++  /* If a global variable has been privatized, TREE_CONSTANT on
++     ADDR_EXPR might be wrong.  */
++  if (TREE_CODE (t) == ADDR_EXPR)
++    recompute_tree_invariant_for_addr_expr (t);
+ 
+-/* Copy EXP into a temporary.  Insert the initialization statement before TSI.  */
+-
+-static tree
+-init_tmp_var (tree exp, tree_stmt_iterator *tsi)
+-{
+-  tree t, stmt;
+-
+-  t = create_tmp_var (TREE_TYPE (exp), NULL);
+-  DECL_GIMPLE_REG_P (t) = 1;
+-  stmt = build_gimple_modify_stmt (t, exp);
+-  SET_EXPR_LOCUS (stmt, EXPR_LOCUS (tsi_stmt (*tsi)));
+-  tsi_link_before (tsi, stmt, TSI_SAME_STMT);
+-
+-  return t;
++  *walk_subtrees = !TYPE_P (t) && !DECL_P (t);
++  return NULL_TREE;
+ }
+ 
+-/* Similarly, but copy from the temporary and insert the statement
+-   after the iterator.  */
+-
+-static tree
+-save_tmp_var (tree exp, tree_stmt_iterator *tsi)
++static void
++lower_omp_1 (tree *tp, omp_context *ctx, tree_stmt_iterator *tsi)
+ {
+-  tree t, stmt;
++  tree t = *tp;
+ 
+-  t = create_tmp_var (TREE_TYPE (exp), NULL);
+-  DECL_GIMPLE_REG_P (t) = 1;
+-  stmt = build_gimple_modify_stmt (exp, t);
+-  SET_EXPR_LOCUS (stmt, EXPR_LOCUS (tsi_stmt (*tsi)));
+-  tsi_link_after (tsi, stmt, TSI_SAME_STMT);
++  if (!t)
++    return;
+ 
+-  return t;
+-}
++  if (EXPR_HAS_LOCATION (t))
++    input_location = EXPR_LOCATION (t);
+ 
+-/* Callback for walk_stmts.  Lower the OpenMP directive pointed by TP.  */
+-
+-static tree
+-lower_omp_1 (tree *tp, int *walk_subtrees, void *data)
+-{
+-  struct walk_stmt_info *wi = data;
+-  omp_context *ctx = wi->info;
+-  tree t = *tp;
+-
+   /* If we have issued syntax errors, avoid doing any heavy lifting.
+      Just replace the OpenMP directives with a NOP to avoid
+      confusing RTL expansion.  */
+-  if (errorcount && OMP_DIRECTIVE_P (*tp))
++  if (errorcount && OMP_DIRECTIVE_P (t))
+     {
+       *tp = build_empty_stmt ();
+-      return NULL_TREE;
++      return;
+     }
+ 
+-  *walk_subtrees = 0;
+-  switch (TREE_CODE (*tp))
++  switch (TREE_CODE (t))
+     {
++    case STATEMENT_LIST:
++      {
++	tree_stmt_iterator i;
++	for (i = tsi_start (t); !tsi_end_p (i); tsi_next (&i))
++	  lower_omp_1 (tsi_stmt_ptr (i), ctx, &i);
++      }
++      break;
++
++    case COND_EXPR:
++      lower_omp_1 (&COND_EXPR_THEN (t), ctx, NULL);
++      lower_omp_1 (&COND_EXPR_ELSE (t), ctx, NULL);
++      if (ctx
++	  && walk_tree (&COND_EXPR_COND (t), lower_omp_2, ctx, NULL))
++	{
++	  tree pre = NULL;
++	  gimplify_expr (&COND_EXPR_COND (t), &pre, NULL,
++			 is_gimple_condexpr, fb_rvalue);
++	  if (pre)
++	    {
++	      if (tsi)
++		tsi_link_before (tsi, pre, TSI_SAME_STMT);
++	      else
++		{
++		  append_to_statement_list (t, &pre);
++		  *tp = pre;
++		}
++	    }
++	}
++      break;
++    case CATCH_EXPR:
++      lower_omp_1 (&CATCH_BODY (t), ctx, NULL);
++      break;
++    case EH_FILTER_EXPR:
++      lower_omp_1 (&EH_FILTER_FAILURE (t), ctx, NULL);
++      break;
++    case TRY_CATCH_EXPR:
++    case TRY_FINALLY_EXPR:
++      lower_omp_1 (&TREE_OPERAND (t, 0), ctx, NULL);
++      lower_omp_1 (&TREE_OPERAND (t, 1), ctx, NULL);
++      break;
++    case BIND_EXPR:
++      lower_omp_1 (&BIND_EXPR_BODY (t), ctx, NULL);
++      break;
++    case RETURN_EXPR:
++      lower_omp_1 (&TREE_OPERAND (t, 0), ctx, NULL);
++      break;
++
+     case OMP_PARALLEL:
+       ctx = maybe_lookup_ctx (t);
+       lower_omp_parallel (tp, ctx);
+       break;
+-
+     case OMP_FOR:
+       ctx = maybe_lookup_ctx (t);
+       gcc_assert (ctx);
+       lower_omp_for (tp, ctx);
+       break;
+-
+     case OMP_SECTIONS:
+       ctx = maybe_lookup_ctx (t);
+       gcc_assert (ctx);
+       lower_omp_sections (tp, ctx);
+       break;
+-
+     case OMP_SINGLE:
+       ctx = maybe_lookup_ctx (t);
+       gcc_assert (ctx);
+       lower_omp_single (tp, ctx);
+       break;
+-
+     case OMP_MASTER:
+       ctx = maybe_lookup_ctx (t);
+       gcc_assert (ctx);
+       lower_omp_master (tp, ctx);
+       break;
+-
+     case OMP_ORDERED:
+       ctx = maybe_lookup_ctx (t);
+       gcc_assert (ctx);
+       lower_omp_ordered (tp, ctx);
+       break;
+-
+     case OMP_CRITICAL:
+       ctx = maybe_lookup_ctx (t);
+       gcc_assert (ctx);
+       lower_omp_critical (tp, ctx);
+       break;
+ 
+-    case VAR_DECL:
+-      if (ctx && DECL_HAS_VALUE_EXPR_P (t))
++    default:
++      if (ctx && walk_tree (tp, lower_omp_2, ctx, NULL))
+ 	{
+-	  lower_regimplify (&t, wi);
+-	  if (wi->val_only)
++	  /* The gimplifier doesn't gimplify CALL_EXPR_STATIC_CHAIN.
++	     Handle that here.  */
++	  tree call = get_call_expr_in (t);
++	  if (call
++	      && CALL_EXPR_STATIC_CHAIN (call)
++	      && walk_tree (&CALL_EXPR_STATIC_CHAIN (call), lower_omp_2,
++			    ctx, NULL))
+ 	    {
+-	      if (wi->is_lhs)
+-		t = save_tmp_var (t, &wi->tsi);
+-	      else
+-		t = init_tmp_var (t, &wi->tsi);
++	      tree pre = NULL;
++	      gimplify_expr (&CALL_EXPR_STATIC_CHAIN (call), &pre, NULL,
++			     is_gimple_val, fb_rvalue);
++	      if (pre)
++		{
++		  if (tsi)
++		    tsi_link_before (tsi, pre, TSI_SAME_STMT);
++		  else
++		    {
++		      append_to_statement_list (t, &pre);
++		      lower_omp_1 (&pre, ctx, NULL);
++		      *tp = pre;
++		      return;
++		    }
++		}
+ 	    }
+-	  *tp = t;
+-	}
+-      break;
+ 
+-    case ADDR_EXPR:
+-      if (ctx)
+-	lower_regimplify (tp, wi);
+-      break;
+-
+-    case ARRAY_REF:
+-    case ARRAY_RANGE_REF:
+-    case REALPART_EXPR:
+-    case IMAGPART_EXPR:
+-    case COMPONENT_REF:
+-    case VIEW_CONVERT_EXPR:
+-      if (ctx)
+-	lower_regimplify (tp, wi);
+-      break;
+-
+-    case INDIRECT_REF:
+-      if (ctx)
+-	{
+-	  wi->is_lhs = false;
+-	  wi->val_only = true;
+-	  lower_regimplify (&TREE_OPERAND (t, 0), wi);
++	  if (tsi == NULL)
++	    gimplify_stmt (tp);
++	  else
++	    {
++	      tree pre = NULL;
++	      gimplify_expr (tp, &pre, NULL, is_gimple_stmt, fb_none);
++	      if (pre)
++		tsi_link_before (tsi, pre, TSI_SAME_STMT);
++	    }
+ 	}
+       break;
+-
+-    default:
+-      if (!TYPE_P (t) && !DECL_P (t))
+-	*walk_subtrees = 1;
+-      break;
+     }
+-
+-  return NULL_TREE;
+ }
+ 
+ static void
+ lower_omp (tree *stmt_p, omp_context *ctx)
+ {
+-  struct walk_stmt_info wi;
+-
+-  memset (&wi, 0, sizeof (wi));
+-  wi.callback = lower_omp_1;
+-  wi.info = ctx;
+-  wi.val_only = true;
+-  wi.want_locations = true;
+-
+-  walk_stmts (&wi, stmt_p);
++  lower_omp_1 (stmt_p, ctx, NULL);
+ }
+ 
+ /* Main entry point.  */
+Index: gcc/tree-ssa-dse.c
+===================================================================
+--- gcc/tree-ssa-dse.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/tree-ssa-dse.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -470,24 +470,23 @@
+ 	  vuse_vec_p vv;
+ 	  tree stmt_lhs;
+ 
+-	  if (LOADED_SYMS (use_stmt))
++	  /* If use_stmt is or might be a nop assignment, e.g. for
++	     struct { ... } S a, b, *p; ...
++	     b = a; b = b;
++	     or
++	     b = a; b = *p; where p might be &b,
++	     or
++	     *p = a; *p = b; where p might be &b,
++	     or
++	     *p = *u; *p = *v; where p might be v, then USE_STMT
++	     acts as a use as well as definition, so store in STMT
++	     is not dead.  */
++	  if (LOADED_SYMS (use_stmt)
++	      && bitmap_intersect_p (LOADED_SYMS (use_stmt),
++				     STORED_SYMS (use_stmt)))
+ 	    {
+-	      tree use_base
+-		= get_base_address (GIMPLE_STMT_OPERAND (use_stmt, 0));
+-	      /* If use_stmt is or might be a nop assignment, e.g. for
+-		 struct { ... } S a, b, *p; ...
+-		 b = a; b = b;
+-		 or
+-		 b = a; b = *p; where p might be &b, then USE_STMT
+-		 acts as a use as well as definition, so store in STMT
+-		 is not dead.  */
+-	      if (TREE_CODE (use_base) == VAR_DECL
+-		  && bitmap_bit_p (LOADED_SYMS (use_stmt),
+-				   DECL_UID (use_base)))
+-		{
+-		  record_voperand_set (dse_gd->stores, &bd->stores, ann->uid);
+-		  return;
+-		}
++	      record_voperand_set (dse_gd->stores, &bd->stores, ann->uid);
++	      return;
+ 	    }
+ 
+ 	  if (dump_file && (dump_flags & TDF_DETAILS))
 Index: gcc/DEV-PHASE
 ===================================================================
---- gcc/DEV-PHASE	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/DEV-PHASE	(.../branches/gcc-4_2-branch)	(revision 129201)
+--- gcc/DEV-PHASE	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/DEV-PHASE	(.../branches/gcc-4_3-branch)	(revision 133190)
 @@ -0,0 +1 @@
 +prerelease
 Index: gcc/ChangeLog
 ===================================================================
---- gcc/ChangeLog	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -1,3 +1,48 @@
-+2007-10-10  Uros Bizjak  <ubizjak@gmail.com>
+--- gcc/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,158 @@
++2008-03-13  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/35185
++	* omp-low.c (lower_regimplify, init_tmp_var, save_tmp_var): Removed.
++	(lower_omp_2): New function.
++	(lower_omp_1, lower_omp): Rewritten.
++
++2008-03-12  Jakub Jelinek  <jakub@redhat.com>
++
++	PR middle-end/35549
++	* omp-low.c (maybe_lookup_decl): Constify first argument.
++	(use_pointer_for_field): Change last argument from bool to
++	omp_context *.  Disallow shared copy-in/out in nested
++	parallel if decl is shared in outer parallel too.
++	(build_outer_var_ref, scan_sharing_clauses,
++	lower_rec_input_clauses, lower_copyprivate_clauses,
++	lower_send_clauses, lower_send_shared_vars): Adjust callers.
++
++2008-03-12  Uros Bizjak  <ubizjak@gmail.com>
++
++	PR target/35540
++	* config/i386/i386.md (paritysi2, paritydi2): Use register_operand
++	constraint for operand 1.
++	(paritysi2_cmp): Use register_operand constraint for operand 2.
++	Use earlyclobber modifier for operand 1.  Remove support for
++	memory operands.
++	(paritydi2_cmp): Use register_operand constraint for operand 3.
++	Use earlyclobber modifier for operand 1.  Remove support for
++	memory operands.
++
++2008-03-11  Uros Bizjak  <ubizjak@gmail.com>
++
++	PR middle-end/35526
++	* expr.c (store_expr): Call emit_block_move if the mode
++	of "temp" RTX is BLKmode.
++
++2008-03-10  Vladimir Makarov  <vmakarov@redhat.com>
++
++	* config/i386/sse.md (ssse3_pmaddubswv8hi3, ssse3_pmaddubswv4hi3):
++	Remove commutativity hint.
++
++2008-03-10  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c/35438
++	PR c/35439
++	* c-parser.c (c_parser_omp_threadprivate): Don't add vars with
++	errorneous type.  Check that v is a VAR_DECL.
++
++	PR middle-end/35099
++	* tree-cfg.c (new_label_mapper): Update cfun->last_label_uid.
++
++2008-03-10  Uros Bizjak  <ubizjak@gmail.com>
 +
 +	Backport from mainline:
-+	2007-09-14  Uros Bizjak  <ubizjak@gmail.com>
++	2008-03-09  Uros Bizjak  <ubizjak@gmail.com>
 +
-+	PR target/33438
-+	* config/i386/i386.md (fmodxf3): Copy operands[2] to temporary
-+	register when operands[2] equals operands[1].
-+	(dremxf3): Ditto.
++	PR target/35496
++	* config/i386/i386.c (ix86_constant_alignment): Compute alignment using
++	ALIGN_MODE_128 for VECTOR_CST and INTEGER_CST in addition to REAL_CST.
 +
-+	2007-09-10  Uros Bizjak  <ubizjak@gmail.com>
++	2008-03-04  Uros Bizjak  <ubizjak@gmail.com>
 +
-+	PR target/33369
-+	* gcc/config/i386/sse.md (ashr<mode>3): Change op2 mode to SImode.
-+	Use 'N' operand constraint for op2.
-+	(lshr<mode>3): Ditto.
-+	(ashl<mode>3): Ditto.
-+	(vec_shl_<mode>): Use const_0_to_255_mul_8_operand predicate for op2.
-+	(vec_shr_<mode>): Use const_0_to_255_mul_8_operand predicate for op2.
++	PR middle-end/35456
++	* fold-const.c (fold_cond_expr_with_comparison): Prevent
++	transformations for modes that have signed zeros.
++	* ifcvt.c (noce_try_abs): Ditto.
 +
-+	* gcc/config/i386/i386.c (ix86_expand_builtin) [IX86_BUILTIN_PSLL?128,
-+	IX86_BUILTIN_PSRA*?128, IX86_BUILTIN_PSRL?128]: Convert op1 to SImode.
-+
-+2007-10-10  Richard Guenther  <rguenther@suse.de>
++2008-03-09  Kaz Kojima  <kkojima@gcc.gnu.org>
 +
 +	Backport from mainline:
-+	2007-10-03  Doug Kwan  <dougkwan@google.com>
-+		Richard Guenther  <rguenther@suse.de>
++	PR target/35225
++	* config/sh/sh.c (find_barrier): Don't go past 'from' argument.
 +
-+	PR debug/31899
-+	* dwarf2out.c (reference_to_unused): Disable sanity checking,
-+	be conservative instead.
++2008-03-09  Kaz Kojima  <kkojima@gcc.gnu.org>
 +
-+2007-10-10  Richard Guenther  <rguenther@suse.de>
++	Backport from mainline:
++	PR target/35190
++	* config/sh/sh.md (jump_compact): Disable for crossing jumps.
 +
-+	PR tree-optimization/33099
-+	PR tree-optimization/33381
-+	* tree-vrp.c (adjust_range_with_scev): Do not adjust ranges
-+	from pointer typed chrecs.
++	* config/sh/sh.c (find_barrier): Don't go past
++	NOTE_INSN_SWITCH_TEXT_SECTIONS note.
 +
-+2007-10-08  Mark Mitchell  <mark@codesourcery.com>
++2008-03-08  Jakub Jelinek  <jakub@redhat.com>
 +
-+	* BASE-VER: Bump.
-+	* DEV-PHASE: Mark as prerelease.
++	PR target/35498
++	* config/rs6000/rs6000.c (rs6000_expand_compare_and_swapqhi): Shift
++	wdst back after sync_compare_and_swapqhi_internal.
 +
- 2007-10-07  Release Manager
++2008-03-07  Joseph Myers  <joseph@codesourcery.com>
++
++	* doc/include/texinfo.tex: Update to version 2008-03-07.10.
++
++2008-03-07  Richard Guenther  <rguenther@suse.de>
++
++	Backport from mainline:
++	2008-03-05  Richard Guenther  <rguenther@suse.de>
++
++	PR tree-optimization/35472
++	* tree-ssa-dse.c (dse_optimize_stmt): Do not delete a store
++	whose single use_stmt has a overlapping set of loaded and
++	stored symbols as that use_stmt might be a noop assignment then.
++
++2008-03-06  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2008-02-18  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/35189
++	* config/i386/i386.c (OPTION_MASK_ISA_MMX_SET): New.
++	(OPTION_MASK_ISA_3DNOW_SET): Likewise.
++	(OPTION_MASK_ISA_SSE_SET): Likewise.
++	(OPTION_MASK_ISA_SSE2_SET): Likewise.
++	(OPTION_MASK_ISA_SSE3_SET): Likewise.
++	(OPTION_MASK_ISA_SSSE3_SET): Likewise.
++	(OPTION_MASK_ISA_SSE4_1_SET): Likewise.
++	(OPTION_MASK_ISA_SSE4_2_SET): Likewise.
++	(OPTION_MASK_ISA_SSE4_SET): Likewise.
++	(OPTION_MASK_ISA_SSE4A_SET): Likewise.
++	(OPTION_MASK_ISA_SSE5_SET): Likewise.
++	(OPTION_MASK_ISA_3DNOW_A_UNSET): Likewise.
++	(OPTION_MASK_ISA_MMX_UNSET): Updated.
++	(OPTION_MASK_ISA_3DNOW_UNSET): Updated.
++	(OPTION_MASK_ISA_SSE_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSE3_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSSE3_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSE4_1_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSE4_2_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSE4A_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSE5_UNSET): Likewise.
++	(OPTION_MASK_ISA_SSE4): Removed.
++	(ix86_handle_option): Turn on bits in ix86_isa_flags and
++	ix86_isa_flags_explicit with OPTION_MASK_ISA_XXX_SET for -mXXX.
++	(override_options): Don't turn on implied SSE/MMX bits in
++	ix86_isa_flags.
++
++2008-03-06  Jakub Jelinek  <jakub@redhat.com>
++
++	* gimplify.c (goa_lhs_expr_p): Allow different ADDR_EXPR nodes
++	for the same VAR_DECL.
++
++2008-03-06  Daniel Jacobowitz  <dan@codesourcery.com>
++
++	* expmed.c (extract_bit_field): Always use adjust_address for MEM.
++
++2008-03-06  Joseph Myers  <joseph@codesourcery.com>
++
++	PR target/33963
++	* tree.c (handle_dll_attribute): Disallow TYPE_DECLs for types
++	other than structures and unions.
++
++2008-03-06  Jakub Jelinek  <jakub@redhat.com>
++
++	* BASE-VER: Set to 4.3.1.
++	* DEV-PHASE: Set to prerelease.
++
+ 2008-03-05  Release Manager
  
- 	* GCC 4.2.2 released.
-Index: gcc/testsuite/gcc.c-torture/execute/pr33381.c
+ 	* GCC 4.3.0 released.
+@@ -56,12 +211,12 @@
+ 		    Uros Bizjak <ubizjak@gmail.com>
+ 
+ 	PR target/25477
+-	* gcc/config/darwin-protos.h: Add darwin_patch_builtins prototype.
+-	* gcc/config/darwin-ppc-ldouble-patch.def: New file.
+-	* gcc/config/rs6000/darwin.h (SUBTARGET_INIT_BUILTINS): New macro.
+-	* gcc/config/rs6000/rs6000.c (rs6000_init_builtins): Call
++	* config/darwin-protos.h: Add darwin_patch_builtins prototype.
++	* config/darwin-ppc-ldouble-patch.def: New file.
++	* config/rs6000/darwin.h (SUBTARGET_INIT_BUILTINS): New macro.
++	* config/rs6000/rs6000.c (rs6000_init_builtins): Call
+ 	SUBTARGET_INIT_BUILTINS if defined.
+-	* gcc/config/darwin.c (darwin_patch_builtin,
++	* config/darwin.c (darwin_patch_builtin,
+ 	darwin_patch_builtins): New functions. 
+ 
+ 2008-02-27  Richard Guenther  <rguenther@suse.de>
+@@ -2122,7 +2277,7 @@
+ 2008-01-02  Arthur Norman <acn1@cam.ac.uk>
+ 
+ 	PR target/34013
+-	* gcc/config/i386/i386.c (ix86_expand_prologue): Save red-zone
++	* config/i386/i386.c (ix86_expand_prologue): Save red-zone
+ 	while stack probing.
+ 
+ 2008-01-01  Douglas Gregor  <doug.gregor@gmail.com>
+Index: gcc/testsuite/gcc.c-torture/execute/20080222-1.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/pr33381.c	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/gcc.c-torture/execute/pr33381.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,15 @@
-+extern void abort(void);
-+void x(void *data)
+--- gcc/testsuite/gcc.c-torture/execute/20080222-1.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/20080222-1.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,22 @@
++extern void abort (void);
++
++struct container
 +{
-+  if ((long)data < 0)
-+    abort();
++  unsigned char data[1];
++};
++
++unsigned char space[6] = {1, 2, 3, 4, 5, 6};
++
++int
++foo (struct container *p)
++{
++  return p->data[4];
++}
++
++int
++main ()
++{
++  if (foo ((struct container *) space) != 5)
++    abort ();
++  return 0;
++}
+Index: gcc/testsuite/gcc.c-torture/execute/pr35472.c
+===================================================================
+--- gcc/testsuite/gcc.c-torture/execute/pr35472.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/pr35472.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,22 @@
++extern void abort (void);
++extern void *memset (void *s, int c, __SIZE_TYPE__ n);
++struct S { int i[16]; };
++struct S *p;
++void __attribute__((noinline))
++foo(struct S *a, struct S *b) { a->i[0] = -1; p = b; }
++void test (void)
++{
++  struct S a, b;
++  memset (&a.i[0], '\0', sizeof (a.i));
++  memset (&b.i[0], '\0', sizeof (b.i));
++  foo (&a, &b);
++  *p = a;
++  *p = b;
++  if (b.i[0] != -1)
++    abort ();
 +}
 +int main()
 +{
-+  long i;
-+  for (i = 0; i < 5; i++)
-+    if (i > 0)
-+      x((void *)(i - 1));
++  test();
 +  return 0;
 +}
-+
-Index: gcc/testsuite/gcc.c-torture/execute/pr33099.c
+Index: gcc/testsuite/gcc.c-torture/execute/pr35456.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/pr33099.c	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/gcc.c-torture/execute/pr33099.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,26 @@
+--- gcc/testsuite/gcc.c-torture/execute/pr35456.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/pr35456.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,21 @@
 +extern void abort (void);
 +
-+volatile int N = 5;
-+
-+void foo (void)
++double
++__attribute__ ((noinline))
++not_fabs (double x)
 +{
-+  int i;
-+  char *p, value[10];
-+
-+  value[0] = 0x42;
-+  for (i = 0; i < N; i++)
-+    if (i > 0)
-+      {
-+        p = (char *)i - 1;
-+        *(value + (int) p) = (char) i;
-+      }
-+
-+  if (value[0] != 1)
-+    abort ();
++  return x >= 0.0 ? x : -x;
 +}
 +
-+main()
++int main()
 +{
-+  foo ();
++  double x = -0.0;
++  double y;
++
++  y = not_fabs (x);
++
++  if (!__builtin_signbit (y))
++    abort();
++
 +  return 0;
 +}
-Index: gcc/testsuite/gcc.target/i386/pr33483.c
+Index: gcc/testsuite/gcc.target/i386/isa-1.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr33483.c	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/pr33483.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,12 @@
-+/* { dg-do compile } */
+--- gcc/testsuite/gcc.target/i386/isa-1.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-1.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse4" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if !defined __SSSE3__
++  abort ();
++#endif
++#if !defined __SSE4_1__
++  abort ();
++#endif
++#if !defined __SSE4_2__
++  abort ();
++#endif
++#if defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-9.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-9.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-9.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=amdfam10 -mno-sse5" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-12.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-12.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-12.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse5 -mno-sse3" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-2.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-2.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-2.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse4 -msse5" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if !defined __SSSE3__
++  abort ();
++#endif
++#if !defined __SSE4_1__
++  abort ();
++#endif
++#if !defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if !defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-13.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-13.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-13.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse5 -mno-sse2" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if defined __SSE2__
++  abort ();
++#endif
++#if defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-3.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-3.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-3.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse4 -msse5 -msse4a" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if !defined __SSSE3__
++  abort ();
++#endif
++#if !defined __SSE4_1__
++  abort ();
++#endif
++#if !defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if !defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-14.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-14.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-14.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse5 -mno-sse" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if defined __SSE__
++  abort ();
++#endif
++#if defined __SSE2__
++  abort ();
++#endif
++#if defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-4.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-4.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-4.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=core2 -msse5 -mno-sse4" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if !defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if !defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-5.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-5.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-5.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=core2 -msse4a -mno-sse4" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if !defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/pr35540.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/pr35540.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr35540.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,45 @@
++/* { dg-do run } */
 +/* { dg-options "-O2" } */
 +
-+long double f1 (long double x)
++extern void abort (void);
++
++int __attribute__ ((noinline))
++test (unsigned int *a, int b)
 +{
-+  return __builtin_fmodl (x, x);
++  return b ? 1 : __builtin_parity (*a);
 +}
 +
-+long double f2 (long double x)
++int __attribute__ ((noinline))
++testl (unsigned long *a, int b)
 +{
-+  return __builtin_remainderl (x, x);
++  return b ? 1 : __builtin_parityl (*a);
 +}
-Index: gcc/testsuite/gcc.dg/vect/pr33369.c
++
++int __attribute__ ((noinline))
++testll (unsigned long long *a, int b)
++{
++  return b ? 1 : __builtin_parityll (*a);
++}
++
++int
++main ()
++{
++  unsigned int a = 0;
++  unsigned long al;
++  unsigned long long all;
++
++  a = 0x12345670;
++  if (test (&a, 0))
++    abort ();
++
++  al = 0x12345670ul;
++  if (testl (&al, 0))
++    abort();
++
++#if 1
++  all = 0x12345678abcdef0ull;
++  if (testll (&all, 0))
++    abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-6.c
 ===================================================================
---- gcc/testsuite/gcc.dg/vect/pr33369.c	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/gcc.dg/vect/pr33369.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,21 @@
-+/* { dg-do compile } */
-+/* { dg-require-effective-target vect_shift } */
+--- gcc/testsuite/gcc.target/i386/isa-6.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-6.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=amdfam10 -mno-sse4" } */
 +
-+typedef struct tagPOINT
-+{
-+  int x;
-+  int y;
-+} POINT;
++extern void abort (void);
 +
-+void
-+f (POINT * ptBuf)
++int
++main ()
 +{
-+  int i;
-+  for (i = 0; i < 4; i++)
-+    {
-+      ptBuf[i].x = ((ptBuf[i].x) << 4);
-+      ptBuf[i].y = ((ptBuf[i].y) << 4);
-+    }
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
 +}
+Index: gcc/testsuite/gcc.target/i386/isa-7.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-7.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-7.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=amdfam10 -msse5 -mno-sse4" } */
 +
-+/* { dg-final { cleanup-tree-dump "vect" } } */
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if !defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-10.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-10.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-10.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse5 -mno-sse4" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if !defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-8.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-8.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-8.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=amdfam10 -msse5 -mno-sse4a" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if defined __SSE4A__
++  abort ();
++#endif
++#if defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gcc.target/i386/isa-11.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/isa-11.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/isa-11.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++/* { dg-do run } */
++/* { dg-options "-march=x86-64 -msse5 -mno-ssse3" } */
++
++extern void abort (void);
++
++int
++main ()
++{
++#if !defined __SSE__
++  abort ();
++#endif
++#if !defined __SSE2__
++  abort ();
++#endif
++#if !defined __SSE3__
++  abort ();
++#endif
++#if defined __SSSE3__
++  abort ();
++#endif
++#if defined __SSE4_1__
++  abort ();
++#endif
++#if defined __SSE4_2__
++  abort ();
++#endif
++#if !defined __SSE4A__
++  abort ();
++#endif
++#if !defined __SSE5__
++  abort ();
++#endif
++  return 0;
++}
+Index: gcc/testsuite/gnat.dg/frame_overflow.adb
+===================================================================
+--- gcc/testsuite/gnat.dg/frame_overflow.adb	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/testsuite/gnat.dg/frame_overflow.adb	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,15 +1,17 @@
+ -- { dg-do compile }
+ 
++with System;
++
+ procedure frame_overflow is
+ 
+-   type Bitpos_Range_T is new Positive;
++   type Bitpos_Range_T is range 1..2**(System.Word_Size-1)-1;
+    type Bitmap_Array_T is array (Bitpos_Range_T) of Boolean;
+ 
+    type Bitmap_T is record
+       Bits : Bitmap_Array_T := (others => False);
+    end record;
+    
+-   function -- { dg-error "too large" "" }
++   function -- { dg-error "too large" }
+      Set_In (Bitmap : Bitmap_T; Bitpos : Bitpos_Range_T)  return Bitmap_T
+    is
+       Result: Bitmap_T := Bitmap;
+@@ -18,7 +20,7 @@
+       return Result;
+    end;
+ 
+-   function -- { dg-error "too large" "" }
++   function -- { dg-error "too large" }
+      Negate (Bitmap : Bitmap_T) return Bitmap_T is
+       Result: Bitmap_T;
+    begin
+Index: gcc/testsuite/gcc.dg/gomp/pr35439.c
+===================================================================
+--- gcc/testsuite/gcc.dg/gomp/pr35439.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/gomp/pr35439.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,6 @@
++/* PR c/35439 */
++/* { dg-do compile } */
++/* { dg-options "-fopenmp" } */
++
++void x[1];	/* { dg-error "array of voids" } */
++#pragma omp threadprivate(x)
+Index: gcc/testsuite/gcc.dg/gomp/pr35244.c
+===================================================================
+--- gcc/testsuite/gcc.dg/gomp/pr35244.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/gomp/pr35244.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,20 @@
++/* PR c++/35244 */
++/* { dg-do compile } */
++/* { dg-require-effective-target tls_native } */
++/* { dg-options "-fopenmp" } */
++
++int v1;
++typedef struct A A;
++typedef int i;
++#pragma omp threadprivate (i)	/* { dg-error "expected identifier before" } */
++#pragma omp threadprivate (A)	/* { dg-error "expected identifier before" } */
++#pragma omp threadprivate (v1)
++
++void foo ()
++{
++  static int v4;
++  {
++    static int v5;
++#pragma omp threadprivate (v4, v5)
++  }
++}
+Index: gcc/testsuite/gcc.dg/gomp/pr35438.c
+===================================================================
+--- gcc/testsuite/gcc.dg/gomp/pr35438.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/gomp/pr35438.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,6 @@
++/* PR c/35438 */
++/* { dg-do compile } */
++/* { dg-options "-fopenmp" } */
++
++void foo ();
++#pragma omp threadprivate(foo)	/* { dg-error "is not a variable" } */
+Index: gcc/testsuite/gcc.dg/gomp/pr34964.c
+===================================================================
+--- gcc/testsuite/gcc.dg/gomp/pr34964.c	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/gomp/pr34964.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,6 @@
++/* PR c++/34964 */
++/* { dg-do compile } */
++/* { dg-options "-fopenmp" } */
++
++char x[] = 0;	/* { dg-error "invalid initializer" } */
++#pragma omp threadprivate (x)
 Index: gcc/testsuite/ChangeLog
 ===================================================================
---- gcc/testsuite/ChangeLog	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -1,3 +1,32 @@
-+2007-10-10  Uros Bizjak  <ubizjak@gmail.com>
+--- gcc/testsuite/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,123 @@
++2008-03-12  Uros Bizjak  <ubizjak@gmail.com>
++
++	PR target/35540
++	* gcc.target/i386/pr35540.c: New test.
++
++2008-03-11  Uros Bizjak  <ubizjak@gmail.com>
++
++	* g++.dg/inherit/override-attribs.C: Require ilp32 x86 target.
++
++2008-03-11  Uros Bizjak  <ubizjak@gmail.com>
++
++	PR middle-end/35526
++	* g++.dg/torture/pr35526.C: New test.
++
++2008-03-10  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/35328
++	* g++.dg/gomp/pr35328.C: New test.
++
++	PR c++/35337
++	* g++.dg/gomp/pr35337.C: New test.
++
++	PR c/35438
++	PR c/35439
++	* gcc.dg/gomp/pr35438.c: New test.
++	* gcc.dg/gomp/pr35439.c: New test.
++
++	PR middle-end/35099
++	* g++.dg/gomp/pr35099.C: New test.
++
++2008-03-10  Uros Bizjak  <ubizjak@gmail.com>
 +
 +	Backport from mainline:
-+	2007-09-14  Uros Bizjak  <ubizjak@gmail.com>
++	2008-03-04  Uros Bizjak  <ubizjak@gmail.com>
 +
-+	PR target/33438
-+	* gcc.target/i386/pr33438.c: New test.
++	PR middle-end/35456
++	* gcc.c-torture/execute/pr35456.c: New test.
 +
-+	2007-09-10  Uros Bizjak  <ubizjak@gmail.com>
++2008-03-09  Eric Botcazou  <ebotcazou@adacore.com>
 +
-+	PR target/33369
-+	* gcc.dg/vect/pr33369.c: New test.
++	* gnat.dg/frame_overflow.adb: Improve portability.
 +
-+2007-10-10  Richard Guenther  <rguenther@suse.de>
++2008-03-08  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from mainline:
-+	2007-10-03  Doug Kwan  <dougkwan@google.com>
-+		Richard Guenther  <rguenther@suse.de>
++	2008-03-08  H.J. Lu  <hongjiu.lu@intel.com>
 +
-+	PR debug/31899
-+	* g++.dg/debug/using3.C: New testcase.
++	PR target/35350
++	* gcc.target/i386/isa-1.c: Add -march=x86-64.
++	* gcc.target/i386/isa-2.c: Likewise.
++	* gcc.target/i386/isa-3.c: Likewise.
++	* gcc.target/i386/isa-10.c: Likewise.
++	* gcc.target/i386/isa-11.c: Likewise.
++	* gcc.target/i386/isa-12.c: Likewise.
++	* gcc.target/i386/isa-13.c: Likewise.
++	* gcc.target/i386/isa-14.c: Likewise.
 +
-+2007-10-10  Richard Guenther  <rguenther@suse.de>
++2008-03-07  Richard Guenther  <rguenther@suse.de>
 +
-+	PR tree-optimization/33099
-+	PR tree-optimization/33381
-+	* gcc.c-torture/execute/pr33099.c: New testcase.
-+	* gcc.c-torture/execute/pr33381.c: Likewise.
++	Backport from mainline:
++	2008-03-05  Richard Guenther  <rguenther@suse.de>
 +
- 2007-10-07  Release Manager
++	PR tree-optimization/35472
++	* gcc.c-torture/execute/pr35472.c: New testcase.
++
++2008-03-06  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2008-02-18  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/35189
++	* gcc.target/i386/isa-1.c: New.
++	* gcc.target/i386/isa-2.c: Likewise.
++	* gcc.target/i386/isa-3.c: Likewise.
++	* gcc.target/i386/isa-4.c: Likewise.
++	* gcc.target/i386/isa-5.c: Likewise.
++	* gcc.target/i386/isa-6.c: Likewise.
++	* gcc.target/i386/isa-7.c: Likewise.
++	* gcc.target/i386/isa-8.c: Likewise.
++	* gcc.target/i386/isa-9.c: Likewise.
++	* gcc.target/i386/isa-10.c: Likewise.
++	* gcc.target/i386/isa-11.c: Likewise.
++	* gcc.target/i386/isa-12.c: Likewise.
++	* gcc.target/i386/isa-13.c: Likewise.
++	* gcc.target/i386/isa-14.c: Likewise.
++
++2008-03-06  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/35028
++	* g++.dg/gomp/pr35028.C: New test.
++
++	PR c++/34964
++	PR c++/35244
++	* gcc.dg/gomp/pr34964.c: New test.
++	* g++.dg/gomp/pr34964.C: New test.
++	* gcc.dg/gomp/pr35244.c: New test.
++	* g++.dg/gomp/pr35244.C: New test.
++
++	PR c++/35078
++	* g++.dg/gomp/pr35078.C: New test.
++
++2008-03-06  Daniel Jacobowitz  <dan@codesourcery.com>
++
++	* gcc.c-torture/execute/20080222-1.c: New test.
++
++2008-03-06  Paolo Carlini  <pcarlini@suse.de>
++
++	PR c++/35323
++	* g++.dg/lookup/crash7.C: New.
++
++2008-03-06  Paolo Carlini  <pcarlini@suse.de>
++
++	PR c++/35333
++	* g++.dg/other/error26.C: New.
++
++2008-03-06  Paolo Carlini  <pcarlini@suse.de>
++
++	PR c++/35338
++	* g++.dg/other/error25.C: New.
++	
+ 2008-03-05  Release Manager
  
- 	* GCC 4.2.2 released.
-Index: gcc/testsuite/g++.dg/debug/using3.C
+ 	* GCC 4.3.0 released.
+Index: gcc/testsuite/g++.dg/other/error25.C
 ===================================================================
---- gcc/testsuite/g++.dg/debug/using3.C	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/g++.dg/debug/using3.C	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,8 @@
-+// PR debug/31899
+--- gcc/testsuite/g++.dg/other/error25.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/other/error25.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,5 @@
++// PR c++/35338
++// { dg-options "" }
 +
-+namespace NS {
-+  int x = 0;
-+  int &ref = x;
-+}
-+
-+using NS::ref;
-Index: gcc/testsuite/g++.dg/ext/visibility/namespace2.C
++int i = 0r; // { dg-error "unnamed-fixed" }
++bool b = !0r; // { dg-error "0.0|argument" }
+Index: gcc/testsuite/g++.dg/other/error26.C
 ===================================================================
---- gcc/testsuite/g++.dg/ext/visibility/namespace2.C	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/g++.dg/ext/visibility/namespace2.C	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,20 @@
-+// PR c++/32470
+--- gcc/testsuite/g++.dg/other/error26.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/other/error26.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,6 @@
++// PR c++/35333
 +
-+// { dg-require-visibility }
-+// { dg-options "-fvisibility=hidden" }
-+// { dg-final { scan-hidden "_ZN4Test4testEv" } }
-+
-+namespace std __attribute__((__visibility__("default"))) {
-+  template<typename _CharT>
-+  class basic_streambuf
-+  {
-+    friend void getline();
-+  };
-+  extern template class basic_streambuf<char>;
-+}
-+
-+class Test
++void foo(__complex__ double x)
 +{
-+  void test();
++  __builtin_conj(x)(); // { dg-error "~x" }
++}
+Index: gcc/testsuite/g++.dg/lookup/crash7.C
+===================================================================
+--- gcc/testsuite/g++.dg/lookup/crash7.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/lookup/crash7.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,9 @@
++// PR c++/35323
++// { dg-options "" }
++
++void foo(int);
++
++void bar()
++{
++  foo(1r); // { dg-error "unnamed-fixed" }
++}
+Index: gcc/testsuite/g++.dg/gomp/pr34964.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr34964.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr34964.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,6 @@
++// PR c++/34964
++// { dg-do compile }
++// { dg-options "-fopenmp" }
++
++char x[] = 0;	// { dg-error "initializer fails to determine size" }
++#pragma omp threadprivate (x)
+Index: gcc/testsuite/g++.dg/gomp/pr35328.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr35328.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr35328.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,31 @@
++// PR c++/35328
++// { dg-do compile }
++// { dg-options "-fopenmp" }
++
++struct A
++{
++  ~A ()();		// { dg-error "declared as function returning a function" }
 +};
-+void Test::test() { }
-Index: gcc/testsuite/g++.dg/ext/visibility/anon6.C
-===================================================================
---- gcc/testsuite/g++.dg/ext/visibility/anon6.C	(.../tags/gcc_4_2_2_release)	(revision 0)
-+++ gcc/testsuite/g++.dg/ext/visibility/anon6.C	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -0,0 +1,28 @@
-+// PR c++/33094
-+// { dg-final { scan-assembler "1BIiE1cE" } }
-+// { dg-final { scan-assembler-not "globl.*1BIiE1cE" } }
-+// { dg-final { scan-assembler-not "1CIiE1cE" } }
-+
-+// Test that B<int>::c is emitted as an internal symbol, and C<int>::c is
-+// not emitted.
-+
-+namespace
++struct B
 +{
-+  template <typename T>
-+  class A
-+  {
-+    virtual T f1() { return c; }
-+    static const T c = 0;
-+  };
++  B ()();		// { dg-error "declared as function returning a function" }
++};
++struct C
++{
++  C ();
++  C (const C &)();	// { dg-error "declared as function returning a function" }
++};
 +
-+  template <typename T>
-+  class B
-+  {
-+    static const T c = 0;
-+  };
-+
-+  template <typename T> const T B<T>::c;
-+
-+  template class A<int>;
-+  template class B<int>;
++void
++foo ()
++{
++  A a;
++  B b;
++  C c;
++  #pragma omp parallel firstprivate (a)
++    ;
++  #pragma omp parallel private (b)
++    ;
++  #pragma omp parallel firstprivate (c)
++    ;
 +}
+Index: gcc/testsuite/g++.dg/gomp/pr35337.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr35337.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr35337.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,20 @@
++// PR c++/35337
++// { dg-do compile }
++// { dg-options "-fopenmp" }
++
++struct A { };
++
++void
++foo ()
++{
++#pragma omp parallel firstprivate(A)	// { dg-error "struct A\[^\n\]*is not a variable" }
++  ;
++}
++
++void
++bar ()
++{
++#pragma omp for lastprivate(A)		// { dg-error "struct A\[^\n\]*is not a variable" }
++  for (int i = 0; i < 10; i++)
++    ;
++}
+Index: gcc/testsuite/g++.dg/gomp/pr35244.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr35244.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr35244.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,30 @@
++// PR c++/35244
++// { dg-do compile }
++// { dg-require-effective-target tls_native }
++// { dg-options "-fopenmp" }
++
++int v1;
++namespace N1
++{
++  int v2;
++}
++namespace N2
++{
++  int v3;
++}
++using N1::v2;
++using namespace N2;
++struct A;
++typedef int i;
++#pragma omp threadprivate (i)	// { dg-error "is not file, namespace or block scope variable" }
++#pragma omp threadprivate (A)	// { dg-error "is not file, namespace or block scope variable" }
++#pragma omp threadprivate (v1, v2, v3)
++
++void foo ()
++{
++  static int v4;
++  {
++    static int v5;
++#pragma omp threadprivate (v4, v5)
++  }
++}
+Index: gcc/testsuite/g++.dg/gomp/pr35078.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr35078.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr35078.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,20 @@
++// PR c++/35078
++// { dg-do compile }
++// { dg-options "-fopenmp" }
++
++template<int> void
++foo ()
++{
++#pragma omp parallel for
++  for (int& i = 0; i < 10; ++i)	// { dg-error "invalid type for iteration variable" }
++    ;
++}
++
++void
++bar ()
++{
++  int j = 0;
++#pragma omp parallel for
++  for (int& i = j; i < 10; ++i)	// { dg-error "invalid type for iteration variable" }
++    ;
++}
+Index: gcc/testsuite/g++.dg/gomp/pr35099.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr35099.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr35099.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,39 @@
++// PR middle-end/35099
++// { dg-do compile }
++// { dg-options "-O2 -fopenmp" }
++
++struct A
++{
++  ~A () throw ();
++  void foo ();
++};
++
++struct B
++{
++  B () { A ().foo (); }
++};
++
++void
++bar ()
++{
++#pragma omp parallel
++  {
++  #pragma omp single
++    B ();
++  #pragma omp for
++    for (int i = 0; i < 2; ++i)
++      B ();
++  }
++}
++
++void
++baz ()
++{
++#pragma omp parallel
++  {
++  #pragma omp single
++    B ();
++  #pragma omp single
++    B ();
++  }
++}
+Index: gcc/testsuite/g++.dg/gomp/pr35028.C
+===================================================================
+--- gcc/testsuite/g++.dg/gomp/pr35028.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/gomp/pr35028.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,19 @@
++// PR c++/35028
++// { dg-do compile }
++// { dg-options "-fopenmp" }
++
++struct A
++{
++  A ();
++  A (const A &, ...);
++  ~A ();
++  A operator++ (int);
++};
++
++void
++foo ()
++{
++  A a;
++  #pragma omp parallel firstprivate (a)
++    a++;
++}
+Index: gcc/testsuite/g++.dg/inherit/override-attribs.C
+===================================================================
+--- gcc/testsuite/g++.dg/inherit/override-attribs.C	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/testsuite/g++.dg/inherit/override-attribs.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,5 +1,7 @@
+ // PR c++/14688
+-// { dg-do compile { target i?86-*-* } }
++// { dg-do compile { target i?86-*-* x86_64-*-* } }
++// { dg-require-effective-target ilp32 }
++
+ class one
+ {
+ public:
+Index: gcc/testsuite/g++.dg/torture/pr35526.C
+===================================================================
+--- gcc/testsuite/g++.dg/torture/pr35526.C	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ gcc/testsuite/g++.dg/torture/pr35526.C	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,18 @@
++/* { dg-do compile } */
++
++extern void *memcpy (void *__dest, __const void *__src, __SIZE_TYPE__  __n);
++
++char internal_crash_read_ip[] = { 0xb8 };
++
++struct u_internal_crash_read_t
++{
++  char ip[sizeof (internal_crash_read_ip)];
++}
++u_internal_crash_read;
++
++void
++gSignalHandler (int psignalNr, int pinfo, int pctx)
++{
++  memcpy (u_internal_crash_read.ip, internal_crash_read_ip,
++	  sizeof (internal_crash_read_ip));
++}
+Index: gcc/cp/typeck.c
+===================================================================
+--- gcc/cp/typeck.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/typeck.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -962,6 +962,8 @@
+   if (TREE_CODE (t1) != ARRAY_TYPE
+       && TYPE_QUALS (t1) != TYPE_QUALS (t2))
+     return false;
++  if (TYPE_FOR_JAVA (t1) != TYPE_FOR_JAVA (t2))
++    return false;
+ 
+   /* Allow for two different type nodes which have essentially the same
+      definition.  Note that we already checked for equality of the type
+@@ -971,9 +973,6 @@
+       && TYPE_MAIN_VARIANT (t1) == TYPE_MAIN_VARIANT (t2))
+     return true;
+ 
+-  if (TYPE_FOR_JAVA (t1) != TYPE_FOR_JAVA (t2))
+-    return false;
+-
+   /* Compare the types.  Break out if they could be the same.  */
+   switch (TREE_CODE (t1))
+     {
 Index: gcc/cp/decl.c
 ===================================================================
---- gcc/cp/decl.c	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/cp/decl.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -4967,7 +4967,7 @@
-       /* An in-class declaration of a static data member should be
- 	 external; it is only a declaration, and not a definition.  */
-       if (init == NULL_TREE)
--	gcc_assert (DECL_EXTERNAL (decl));
-+	gcc_assert (DECL_EXTERNAL (decl) || !TREE_PUBLIC (decl));
+--- gcc/cp/decl.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/decl.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -3164,19 +3164,10 @@
+   tree type, decl;
+   if (size > 0)
+     type = make_signed_type (size);
+-  else if (size == -1)
+-    { /* "__java_boolean".  */
+-      if ((TYPE_MODE (boolean_type_node)
+-	   == smallest_mode_for_size (1, MODE_INT)))
+-        type = build_variant_type_copy (boolean_type_node);
+-      else
+-	/* ppc-darwin has SImode bool, make jboolean a 1-bit
+-	   integer type without boolean semantics there.  */
+-	type = make_unsigned_type (1);
+-    }
+   else if (size > -32)
+-    { /* "__java_char".  */
++    { /* "__java_char" or ""__java_boolean".  */
+       type = make_unsigned_type (-size);
++      /*if (size == -1)	TREE_SET_CODE (type, BOOLEAN_TYPE);*/
      }
+   else
+     { /* "__java_float" or ""__java_double".  */
+Index: gcc/cp/error.c
+===================================================================
+--- gcc/cp/error.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/error.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -326,6 +326,7 @@
+     case BOOLEAN_TYPE:
+     case COMPLEX_TYPE:
+     case VECTOR_TYPE:
++    case FIXED_POINT_TYPE:
+       pp_type_specifier_seq (cxx_pp, t);
+       break;
  
-   /* We don't create any RTL for local variables.  */
+@@ -2079,7 +2080,9 @@
+     case VEC_DELETE_EXPR:
+     case MODOP_EXPR:
+     case ABS_EXPR:
++    case CONJ_EXPR:
+     case VECTOR_CST:
++    case FIXED_CST:
+       pp_expression (cxx_pp, t);
+       break;
+ 
 Index: gcc/cp/ChangeLog
 ===================================================================
---- gcc/cp/ChangeLog	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/cp/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -1,3 +1,18 @@
-+2007-10-09  Jason Merrill  <jason@redhat.com>
+--- gcc/cp/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,63 @@
++2008-03-12  Richard Guenther  <rguenther@suse.de>
 +
-+	PR c++/32470
-+	* name-lookup.c (push_namespace_with_attrs): Fold back into...
-+	(push_namespace): Here.
-+	(handle_namespace_attrs): New fn for the attr code.
-+	(leave_scope): Don't pop_visibility.
-+	* name-lookup.h (struct cp_binding_level): Remove has_visibility.
-+	* parser.c (cp_parser_namespace_definition): Call
-+	handle_namespace_attrs and pop_visibility as appropriate. 
++	PR c++/35469
++	Revert:
++	2008-02-04  Richard Guenther  <rguenther@suse.de>
 +
-+	PR c++/33094
-+	* decl.c (make_rtl_for_nonlocal_decl): It's ok for a member 
-+	constant to not have DECL_EXTERNAL if it's file-local.
++        PR java/35035
++        * decl.c (record_builtin_java_type): Make jboolean a
++        integer type again where its mode doesn't match that of bool.
 +
- 2007-10-07  Release Manager
++	2008-01-25  Richard Guenther  <rguenther@suse.de>
++
++        PR c++/33887
++        * decl.c (record_builtin_java_type): Make __java_boolean
++        a variant of bool.
++        * typeck.c (structural_comptypes): Move TYPE_FOR_JAVA check
++        after TYPE_MAIN_VARIANT check.
++
++2008-03-10  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/35328
++	* semantics.c (finish_omp_clauses): Look through NOP_EXPR even
++	if errorcount.
++
++	PR c++/35337
++	* semantics.c (finish_omp_clauses): Use %qD instead of %qE for
++	DECL_P in not a variable and appears more than once error messages.
++
++2008-03-06  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/35028
++	* cp-gimplify.c (cxx_omp_clause_apply_fn): Handle vararg copy ctors.
++
++	PR c++/34964
++	PR c++/35244
++	* semantics.c (finish_omp_threadprivate): Do nothing for error_operand_p
++	vars.  Afterwards ensure v is VAR_DECL.
++
++	PR c++/35078
++	* parser.c (cp_parser_omp_for_loop): If DECL has REFERENCE_TYPE, don't
++	call cp_finish_decl.
++	* semantics.c (finish_omp_for): Fail if DECL doesn't have integral type
++	early.
++
++2008-03-06  Paolo Carlini  <pcarlini@suse.de>
++
++        PR c++/35323
++        * name-lookup.c (arg_assoc_type): Handle FIXED_POINT_TYPE.
++
++2008-03-06  Paolo Carlini  <pcarlini@suse.de>
++
++        PR c++/35333
++        * error.c (dump_expr): Handle CONJ_EXPR.
++
++2008-03-06  Paolo Carlini  <pcarlini@suse.de>
++
++        PR c++/35338
++        * error.c (dump_type): Handle FIXED_POINT_TYPE.
++	(dump_expr): Handle FIXED_CST.
++	
+ 2008-03-05  Release Manager
  
- 	* GCC 4.2.2 released.
-Index: gcc/cp/name-lookup.c
+ 	* GCC 4.3.0 released.
+Index: gcc/cp/cp-gimplify.c
 ===================================================================
---- gcc/cp/name-lookup.c	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/cp/name-lookup.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -1348,11 +1348,6 @@
-       is_class_level = 0;
+--- gcc/cp/cp-gimplify.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/cp-gimplify.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -844,7 +844,8 @@
+       if (arg2)
+ 	argarray[i++] = p2;
+       /* Handle default arguments.  */
+-      for (parm = defparm; parm != void_list_node; parm = TREE_CHAIN (parm), i++)
++      for (parm = defparm; parm && parm != void_list_node;
++	   parm = TREE_CHAIN (parm), i++)
+ 	argarray[i] = convert_default_arg (TREE_VALUE (parm),
+ 					   TREE_PURPOSE (parm), fn, i);
+       t = build_call_a (fn, i, argarray);
+@@ -875,7 +876,7 @@
+       if (arg2)
+ 	argarray[i++] = build_fold_addr_expr (arg2);
+       /* Handle default arguments.  */
+-      for (parm = defparm; parm != void_list_node;
++      for (parm = defparm; parm && parm != void_list_node;
+ 	   parm = TREE_CHAIN (parm), i++)
+ 	argarray[i] = convert_default_arg (TREE_VALUE (parm),
+ 					   TREE_PURPOSE (parm),
+Index: gcc/cp/semantics.c
+===================================================================
+--- gcc/cp/semantics.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/semantics.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -3400,13 +3400,16 @@
+ 	    {
+ 	      if (processing_template_decl)
+ 		break;
+-	      error ("%qE is not a variable in clause %<firstprivate%>", t);
++	      if (DECL_P (t))
++		error ("%qD is not a variable in clause %<firstprivate%>", t);
++	      else
++		error ("%qE is not a variable in clause %<firstprivate%>", t);
+ 	      remove = true;
+ 	    }
+ 	  else if (bitmap_bit_p (&generic_head, DECL_UID (t))
+ 		   || bitmap_bit_p (&firstprivate_head, DECL_UID (t)))
+ 	    {
+-	      error ("%qE appears more than once in data clauses", t);
++	      error ("%qD appears more than once in data clauses", t);
+ 	      remove = true;
+ 	    }
+ 	  else
+@@ -3419,13 +3422,16 @@
+ 	    {
+ 	      if (processing_template_decl)
+ 		break;
+-	      error ("%qE is not a variable in clause %<lastprivate%>", t);
++	      if (DECL_P (t))
++		error ("%qD is not a variable in clause %<lastprivate%>", t);
++	      else
++		error ("%qE is not a variable in clause %<lastprivate%>", t);
+ 	      remove = true;
+ 	    }
+ 	  else if (bitmap_bit_p (&generic_head, DECL_UID (t))
+ 		   || bitmap_bit_p (&lastprivate_head, DECL_UID (t)))
+ 	    {
+-	      error ("%qE appears more than once in data clauses", t);
++	      error ("%qD appears more than once in data clauses", t);
+ 	      remove = true;
+ 	    }
+ 	  else
+@@ -3661,7 +3667,7 @@
+ 					     complete_ctor_identifier,
+ 					     t, inner_type, LOOKUP_NORMAL);
+ 
+-	      if (targetm.cxx.cdtor_returns_this ())
++	      if (targetm.cxx.cdtor_returns_this () || errorcount)
+ 		/* Because constructors and destructors return this,
+ 		   the call will have been cast to "void".  Remove the
+ 		   cast here.  We would like to use STRIP_NOPS, but it
+@@ -3683,7 +3689,7 @@
+ 	      t = build_special_member_call (t, complete_dtor_identifier,
+ 					     NULL, inner_type, LOOKUP_NORMAL);
+ 
+-	      if (targetm.cxx.cdtor_returns_this ())
++	      if (targetm.cxx.cdtor_returns_this () || errorcount)
+ 		/* Because constructors and destructors return this,
+ 		   the call will have been cast to "void".  Remove the
+ 		   cast here.  We would like to use STRIP_NOPS, but it
+@@ -3742,9 +3748,14 @@
+     {
+       tree v = TREE_PURPOSE (t);
+ 
++      if (error_operand_p (v))
++	;
++      else if (TREE_CODE (v) != VAR_DECL)
++	error ("%<threadprivate%> %qD is not file, namespace "
++	       "or block scope variable", v);
+       /* If V had already been marked threadprivate, it doesn't matter
+ 	 whether it had been used prior to this point.  */
+-      if (TREE_USED (v)
++      else if (TREE_USED (v)
+ 	  && (DECL_LANG_SPECIFIC (v) == NULL
+ 	      || !CP_DECL_THREADPRIVATE_P (v)))
+ 	error ("%qE declared %<threadprivate%> after first use", v);
+@@ -3903,6 +3914,16 @@
+       return NULL;
      }
  
--#ifdef HANDLE_PRAGMA_VISIBILITY
--  if (scope->has_visibility)
--    pop_visibility ();
--#endif
--
-   /* Move one nesting level up.  */
-   current_binding_level = scope->level_chain;
- 
-@@ -2982,21 +2977,60 @@
-   return result;
- }
- 
-+/* Process any ATTRIBUTES on a namespace definition.  Currently only
-+   attribute visibility is meaningful, which is a property of the syntactic
-+   block rather than the namespace as a whole, so we don't touch the
-+   NAMESPACE_DECL at all.  Returns true if attribute visibility is seen.  */
-+
-+bool
-+handle_namespace_attrs (tree ns, tree attributes)
-+{
-+  tree d;
-+  bool saw_vis = false;
-+
-+  for (d = attributes; d; d = TREE_CHAIN (d))
++  if (!INTEGRAL_TYPE_P (TREE_TYPE (decl)))
 +    {
-+      tree name = TREE_PURPOSE (d);
-+      tree args = TREE_VALUE (d);
++      location_t elocus = locus;
 +
-+#ifdef HANDLE_PRAGMA_VISIBILITY
-+      if (is_attribute_p ("visibility", name))
-+	{
-+	  tree x = args ? TREE_VALUE (args) : NULL_TREE;
-+	  if (x == NULL_TREE || TREE_CODE (x) != STRING_CST || TREE_CHAIN (args))
-+	    {
-+	      warning (OPT_Wattributes,
-+		       "%qD attribute requires a single NTBS argument",
-+		       name);
-+	      continue;
-+	    }
-+
-+	  if (!TREE_PUBLIC (ns))
-+	    warning (OPT_Wattributes,
-+		     "%qD attribute is meaningless since members of the "
-+		     "anonymous namespace get local symbols", name);
-+
-+	  push_visibility (TREE_STRING_POINTER (x));
-+	  saw_vis = true;
-+	}
-+      else
-+#endif
-+	{
-+	  warning (OPT_Wattributes, "%qD attribute directive ignored",
-+		   name);
-+	  continue;
-+	}
++      if (EXPR_HAS_LOCATION (init))
++	elocus = EXPR_LOCATION (init);
++      error ("%Hinvalid type for iteration variable %qE", &elocus, decl);
++      return NULL;
 +    }
 +
-+  return saw_vis;
-+}
-+  
- /* Push into the scope of the NAME namespace.  If NAME is NULL_TREE, then we
-    select a name that is unique to this compilation unit.  */
- 
- void
- push_namespace (tree name)
- {
--  push_namespace_with_attribs (name, NULL_TREE);
--}
--
--/* Same, but specify attributes to apply to the namespace.  The attributes
--   only apply to the current namespace-body, not to any later extensions. */
--
--void
--push_namespace_with_attribs (tree name, tree attributes)
--{
-   tree d = NULL_TREE;
-   int need_new = 1;
-   int implicit_use = 0;
-@@ -3066,38 +3100,6 @@
-   /* Enter the name space.  */
-   current_namespace = d;
- 
--#ifdef HANDLE_PRAGMA_VISIBILITY
--  /* Clear has_visibility in case a previous namespace-definition had a
--     visibility attribute and this one doesn't.  */
--  current_binding_level->has_visibility = 0;
--  for (d = attributes; d; d = TREE_CHAIN (d))
--    {
--      tree name = TREE_PURPOSE (d);
--      tree args = TREE_VALUE (d);
--      tree x;
--
--      if (! is_attribute_p ("visibility", name))
--	{
--	  warning (OPT_Wattributes, "%qs attribute directive ignored",
--		   IDENTIFIER_POINTER (name));
--	  continue;
--	}
--
--      x = args ? TREE_VALUE (args) : NULL_TREE;
--      if (x == NULL_TREE || TREE_CODE (x) != STRING_CST || TREE_CHAIN (args))
--	{
--	  warning (OPT_Wattributes, "%qs attribute requires a single NTBS argument",
--		   IDENTIFIER_POINTER (name));
--	  continue;
--	}
--
--      current_binding_level->has_visibility = 1;
--      push_visibility (TREE_STRING_POINTER (x));
--      goto found;
--    }
-- found:
--#endif
--
-   timevar_pop (TV_NAME_LOOKUP);
- }
- 
-Index: gcc/cp/name-lookup.h
+   if (pre_body == NULL || IS_EMPTY_STMT (pre_body))
+     pre_body = NULL;
+   else if (! processing_template_decl)
+Index: gcc/cp/name-lookup.c
 ===================================================================
---- gcc/cp/name-lookup.h	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/cp/name-lookup.h	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -258,11 +258,7 @@
-     unsigned more_cleanups_ok : 1;
-     unsigned have_cleanups : 1;
+--- gcc/cp/name-lookup.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/name-lookup.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,5 +1,5 @@
+ /* Definitions for C++ name lookup routines.
+-   Copyright (C) 2003, 2004, 2005, 2006, 2007
++   Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008
+    Free Software Foundation, Inc.
+    Contributed by Gabriel Dos Reis <gdr@integrable-solutions.net>
  
--    /* Nonzero if this level has associated visibility which we should pop
--       when leaving the scope. */
--    unsigned has_visibility : 1;
--
--    /* 23 bits left to fill a 32-bit word.  */
-+    /* 24 bits left to fill a 32-bit word.  */
-   };
- 
- /* The binding level currently in effect.  */
-@@ -310,10 +306,10 @@
- extern void push_binding_level (struct cp_binding_level *);
- 
- extern void push_namespace (tree);
--extern void push_namespace_with_attribs (tree, tree);
- extern void pop_namespace (void);
- extern void push_nested_namespace (tree);
- extern void pop_nested_namespace (tree);
-+extern bool handle_namespace_attrs (tree, tree);
- extern void pushlevel_class (void);
- extern void poplevel_class (void);
- extern tree pushdecl_with_scope (tree, cxx_scope *, bool);
+@@ -4594,6 +4594,7 @@
+     case COMPLEX_TYPE:
+     case VECTOR_TYPE:
+     case BOOLEAN_TYPE:
++    case FIXED_POINT_TYPE:
+       return false;
+     case RECORD_TYPE:
+       if (TYPE_PTRMEMFUNC_P (type))
 Index: gcc/cp/parser.c
 ===================================================================
---- gcc/cp/parser.c	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/cp/parser.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -10640,6 +10640,7 @@
- cp_parser_namespace_definition (cp_parser* parser)
- {
-   tree identifier, attribs;
-+  bool has_visibility;
+--- gcc/cp/parser.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/cp/parser.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -20074,8 +20074,11 @@
  
-   /* Look for the `namespace' keyword.  */
-   cp_parser_require_keyword (parser, RID_NAMESPACE, "`namespace'");
-@@ -10659,9 +10660,18 @@
-   /* Look for the `{' to start the namespace.  */
-   cp_parser_require (parser, CPP_OPEN_BRACE, "`{'");
-   /* Start the namespace.  */
--  push_namespace_with_attribs (identifier, attribs);
-+  push_namespace (identifier);
-+
-+  has_visibility = handle_namespace_attrs (current_namespace, attribs);
-+
-   /* Parse the body of the namespace.  */
-   cp_parser_namespace_body (parser);
-+
-+#ifdef HANDLE_PRAGMA_VISIBILITY
-+  if (has_visibility)
-+    pop_visibility ();
-+#endif
-+
-   /* Finish the namespace.  */
-   pop_namespace ();
-   /* Look for the final `}'.  */
-Index: gcc/dwarf2out.c
+ 	      init = cp_parser_assignment_expression (parser, false);
+ 
+-	      cp_finish_decl (decl, NULL_TREE, /*init_const_expr_p=*/false,
+-			      asm_specification, LOOKUP_ONLYCONVERTING);
++	      if (TREE_CODE (TREE_TYPE (decl)) == REFERENCE_TYPE)
++		init = error_mark_node;
++	      else
++		cp_finish_decl (decl, NULL_TREE, /*init_const_expr_p=*/false,
++				asm_specification, LOOKUP_ONLYCONVERTING);
+ 
+ 	      if (pushed_scope)
+ 		pop_scope (pushed_scope);
+Index: gcc/ifcvt.c
 ===================================================================
---- gcc/dwarf2out.c	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/dwarf2out.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -10005,9 +10005,12 @@
-     return *tp;
-   else if (!flag_unit_at_a_time)
-     return NULL_TREE;
-+  /* ???  The C++ FE emits debug information for using decls, so
-+     putting gcc_unreachable here falls over.  See PR31899.  For now
-+     be conservative.  */
-   else if (!cgraph_global_info_ready
- 	   && (TREE_CODE (*tp) == VAR_DECL || TREE_CODE (*tp) == FUNCTION_DECL))
--    gcc_unreachable ();
-+    return *tp;
-   else if (DECL_P (*tp) && TREE_CODE (*tp) == VAR_DECL)
-     {
-       struct cgraph_varpool_node *node = cgraph_varpool_node (*tp);
+--- gcc/ifcvt.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/ifcvt.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1737,6 +1737,10 @@
+   rtx cond, earliest, target, seq, a, b, c;
+   int negate;
+ 
++  /* Reject modes with signed zeros.  */
++  if (HONOR_SIGNED_ZEROS (GET_MODE (if_info->x)))
++    return FALSE;
++
+   /* Recognize A and B as constituting an ABS or NABS.  The canonical
+      form is a branch around the negation, taken when the object is the
+      first operand of a comparison against 0 that evaluates to true.  */
+Index: gcc/expr.c
+===================================================================
+--- gcc/expr.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/expr.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -4654,7 +4654,8 @@
+ 	      temp = convert_to_mode (GET_MODE (target), temp, unsignedp);
+ 	      emit_move_insn (target, temp);
+ 	    }
+-	  else if (GET_MODE (target) == BLKmode)
++	  else if (GET_MODE (target) == BLKmode
++		   || GET_MODE (temp) == BLKmode)
+ 	    emit_block_move (target, temp, expr_size (exp),
+ 			     (call_param_p
+ 			      ? BLOCK_OP_CALL_PARM
 Index: gcc/BASE-VER
 ===================================================================
---- gcc/BASE-VER	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/BASE-VER	(.../branches/gcc-4_2-branch)	(revision 129201)
+--- gcc/BASE-VER	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/BASE-VER	(.../branches/gcc-4_3-branch)	(revision 133190)
 @@ -1 +1 @@
--4.2.2
-+4.2.3
+-4.3.0
++4.3.1
+Index: gcc/gimplify.c
+===================================================================
+--- gcc/gimplify.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/gimplify.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -5464,7 +5464,11 @@
+ 	  expr = TREE_OPERAND (expr, 0);
+ 	  addr = TREE_OPERAND (addr, 0);
+ 	}
+-      return expr == addr;
++      if (expr == addr)
++	return true;
++      return (TREE_CODE (addr) == ADDR_EXPR
++	      && TREE_CODE (expr) == ADDR_EXPR
++	      && TREE_OPERAND (addr, 0) == TREE_OPERAND (expr, 0));
+     }
+   if (TREE_CODE (addr) == ADDR_EXPR && expr == TREE_OPERAND (addr, 0))
+     return true;
+Index: gcc/expmed.c
+===================================================================
+--- gcc/expmed.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/expmed.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1339,18 +1339,15 @@
+ 		  || (offset * BITS_PER_UNIT % bitsize == 0
+ 		      && MEM_ALIGN (op0) % bitsize == 0)))))
+     {
+-      if (mode1 != GET_MODE (op0))
++      if (MEM_P (op0))
++	op0 = adjust_address (op0, mode1, offset);
++      else if (mode1 != GET_MODE (op0))
+ 	{
+-	  if (MEM_P (op0))
+-	    op0 = adjust_address (op0, mode1, offset);
+-	  else
+-	    {
+-	      rtx sub = simplify_gen_subreg (mode1, op0, GET_MODE (op0),
+-					     byte_offset);
+-	      if (sub == NULL)
+-		goto no_subreg_mode_swap;
+-	      op0 = sub;
+-	    }
++	  rtx sub = simplify_gen_subreg (mode1, op0, GET_MODE (op0),
++					 byte_offset);
++	  if (sub == NULL)
++	    goto no_subreg_mode_swap;
++	  op0 = sub;
+ 	}
+       if (mode1 != mode)
+ 	return convert_to_mode (tmode, op0, unsignedp);
+Index: gcc/tree-cfg.c
+===================================================================
+--- gcc/tree-cfg.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/tree-cfg.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -5893,6 +5893,8 @@
+   m->base.from = decl;
+   m->to = create_artificial_label ();
+   LABEL_DECL_UID (m->to) = LABEL_DECL_UID (decl);
++  if (LABEL_DECL_UID (m->to) >= cfun->last_label_uid)
++    cfun->last_label_uid = LABEL_DECL_UID (m->to) + 1;
+ 
+   slot = htab_find_slot_with_hash (hash, m, m->hash, INSERT);
+   gcc_assert (*slot == NULL);
+Index: gcc/c-parser.c
+===================================================================
+--- gcc/c-parser.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/c-parser.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,6 +1,7 @@
+ /* Parser for C and Objective-C.
+    Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
+-   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007 Free Software Foundation, Inc.
++   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008
++   Free Software Foundation, Inc.
+ 
+    Parser actions based on the old Bison parser; structure somewhat
+    influenced by and fragments based on the C++ parser.
+@@ -7964,10 +7965,14 @@
+ 
+       /* If V had already been marked threadprivate, it doesn't matter
+ 	 whether it had been used prior to this point.  */
+-      if (TREE_USED (v) && !C_DECL_THREADPRIVATE_P (v))
++      if (TREE_CODE (v) != VAR_DECL)
++	error ("%qD is not a variable", v);
++      else if (TREE_USED (v) && !C_DECL_THREADPRIVATE_P (v))
+ 	error ("%qE declared %<threadprivate%> after first use", v);
+       else if (! TREE_STATIC (v) && ! DECL_EXTERNAL (v))
+ 	error ("automatic variable %qE cannot be %<threadprivate%>", v);
++      else if (TREE_TYPE (v) == error_mark_node)
++	;
+       else if (! COMPLETE_TYPE_P (TREE_TYPE (v)))
+ 	error ("%<threadprivate%> %qE has incomplete type", v);
+       else
 Index: gcc/config/i386/i386.md
 ===================================================================
---- gcc/config/i386/i386.md	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/config/i386/i386.md	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -15660,11 +15660,20 @@
+--- gcc/config/i386/i386.md	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/config/i386/i386.md	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -15440,7 +15440,7 @@
+ 
+ (define_expand "paritydi2"
+   [(set (match_operand:DI 0 "register_operand" "")
+-	(parity:DI (match_operand:DI 1 "nonimmediate_operand" "")))]
++	(parity:DI (match_operand:DI 1 "register_operand" "")))]
+   "! TARGET_POPCNT"
  {
-   rtx label = gen_label_rtx ();
+   rtx scratch = gen_reg_rtx (QImode);
+@@ -15468,10 +15468,10 @@
  
-+  rtx op2;
-+
-+  if (rtx_equal_p (operands[1], operands[2]))
-+    {
-+      op2 = gen_reg_rtx (XFmode);
-+      emit_move_insn (op2, operands[2]);
-+    }
-+  else
-+    op2 = operands[2];
-+
-   emit_label (label);
--
--  emit_insn (gen_fpremxf4 (operands[1], operands[2],
--			   operands[1], operands[2]));
-+  emit_insn (gen_fpremxf4 (operands[1], op2, operands[1], op2));
-   ix86_emit_fp_unordered_jump (label);
-+  LABEL_NUSES (label) = 1;
- 
-   emit_move_insn (operands[0], operands[1]);
-   DONE;
-@@ -15745,11 +15754,20 @@
+ (define_insn_and_split "paritydi2_cmp"
+   [(set (reg:CC FLAGS_REG)
+-	(parity:CC (match_operand:DI 3 "nonimmediate_operand" "0,m")))
+-   (clobber (match_scratch:DI 0 "=r,X"))
+-   (clobber (match_scratch:SI 1 "=r,r"))
+-   (clobber (match_scratch:HI 2 "=Q,Q"))]
++	(parity:CC (match_operand:DI 3 "register_operand" "0")))
++   (clobber (match_scratch:DI 0 "=r"))
++   (clobber (match_scratch:SI 1 "=&r"))
++   (clobber (match_scratch:HI 2 "=Q"))]
+   "! TARGET_POPCNT"
+   "#"
+   "&& reload_completed"
+@@ -15487,20 +15487,18 @@
  {
-   rtx label = gen_label_rtx ();
+   operands[4] = gen_lowpart (SImode, operands[3]);
  
-+  rtx op2;
-+
-+  if (rtx_equal_p (operands[1], operands[2]))
-+    {
-+      op2 = gen_reg_rtx (XFmode);
-+      emit_move_insn (op2, operands[2]);
-+    }
+-  if (MEM_P (operands[3]))
+-    emit_move_insn (operands[1], gen_highpart (SImode, operands[3]));
+-  else if (! TARGET_64BIT)
+-    operands[1] = gen_highpart (SImode, operands[3]);
+-  else
++  if (TARGET_64BIT)
+     {
+       emit_move_insn (operands[1], gen_lowpart (SImode, operands[3]));
+       emit_insn (gen_lshrdi3 (operands[3], operands[3], GEN_INT (32)));
+     }
 +  else
-+    op2 = operands[2];
-+
-   emit_label (label);
--
--  emit_insn (gen_fprem1xf4 (operands[1], operands[2],
--			    operands[1], operands[2]));
-+  emit_insn (gen_fprem1xf4 (operands[1], op2, operands[1], op2));
-   ix86_emit_fp_unordered_jump (label);
-+  LABEL_NUSES (label) = 1;
++    operands[1] = gen_highpart (SImode, operands[3]);
+ })
  
-   emit_move_insn (operands[0], operands[1]);
-   DONE;
+ (define_expand "paritysi2"
+   [(set (match_operand:SI 0 "register_operand" "")
+-	(parity:SI (match_operand:SI 1 "nonimmediate_operand" "")))]
++	(parity:SI (match_operand:SI 1 "register_operand" "")))]
+   "! TARGET_POPCNT"
+ {
+   rtx scratch = gen_reg_rtx (QImode);
+@@ -15519,9 +15517,9 @@
+ 
+ (define_insn_and_split "paritysi2_cmp"
+   [(set (reg:CC FLAGS_REG)
+-	(parity:CC (match_operand:SI 2 "nonimmediate_operand" "0,m")))
+-   (clobber (match_scratch:SI 0 "=r,X"))
+-   (clobber (match_scratch:HI 1 "=Q,Q"))]
++	(parity:CC (match_operand:SI 2 "register_operand" "0")))
++   (clobber (match_scratch:SI 0 "=r"))
++   (clobber (match_scratch:HI 1 "=&Q"))]
+   "! TARGET_POPCNT"
+   "#"
+   "&& reload_completed"
+@@ -15536,13 +15534,8 @@
+ {
+   operands[3] = gen_lowpart (HImode, operands[2]);
+ 
+-  if (MEM_P (operands[2]))
+-    emit_move_insn (operands[1], gen_highpart (HImode, operands[2]));
+-  else
+-    {
+-      emit_move_insn (operands[1], gen_lowpart (HImode, operands[2]));
+-      emit_insn (gen_lshrsi3 (operands[2], operands[2], GEN_INT (16)));
+-    }
++  emit_move_insn (operands[1], gen_lowpart (HImode, operands[2]));
++  emit_insn (gen_lshrsi3 (operands[2], operands[2], GEN_INT (16)));
+ })
+ 
+ (define_insn "*parityhi2_cmp"
 Index: gcc/config/i386/sse.md
 ===================================================================
---- gcc/config/i386/sse.md	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/config/i386/sse.md	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -2724,7 +2724,7 @@
-   [(set (match_operand:SSEMODE24 0 "register_operand" "=x")
- 	(ashiftrt:SSEMODE24
- 	  (match_operand:SSEMODE24 1 "register_operand" "0")
--	  (match_operand:TI 2 "nonmemory_operand" "xn")))]
-+	  (match_operand:SI 2 "nonmemory_operand" "xN")))]
-   "TARGET_SSE2"
-   "psra<ssevecsize>\t{%2, %0|%0, %2}"
-   [(set_attr "type" "sseishft")
-@@ -2734,7 +2734,7 @@
-   [(set (match_operand:SSEMODE248 0 "register_operand" "=x")
- 	(lshiftrt:SSEMODE248
- 	  (match_operand:SSEMODE248 1 "register_operand" "0")
--	  (match_operand:TI 2 "nonmemory_operand" "xn")))]
-+	  (match_operand:SI 2 "nonmemory_operand" "xN")))]
-   "TARGET_SSE2"
-   "psrl<ssevecsize>\t{%2, %0|%0, %2}"
-   [(set_attr "type" "sseishft")
-@@ -2744,7 +2744,7 @@
-   [(set (match_operand:SSEMODE248 0 "register_operand" "=x")
- 	(ashift:SSEMODE248
- 	  (match_operand:SSEMODE248 1 "register_operand" "0")
--	  (match_operand:TI 2 "nonmemory_operand" "xn")))]
-+	  (match_operand:SI 2 "nonmemory_operand" "xN")))]
-   "TARGET_SSE2"
-   "psll<ssevecsize>\t{%2, %0|%0, %2}"
-   [(set_attr "type" "sseishft")
-@@ -2765,11 +2765,9 @@
- (define_expand "vec_shl_<mode>"
-   [(set (match_operand:SSEMODEI 0 "register_operand" "")
-         (ashift:TI (match_operand:SSEMODEI 1 "register_operand" "")
--		   (match_operand:SI 2 "general_operand" "")))]
-+		   (match_operand:SI 2 "const_0_to_255_mul_8_operand" "")))]
-   "TARGET_SSE2"
- {
--  if (!const_0_to_255_mul_8_operand (operands[2], SImode))
--    FAIL;
-   operands[0] = gen_lowpart (TImode, operands[0]);
-   operands[1] = gen_lowpart (TImode, operands[1]);
- })
-@@ -2789,11 +2787,9 @@
- (define_expand "vec_shr_<mode>"
-   [(set (match_operand:SSEMODEI 0 "register_operand" "")
-         (lshiftrt:TI (match_operand:SSEMODEI 1 "register_operand" "")
--		     (match_operand:SI 2 "general_operand" "")))]
-+		     (match_operand:SI 2 "const_0_to_255_mul_8_operand" "")))]
-   "TARGET_SSE2"
- {
--  if (!const_0_to_255_mul_8_operand (operands[2], SImode))
--    FAIL;
-   operands[0] = gen_lowpart (TImode, operands[0]);
-   operands[1] = gen_lowpart (TImode, operands[1]);
- })
+--- gcc/config/i386/sse.md	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/config/i386/sse.md	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -6402,7 +6402,7 @@
+ 	  (mult:V8HI
+ 	    (zero_extend:V8HI
+ 	      (vec_select:V4QI
+-		(match_operand:V16QI 1 "nonimmediate_operand" "%0")
++		(match_operand:V16QI 1 "nonimmediate_operand" "0")
+ 		(parallel [(const_int 0)
+ 			   (const_int 2)
+ 			   (const_int 4)
+@@ -6456,7 +6456,7 @@
+ 	  (mult:V4HI
+ 	    (zero_extend:V4HI
+ 	      (vec_select:V4QI
+-		(match_operand:V8QI 1 "nonimmediate_operand" "%0")
++		(match_operand:V8QI 1 "nonimmediate_operand" "0")
+ 		(parallel [(const_int 0)
+ 			   (const_int 2)
+ 			   (const_int 4)
 Index: gcc/config/i386/i386.c
 ===================================================================
---- gcc/config/i386/i386.c	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ gcc/config/i386/i386.c	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -16295,8 +16295,8 @@
-       if (! (*insn_data[icode].operand[1].predicate) (op0, mode1))
- 	op0 = copy_to_reg (op0);
+--- gcc/config/i386/i386.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/config/i386/i386.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1768,35 +1768,65 @@
+    was set or cleared on the command line.  */
+ static int ix86_isa_flags_explicit;
  
--      op1 = simplify_gen_subreg (TImode, op1, GET_MODE (op1), 0);
--      if (! (*insn_data[icode].operand[2].predicate) (op1, TImode))
-+      op1 = simplify_gen_subreg (SImode, op1, GET_MODE (op1), 0);
-+      if (! (*insn_data[icode].operand[2].predicate) (op1, SImode))
- 	op1 = copy_to_reg (op1);
+-/* Define a set of ISAs which aren't available for a given ISA. MMX
+-   and SSE ISAs are handled separately.  */
++/* Define a set of ISAs which are available when a given ISA is
++   enabled.  MMX and SSE ISAs are handled separately.  */
  
-       target = gen_reg_rtx (tmode);
-Index: boehm-gc/include/private/gc_priv.h
-===================================================================
---- boehm-gc/include/private/gc_priv.h	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ boehm-gc/include/private/gc_priv.h	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -286,53 +286,6 @@
- #endif
- 
- 
--#if defined(DARWIN)
--#      if defined(POWERPC)
--#              if CPP_WORDSZ == 32
--#                define GC_THREAD_STATE_T ppc_thread_state_t
--#		  define GC_MACH_THREAD_STATE PPC_THREAD_STATE
--#		  define GC_MACH_THREAD_STATE_COUNT PPC_THREAD_STATE_COUNT
--#                define GC_MACH_HEADER mach_header
--#                define GC_MACH_SECTION section
--#              else
--#                define GC_THREAD_STATE_T ppc_thread_state64_t
--#		  define GC_MACH_THREAD_STATE PPC_THREAD_STATE64
--#		  define GC_MACH_THREAD_STATE_COUNT PPC_THREAD_STATE64_COUNT
--#                define GC_MACH_HEADER mach_header_64
--#                define GC_MACH_SECTION section_64
--#              endif
--#      elif defined(I386) || defined(X86_64)
--#              if CPP_WORDSZ == 32
--#                define GC_THREAD_STATE_T x86_thread_state32_t
--#                define GC_MACH_THREAD_STATE x86_THREAD_STATE32
--#                define GC_MACH_THREAD_STATE_COUNT x86_THREAD_STATE32_COUNT
--#                define GC_MACH_HEADER mach_header
--#                define GC_MACH_SECTION section
--#              else
--#                define GC_THREAD_STATE_T x86_thread_state64_t
--#                define GC_MACH_THREAD_STATE x86_THREAD_STATE64
--#                define GC_MACH_THREAD_STATE_COUNT x86_THREAD_STATE64_COUNT
--#                define GC_MACH_HEADER mach_header_64
--#                define GC_MACH_SECTION section_64
--#              endif
--#      else
--#              error define GC_THREAD_STATE_T
--#              define GC_MACH_THREAD_STATE MACHINE_THREAD_STATE
--#              define GC_MACH_THREAD_STATE_COUNT MACHINE_THREAD_STATE_COUNT
--#      endif
--/* Try to work out the right way to access thread state structure members.
--   The structure has changed its definition in different Darwin versions.
--   This now defaults to the (older) names without __, thus hopefully,
--   not breaking any existing Makefile.direct builds.  */
--#      if defined (HAS_PPC_THREAD_STATE___R0) \
--	 || defined (HAS_PPC_THREAD_STATE64___R0) \
--	 || defined (HAS_X86_THREAD_STATE32___EAX) \
--	 || defined (HAS_X86_THREAD_STATE64___RAX)
--#        define THREAD_FLD(x) __ ## x
--#      else
--#        define THREAD_FLD(x) x
--#      endif
--#endif
- /*********************************/
- /*                               */
- /* OS interface routines	 */
-Index: boehm-gc/ChangeLog
-===================================================================
---- boehm-gc/ChangeLog	(.../tags/gcc_4_2_2_release)	(revision 129201)
-+++ boehm-gc/ChangeLog	(.../branches/gcc-4_2-branch)	(revision 129201)
-@@ -1,3 +1,7 @@
-+2007-10-09  Andreas Tobler  <a.tobler@schweiz.org>
++#define OPTION_MASK_ISA_MMX_SET OPTION_MASK_ISA_MMX
++#define OPTION_MASK_ISA_3DNOW_SET \
++  (OPTION_MASK_ISA_3DNOW | OPTION_MASK_ISA_MMX_SET)
 +
-+	* include/private/gc_priv.h: Remove duplicate code for DARWIN.
++#define OPTION_MASK_ISA_SSE_SET OPTION_MASK_ISA_SSE
++#define OPTION_MASK_ISA_SSE2_SET \
++  (OPTION_MASK_ISA_SSE2 | OPTION_MASK_ISA_SSE_SET)
++#define OPTION_MASK_ISA_SSE3_SET \
++  (OPTION_MASK_ISA_SSE3 | OPTION_MASK_ISA_SSE2_SET)
++#define OPTION_MASK_ISA_SSSE3_SET \
++  (OPTION_MASK_ISA_SSSE3 | OPTION_MASK_ISA_SSE3_SET)
++#define OPTION_MASK_ISA_SSE4_1_SET \
++  (OPTION_MASK_ISA_SSE4_1 | OPTION_MASK_ISA_SSSE3_SET)
++#define OPTION_MASK_ISA_SSE4_2_SET \
++  (OPTION_MASK_ISA_SSE4_2 | OPTION_MASK_ISA_SSE4_1_SET)
 +
- 2007-10-07  Release Manager
++/* SSE4 includes both SSE4.1 and SSE4.2. -msse4 should be the same
++   as -msse4.2.  */
++#define OPTION_MASK_ISA_SSE4_SET OPTION_MASK_ISA_SSE4_2_SET
++
++#define OPTION_MASK_ISA_SSE4A_SET \
++  (OPTION_MASK_ISA_SSE4A | OPTION_MASK_ISA_SSE3_SET)
++#define OPTION_MASK_ISA_SSE5_SET \
++  (OPTION_MASK_ISA_SSE5 | OPTION_MASK_ISA_SSE4A_SET)
++
++/* Define a set of ISAs which aren't available when a given ISA is
++   disabled.  MMX and SSE ISAs are handled separately.  */
++
+ #define OPTION_MASK_ISA_MMX_UNSET \
+-  (OPTION_MASK_ISA_3DNOW | OPTION_MASK_ISA_3DNOW_UNSET)
+-#define OPTION_MASK_ISA_3DNOW_UNSET OPTION_MASK_ISA_3DNOW_A
++  (OPTION_MASK_ISA_MMX | OPTION_MASK_ISA_3DNOW_UNSET)
++#define OPTION_MASK_ISA_3DNOW_UNSET \
++  (OPTION_MASK_ISA_3DNOW | OPTION_MASK_ISA_3DNOW_A_UNSET)
++#define OPTION_MASK_ISA_3DNOW_A_UNSET OPTION_MASK_ISA_3DNOW_A
  
- 	* GCC 4.2.2 released.
+ #define OPTION_MASK_ISA_SSE_UNSET \
+-  (OPTION_MASK_ISA_SSE2 | OPTION_MASK_ISA_SSE2_UNSET)
++  (OPTION_MASK_ISA_SSE | OPTION_MASK_ISA_SSE2_UNSET)
+ #define OPTION_MASK_ISA_SSE2_UNSET \
+-  (OPTION_MASK_ISA_SSE3 | OPTION_MASK_ISA_SSE3_UNSET)
++  (OPTION_MASK_ISA_SSE2 | OPTION_MASK_ISA_SSE3_UNSET)
+ #define OPTION_MASK_ISA_SSE3_UNSET \
+-  (OPTION_MASK_ISA_SSSE3 | OPTION_MASK_ISA_SSSE3_UNSET)
++  (OPTION_MASK_ISA_SSE3 \
++   | OPTION_MASK_ISA_SSSE3_UNSET \
++   | OPTION_MASK_ISA_SSE4A_UNSET )
+ #define OPTION_MASK_ISA_SSSE3_UNSET \
+-  (OPTION_MASK_ISA_SSE4_1 | OPTION_MASK_ISA_SSE4_1_UNSET)
++  (OPTION_MASK_ISA_SSSE3 | OPTION_MASK_ISA_SSE4_1_UNSET)
+ #define OPTION_MASK_ISA_SSE4_1_UNSET \
+-  (OPTION_MASK_ISA_SSE4_2 | OPTION_MASK_ISA_SSE4_2_UNSET)
+-#define OPTION_MASK_ISA_SSE4_2_UNSET OPTION_MASK_ISA_SSE4A
++  (OPTION_MASK_ISA_SSE4_1 | OPTION_MASK_ISA_SSE4_2_UNSET)
++#define OPTION_MASK_ISA_SSE4_2_UNSET OPTION_MASK_ISA_SSE4_2
+ 
+-/* SSE4 includes both SSE4.1 and SSE4.2. -msse4 should be the same
+-   as -msse4.1 -msse4.2.  -mno-sse4 should the same as -mno-sse4.1. */
+-#define OPTION_MASK_ISA_SSE4 \
+-  (OPTION_MASK_ISA_SSE4_1 | OPTION_MASK_ISA_SSE4_2)
++/* SSE4 includes both SSE4.1 and SSE4.2.  -mno-sse4 should the same
++   as -mno-sse4.1. */
+ #define OPTION_MASK_ISA_SSE4_UNSET OPTION_MASK_ISA_SSE4_1_UNSET
+ 
+-#define OPTION_MASK_ISA_SSE4A_UNSET OPTION_MASK_ISA_SSE4
++#define OPTION_MASK_ISA_SSE4A_UNSET \
++  (OPTION_MASK_ISA_SSE4A | OPTION_MASK_ISA_SSE5_UNSET)
+ 
+-#define OPTION_MASK_ISA_SSE5_UNSET \
+-  (OPTION_MASK_ISA_3DNOW | OPTION_MASK_ISA_3DNOW_UNSET)
++#define OPTION_MASK_ISA_SSE5_UNSET OPTION_MASK_ISA_SSE5
+ 
+ /* Vectorization library interface and handlers.  */
+ tree (*ix86_veclib_handler)(enum built_in_function, tree, tree) = NULL;
+@@ -1810,18 +1840,26 @@
+   switch (code)
+     {
+     case OPT_mmmx:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_MMX;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_MMX_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_MMX_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_MMX_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_MMX_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_m3dnow:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_3DNOW;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_3DNOW_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_3DNOW_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_3DNOW_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_3DNOW_UNSET;
+ 	}
+@@ -1831,62 +1869,86 @@
+       return false;
+ 
+     case OPT_msse:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_msse2:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE2;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE2_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE2_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE2_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE2_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_msse3:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE3;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE3_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE3_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE3_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE3_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_mssse3:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSSE3;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSSE3_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSSE3_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSSE3_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSSE3_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_msse4_1:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_1;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE4_1_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_1_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE4_1_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_1_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_msse4_2:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_2;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE4_2_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_2_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE4_2_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_2_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_msse4:
+-      ix86_isa_flags |= OPTION_MASK_ISA_SSE4;
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4;
++      ix86_isa_flags |= OPTION_MASK_ISA_SSE4_SET;
++      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4_SET;
+       return true;
+ 
+     case OPT_mno_sse4:
+@@ -1895,18 +1957,26 @@
+       return true;
+ 
+     case OPT_msse4a:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4A;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE4A_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4A_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE4A_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE4A_UNSET;
+ 	}
+       return true;
+ 
+     case OPT_msse5:
+-      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE5;
+-      if (!value)
++      if (value)
+ 	{
++	  ix86_isa_flags |= OPTION_MASK_ISA_SSE5_SET;
++	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE5_SET;
++	}
++      else
++	{
+ 	  ix86_isa_flags &= ~OPTION_MASK_ISA_SSE5_UNSET;
+ 	  ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE5_UNSET;
+ 	}
+@@ -2530,34 +2600,6 @@
+   if (!TARGET_80387)
+     target_flags |= MASK_NO_FANCY_MATH_387;
+ 
+-  /* Turn on SSE4A bultins for -msse5.  */
+-  if (TARGET_SSE5)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSE4A;
+-
+-  /* Turn on SSE4.1 builtins for -msse4.2.  */
+-  if (TARGET_SSE4_2)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSE4_1;
+-
+-  /* Turn on SSSE3 builtins for -msse4.1.  */
+-  if (TARGET_SSE4_1)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSSE3;
+-
+-  /* Turn on SSE3 builtins for -mssse3.  */
+-  if (TARGET_SSSE3)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSE3;
+-
+-  /* Turn on SSE3 builtins for -msse4a.  */
+-  if (TARGET_SSE4A)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSE3;
+-
+-  /* Turn on SSE2 builtins for -msse3.  */
+-  if (TARGET_SSE3)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSE2;
+-
+-  /* Turn on SSE builtins for -msse2.  */
+-  if (TARGET_SSE2)
+-    ix86_isa_flags |= OPTION_MASK_ISA_SSE;
+-
+   /* Turn on MMX builtins for -msse.  */
+   if (TARGET_SSE)
+     {
+@@ -2565,10 +2607,6 @@
+       x86_prefetch_sse = true;
+     }
+ 
+-  /* Turn on MMX builtins for 3Dnow.  */
+-  if (TARGET_3DNOW)
+-    ix86_isa_flags |= OPTION_MASK_ISA_MMX;
+-
+   /* Turn on popcnt instruction for -msse4.2 or -mabm.  */
+   if (TARGET_SSE4_2 || TARGET_ABM)
+     x86_popcnt = true;
+@@ -16736,7 +16774,8 @@
+ int
+ ix86_constant_alignment (tree exp, int align)
+ {
+-  if (TREE_CODE (exp) == REAL_CST)
++  if (TREE_CODE (exp) == REAL_CST || TREE_CODE (exp) == VECTOR_CST
++      || TREE_CODE (exp) == INTEGER_CST)
+     {
+       if (TYPE_MODE (TREE_TYPE (exp)) == DFmode && align < 64)
+ 	return 64;
+Index: gcc/config/sh/sh.c
+===================================================================
+--- gcc/config/sh/sh.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/config/sh/sh.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -3838,6 +3838,7 @@
+   rtx barrier_before_mova = 0, found_barrier = 0, good_barrier = 0;
+   int si_limit;
+   int hi_limit;
++  rtx orig = from;
+ 
+   /* For HImode: range is 510, add 4 because pc counts from address of
+      second instruction after this one, subtract 2 for the jump instruction
+@@ -3897,6 +3898,7 @@
+ 
+       if (GET_CODE (from) == BARRIER)
+ 	{
++	  rtx next;
+ 
+ 	  found_barrier = from;
+ 
+@@ -3905,6 +3907,14 @@
+ 	     this kind of barrier.  */
+ 	  if (barrier_align (from) > 2)
+ 	    good_barrier = from;
++
++	  /* If we are at the end of a hot/cold block, dump the constants
++	     here.  */
++	  next = NEXT_INSN (from);
++	  if (next
++	      && NOTE_P (next)
++	      && NOTE_KIND (next) == NOTE_INSN_SWITCH_TEXT_SECTIONS)
++	    break;
+ 	}
+ 
+       if (broken_move (from))
+@@ -4061,7 +4071,8 @@
+       /* If we exceeded the range, then we must back up over the last
+ 	 instruction we looked at.  Otherwise, we just need to undo the
+ 	 NEXT_INSN at the end of the loop.  */
+-      if (count_hi > hi_limit || count_si > si_limit)
++      if (PREV_INSN (from) != orig
++	  && (count_hi > hi_limit || count_si > si_limit))
+ 	from = PREV_INSN (PREV_INSN (from));
+       else
+ 	from = PREV_INSN (from);
+Index: gcc/config/sh/sh.md
+===================================================================
+--- gcc/config/sh/sh.md	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/config/sh/sh.md	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -7378,7 +7378,7 @@
+ (define_insn "jump_compact"
+   [(set (pc)
+ 	(label_ref (match_operand 0 "" "")))]
+-  "TARGET_SH1"
++  "TARGET_SH1 && !find_reg_note (insn, REG_CROSSING_JUMP, NULL_RTX)"
+   "*
+ {
+   /* The length is 16 if the delay slot is unfilled.  */
+Index: gcc/config/rs6000/rs6000.c
+===================================================================
+--- gcc/config/rs6000/rs6000.c	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ gcc/config/rs6000/rs6000.c	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -13858,6 +13858,9 @@
+   emit_insn (gen_sync_compare_and_swapqhi_internal (wdst, mask,
+ 						    oldval, newval, mem));
+ 
++  /* Shift the result back.  */
++  emit_insn (gen_lshrsi3 (wdst, wdst, shift));
++
+   emit_move_insn (dst, gen_lowpart (mode, wdst));
+ }
+ 
+Index: libstdc++-v3/include/bits/stl_multimap.h
+===================================================================
+--- libstdc++-v3/include/bits/stl_multimap.h	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libstdc++-v3/include/bits/stl_multimap.h	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -197,7 +197,7 @@
+       template<typename _InputIterator>
+         multimap(_InputIterator __first, _InputIterator __last)
+ 	: _M_t()
+-        { _M_t._M_insert_unique(__first, __last); }
++        { _M_t._M_insert_equal(__first, __last); }
+ 
+       /**
+        *  @brief  Builds a %multimap from a range.
+Index: libstdc++-v3/include/debug/functions.h
+===================================================================
+--- libstdc++-v3/include/debug/functions.h	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libstdc++-v3/include/debug/functions.h	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -268,35 +268,31 @@
+       return __check_sorted_aux(__first, __last, __pred, _Category());
+     }
+ 
+-  template<typename _InputIterator1, typename _InputIterator2>
++  template<typename _InputIterator>
+     inline bool
+-    __check_sorted_set_aux(const _InputIterator1& __first,
+-			   const _InputIterator1& __last,
+-			   const _InputIterator2&, std::__true_type)
++    __check_sorted_set_aux(const _InputIterator& __first,
++			   const _InputIterator& __last,
++			   std::__true_type)
+     { return __check_sorted(__first, __last); }
+ 
+-  template<typename _InputIterator1, typename _InputIterator2>
++  template<typename _InputIterator>
+     inline bool
+-    __check_sorted_set_aux(const _InputIterator1&,
+-			   const _InputIterator1&,
+-			   const _InputIterator2&, std::__false_type)
++    __check_sorted_set_aux(const _InputIterator&,
++			   const _InputIterator&,
++			   std::__false_type)
+     { return true; }
+ 
+-  template<typename _InputIterator1, typename _InputIterator2,
+-	   typename _Predicate>
++  template<typename _InputIterator, typename _Predicate>
+     inline bool
+-    __check_sorted_set_aux(const _InputIterator1& __first,
+-			   const _InputIterator1& __last,
+-			   const _InputIterator2&, _Predicate __pred,
+-			   std::__true_type)
++    __check_sorted_set_aux(const _InputIterator& __first,
++			   const _InputIterator& __last,
++			   _Predicate __pred, std::__true_type)
+     { return __check_sorted(__first, __last, __pred); }
+ 
+-  template<typename _InputIterator1, typename _InputIterator2,
+-	   typename _Predicate>
++  template<typename _InputIterator, typename _Predicate>
+     inline bool
+-    __check_sorted_set_aux(const _InputIterator1&,
+-			   const _InputIterator1&,
+-			   const _InputIterator2&, _Predicate,
++    __check_sorted_set_aux(const _InputIterator&,
++			   const _InputIterator&, _Predicate,
+ 			   std::__false_type)
+     { return true; }
+ 
+Index: libstdc++-v3/include/tr1/tuple
+===================================================================
+--- libstdc++-v3/include/tr1/tuple	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libstdc++-v3/include/tr1/tuple	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -329,7 +329,7 @@
+     {
+       typedef tuple<_TElements...> _Tp;
+       typedef tuple<_UElements...> _Up;
+-      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Tp>::value,
++      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Up>::value,
+ 	      0, tuple_size<_Tp>::value, _Tp, _Up>::__eq(__t, __u));
+     }
+ 
+@@ -340,7 +340,7 @@
+     {
+       typedef tuple<_TElements...> _Tp;
+       typedef tuple<_UElements...> _Up;
+-      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Tp>::value,
++      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Up>::value,
+ 	      0, tuple_size<_Tp>::value, _Tp, _Up>::__less(__t, __u));
+     }
+ 
+Index: libstdc++-v3/include/std/tuple
+===================================================================
+--- libstdc++-v3/include/std/tuple	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libstdc++-v3/include/std/tuple	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -468,7 +468,7 @@
+     {
+       typedef tuple<_TElements...> _Tp;
+       typedef tuple<_UElements...> _Up;
+-      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Tp>::value,
++      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Up>::value,
+ 	      0, tuple_size<_Tp>::value, _Tp, _Up>::__eq(__t, __u));
+     }
+ 
+@@ -479,7 +479,7 @@
+     {
+       typedef tuple<_TElements...> _Tp;
+       typedef tuple<_UElements...> _Up;
+-      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Tp>::value,
++      return (__tuple_compare<tuple_size<_Tp>::value - tuple_size<_Up>::value,
+ 	      0, tuple_size<_Tp>::value, _Tp, _Up>::__less(__t, __u));
+     }
+ 
+Index: libstdc++-v3/ChangeLog
+===================================================================
+--- libstdc++-v3/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,24 @@
++2008-03-13  Dennis Czeremin  <dennis.czeremin@smiths-heimann.com>
++
++	PR libstdc++/35566
++	* include/bits/stl_multimap.h (multimap<>::multimap(_InputIterator,
++	_InputIterator)): Forward to _M_insert_equal, not _M_insert_unique.
++
++2008-03-13  Paolo Carlini  <pcarlini@suse.de>
++
++	PR libstdc++/35541
++	* include/debug/functions.h (__check_sorted_set_aux): Fix signature.
++	* testsuite/25_algorithms/set_difference/35541.cc: New.
++
++2008-03-06  Chris Jefferson  <chris@bubblescope.net>
++	    Paolo Carlini  <pcarlini@suse.de>
++
++	PR libstdc++/35480
++	* include/tr1/tuple (operator==, operator<): Fix.
++	* include/std/tuple (operator==, operator<): Likewise.
++	* testsuite/tr1/6_containers/tuple/comparison_operators/35480.cc: New.
++	* testsuite/20_util/tuple/comparison_operators/35480.cc: Likewise.
++
+ 2008-03-05  Release Manager
+ 
+ 	* GCC 4.3.0 released.
+Index: libstdc++-v3/testsuite/25_algorithms/set_difference/35541.cc
+===================================================================
+--- libstdc++-v3/testsuite/25_algorithms/set_difference/35541.cc	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ libstdc++-v3/testsuite/25_algorithms/set_difference/35541.cc	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,36 @@
++// Copyright (C) 2008 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// { dg-options "-D_GLIBCXX_DEBUG" }
++// { dg-do compile }
++
++// libstdc++/35541
++
++#include <set>
++#include <iterator>
++#include <algorithm>
++
++void test01()
++{
++  std::set<std::pair<unsigned,int> > mFactors;
++  std::set<std::pair<unsigned,int> > secondFactor;
++  std::set_difference(mFactors.begin(), mFactors.end(),
++		      mFactors.begin(), mFactors.end(),
++		      std::insert_iterator<std::set<std::pair<unsigned,int> > >
++		      (secondFactor, secondFactor.end())); 
++}
+Index: libstdc++-v3/testsuite/tr1/6_containers/tuple/comparison_operators/35480.cc
+===================================================================
+--- libstdc++-v3/testsuite/tr1/6_containers/tuple/comparison_operators/35480.cc	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ libstdc++-v3/testsuite/tr1/6_containers/tuple/comparison_operators/35480.cc	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,33 @@
++// { dg-do compile }
++
++// Copyright (C) 2008 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// Tuple
++
++#include <tr1/tuple>
++
++// libstdc++/35480
++void test01()
++{
++  std::tr1::tuple<int> t1( 1 );
++  std::tr1::tuple<int, int> t2( 1, 2 );
++  if ( t1 < t2 ) {}   // { dg-error "here" }
++  if ( t1 == t2 ) {}  // { dg-error "here" }
++}
++// { dg-excess-errors "incomplete type" }
+Index: libstdc++-v3/testsuite/20_util/tuple/comparison_operators/35480.cc
+===================================================================
+--- libstdc++-v3/testsuite/20_util/tuple/comparison_operators/35480.cc	(.../tags/gcc_4_3_0_release)	(revision 0)
++++ libstdc++-v3/testsuite/20_util/tuple/comparison_operators/35480.cc	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -0,0 +1,34 @@
++// { dg-options "-std=gnu++0x" }
++// { dg-do compile }
++
++// Copyright (C) 2008 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++// Tuple
++
++#include <tuple>
++
++// libstdc++/35480
++void test01()
++{
++  std::tuple<int> t1( 1 );
++  std::tuple<int, int> t2( 1, 2 );
++  if ( t1 < t2 ) {}   // { dg-error "here" }
++  if ( t1 == t2 ) {}  // { dg-error "here" }
++}
++// { dg-excess-errors "incomplete type" }
+Index: libjava/ChangeLog
+===================================================================
+--- libjava/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libjava/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,8 @@
++2008-03-13  Andrew Haley  <aph@redhat.com>
++
++	* link.cc (_Jv_Linker::resolve_method_entry): Remove broken class
++	loader test.
++
+ 2008-03-05  Release Manager
+ 
+ 	* GCC 4.3.0 released.
+Index: libjava/link.cc
+===================================================================
+--- libjava/link.cc	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ libjava/link.cc	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -359,40 +359,6 @@
+       throw new java::lang::NoSuchMethodError (sb->toString());
+     }
+ 
+-  // if (found_class->loader != klass->loader), then we
+-  // must actually check that the types of arguments
+-  // correspond.  That is, for each argument type, and
+-  // the return type, doing _Jv_FindClassFromSignature
+-  // with either loader should produce the same result,
+-  // i.e., exactly the same jclass object. JVMS 5.4.3.3
+-  if (found_class->loader != klass->loader)
+-    {
+-      JArray<jclass> *found_args, *klass_args;
+-      jclass found_return, klass_return;
+-
+-      _Jv_GetTypesFromSignature (the_method,
+-				 found_class,
+-				 &found_args,
+-				 &found_return);
+-      _Jv_GetTypesFromSignature (the_method,
+-				 klass,
+-				 &klass_args,
+-				 &klass_return);
+-
+-      jclass *found_arg = elements (found_args);
+-      jclass *klass_arg = elements (klass_args);
+-
+-      for (int i = 0; i < found_args->length; i++)
+-	{
+-	  if (*(found_arg++) != *(klass_arg++))
+-	    throw new java::lang::LinkageError (JvNewStringLatin1 
+-	      ("argument type mismatch with different loaders"));
+-	}
+-      if (found_return != klass_return)
+-	throw new java::lang::LinkageError (JvNewStringLatin1
+-	  ("return type mismatch with different loaders"));
+-    }
+-  
+   return the_method;
+ }
+ 
+Index: fixincludes/ChangeLog
+===================================================================
+--- fixincludes/ChangeLog	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ fixincludes/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -1,3 +1,10 @@
++2008-03-06  Kaveh R. Ghazi  <ghazi@caip.rutgers.edu>
++
++	* inclhack.def (solaris_math_10): New.
++	* tests/base/iso/math_c99.h: Update.
++
++	* fixincl.x: Regenerate.
++
+ 2008-03-05  Release Manager
+ 
+ 	* GCC 4.3.0 released.
+Index: fixincludes/fixincl.x
+===================================================================
+--- fixincludes/fixincl.x	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ fixincludes/fixincl.x	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -2,11 +2,11 @@
+  * 
+  * DO NOT EDIT THIS FILE   (fixincl.x)
+  * 
+- * It has been AutoGen-ed  Monday February  4, 2008 at 09:22:58 PM GMTST
++ * It has been AutoGen-ed  Wednesday February 20, 2008 at 05:10:00 AM CET
+  * From the definitions    inclhack.def
+  * and the template file   fixincl
+  */
+-/* DO NOT SVN-MERGE THIS FILE, EITHER Mon Feb  4 21:22:58 GMTST 2008
++/* DO NOT SVN-MERGE THIS FILE, EITHER Wed Feb 20 05:10:00 CET 2008
+  *
+  * You must regenerate it.  Use the ./genfixes script.
+  *
+@@ -15,25 +15,30 @@
+  * certain ANSI-incompatible system header files which are fixed to work
+  * correctly with ANSI C and placed in a directory that GNU C will search.
+  *
+- * This file contains 211 fixup descriptions.
++ * This file contains 212 fixup descriptions.
+  *
+  * See README for more information.
+  *
+  *  inclhack copyright (c) 1998, 1999, 2000, 2001
+  *  The Free Software Foundation, Inc.
+  *
+-  *  inclhack is free software: you can redistribute it and/or modify it
+- *  under the terms of the GNU General Public License as published by the
+- *  Free Software Foundation, either version 3 of the License, or
+- *  (at your option) any later version.
++  *  inclhack is free software.
+  *  
+- *  inclhack is distributed in the hope that it will be useful, but
+- *  WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  You may redistribute it and/or modify it under the terms of the
++ *  GNU General Public License, as published by the Free Software
++ *  Foundation; either version 2 of the License, or (at your option)
++ *  any later version.
++ *  
++ *  inclhack is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  *  See the GNU General Public License for more details.
+  *  
+- *  You should have received a copy of the GNU General Public License along
+- *  with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *  You should have received a copy of the GNU General Public License
++ *  along with inclhack.  If not, write to:
++ *  	The Free Software Foundation, Inc.,
++ *  	51 Franklin Street, Fifth Floor
++ *  	Boston, MA  02110-1301, USA.
+  */
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+@@ -5886,6 +5891,45 @@
+ 
+ /* * * * * * * * * * * * * * * * * * * * * * * * * *
+  *
++ *  Description of Solaris_Math_10 fix
++ */
++tSCC zSolaris_Math_10Name[] =
++     "solaris_math_10";
++
++/*
++ *  File name selection pattern
++ */
++tSCC zSolaris_Math_10List[] =
++  "iso/math_c99.h\0";
++/*
++ *  Machine/OS name selection pattern
++ */
++#define apzSolaris_Math_10Machs (const char**)NULL
++
++/*
++ *  content selection pattern - do fix if pattern found
++ */
++tSCC zSolaris_Math_10Select0[] =
++       "@\\(#\\)math_c99.h[ \t]+1.[0-9]+[ \t]+[0-9/]+ SMI";
++
++#define    SOLARIS_MATH_10_TEST_CT  1
++static tTestDesc aSolaris_Math_10Tests[] = {
++  { TT_EGREP,    zSolaris_Math_10Select0, (regex_t*)NULL }, };
++
++/*
++ *  Fix Command Arguments for Solaris_Math_10
++ */
++static const char* apzSolaris_Math_10Patch[] = {
++    "format",
++    "#define\tisinf(x) __builtin_isinf(x)",
++    "^#define[ \t]+isinf\\(x\\)[ \t]+__extension__\\([ \t]*\\\\\n\
++[ \t]*\\{[ \t]*__typeof\\(x\\)[ \t]*__x_i[ \t]*=[ \t]*\\(x\\);[ \t]*\\\\\n\
++[ \t]*__x_i[ \t]*==[ \t]*\\(__typeof\\(__x_i\\)\\)[ \t]*INFINITY[ \t]*\\|\\|[ \t]*\\\\\n\
++[ \t]*__x_i[ \t]*==[ \t]*\\(__typeof\\(__x_i\\)\\)[ \t]*\\(-INFINITY\\);[ \t]*\\}\\)",
++    (char*)NULL };
++
++/* * * * * * * * * * * * * * * * * * * * * * * * * *
++ *
+  *  Description of Solaris_Mutex_Init_1 fix
+  */
+ tSCC zSolaris_Mutex_Init_1Name[] =
+@@ -8567,9 +8611,9 @@
+  *
+  *  List of all fixes
+  */
+-#define REGEX_COUNT          254
++#define REGEX_COUNT          255
+ #define MACH_LIST_SIZE_LIMIT 261
+-#define FIX_COUNT            211
++#define FIX_COUNT            212
+ 
+ /*
+  *  Enumerate the fixes
+@@ -8718,6 +8762,7 @@
+     SOLARIS_MATH_4_FIXIDX,
+     SOLARIS_MATH_8_FIXIDX,
+     SOLARIS_MATH_9_FIXIDX,
++    SOLARIS_MATH_10_FIXIDX,
+     SOLARIS_MUTEX_INIT_1_FIXIDX,
+     SOLARIS_MUTEX_INIT_2_FIXIDX,
+     SOLARIS_RWLOCK_INIT_1_FIXIDX,
+@@ -9504,6 +9549,11 @@
+      SOLARIS_MATH_9_TEST_CT, FD_MACH_ONLY | FD_SUBROUTINE,
+      aSolaris_Math_9Tests,   apzSolaris_Math_9Patch, 0 },
+ 
++  {  zSolaris_Math_10Name,    zSolaris_Math_10List,
++     apzSolaris_Math_10Machs,
++     SOLARIS_MATH_10_TEST_CT, FD_MACH_ONLY | FD_SUBROUTINE,
++     aSolaris_Math_10Tests,   apzSolaris_Math_10Patch, 0 },
++
+   {  zSolaris_Mutex_Init_1Name,    zSolaris_Mutex_Init_1List,
+      apzSolaris_Mutex_Init_1Machs,
+      SOLARIS_MUTEX_INIT_1_TEST_CT, FD_MACH_ONLY,
+Index: fixincludes/tests/base/iso/math_c99.h
+===================================================================
+--- fixincludes/tests/base/iso/math_c99.h	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ fixincludes/tests/base/iso/math_c99.h	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -77,3 +77,10 @@
+ #undef	isunordered
+ #define	isunordered(x, y)	__builtin_isunordered(x, y)
+ #endif  /* SOLARIS_MATH_9_CHECK */
++
++
++#if defined( SOLARIS_MATH_10_CHECK )
++#pragma ident	"@(#)math_c99.h	1.12	07/01/21 SMI"
++#undef	isinf
++#define	isinf(x) __builtin_isinf(x)
++#endif  /* SOLARIS_MATH_10_CHECK */
+Index: fixincludes/inclhack.def
+===================================================================
+--- fixincludes/inclhack.def	(.../tags/gcc_4_3_0_release)	(revision 133190)
++++ fixincludes/inclhack.def	(.../branches/gcc-4_3-branch)	(revision 133190)
+@@ -3223,6 +3223,30 @@
+ };
+ 
+ /*
++ * On Solaris 11, if you do isinf(NaN) you'll get a floating point
++ * exception.  Provide an alternative using GCC's builtin.
++ */
++
++fix = {
++    hackname  = solaris_math_10;
++    select    = '@\(#\)math_c99.h' "[ \t]+1.[0-9]+[ \t]+[0-9/]+ SMI";
++    files     = iso/math_c99.h;
++    c_fix     = format;
++    c_fix_arg = "#define\tisinf(x) __builtin_isinf(x)";
++    c_fix_arg = "^#define[ \t]+isinf\\(x\\)[ \t]+__extension__\\([ \t]*\\\\\n"
++                "[ \t]*\\{[ \t]*__typeof\\(x\\)[ \t]*__x_i[ \t]*=[ \t]*\\(x\\);[ \t]*\\\\\n"
++                "[ \t]*__x_i[ \t]*==[ \t]*\\(__typeof\\(__x_i\\)\\)[ \t]*INFINITY[ \t]*\\|\\|[ \t]*\\\\\n"
++                "[ \t]*__x_i[ \t]*==[ \t]*\\(__typeof\\(__x_i\\)\\)[ \t]*\\(-INFINITY\\);[ \t]*\\}\\)";
++    test_text =
++    '#pragma ident	"@(#)math_c99.h	1.12	07/01/21 SMI"'"\n"
++    "#undef	isinf\n"
++    "#define	isinf(x)	__extension__( \\\\\n"
++    "			{ __typeof(x) __x_i = (x); \\\\\n"
++    "			__x_i == (__typeof(__x_i)) INFINITY || \\\\\n"
++    "			__x_i == (__typeof(__x_i)) (-INFINITY); })";
++};
++
++/*
+  *  Sun Solaris 2.5.1, 2.6 defines PTHREAD_{MUTEX|COND}_INITIALIZER
+  *  incorrectly, so we replace them with versions that correspond to
+  *  the definition.  We also explicitly name this fix "1" and the next
