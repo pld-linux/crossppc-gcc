@@ -1,0 +1,11 @@
+--- gcc-4.2.3/gcc/config.gcc.orig	2008-03-20 09:45:43.000000000 +0000
++++ gcc-4.2.3/gcc/config.gcc	2008-03-20 09:45:56.000000000 +0000
+@@ -2164,7 +2164,7 @@
+ 	extra_parts="crti.o crtn.o crtbegin.o crtend.o"
+ 	use_fixproto=yes
+ 	;;
+-sparc-*-linux*)		# SPARC's running GNU/Linux, libc6
++sparc-*-linux* | sparcv[789]-*-linux*)		# SPARC's running GNU/Linux, libc6
+ 	tm_file="${tm_file} dbxelf.h elfos.h svr4.h sparc/sysv4.h sparc/linux.h"
+ 	extra_options="${extra_options} sparc/long-double-switch.opt"
+ 	tmake_file="${tmake_file} sparc/t-linux sparc/t-crtfm"
