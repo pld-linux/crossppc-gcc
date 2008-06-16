@@ -1,54 +1,47 @@
---- gcc/libjava/configure.ac	2006-01-23 18:53:45.000000000 +0100
-+++ gcc/libjava/configure.ac	2006-02-26 16:02:13.828163000 +0100
-@@ -84,6 +84,21 @@
-   *)   AC_MSG_ERROR(bad value ${enableval} for multilib option) ;;
-  esac], [multilib=yes])dnl
+--- libjava/configure.ac.jj	2007-12-07 17:55:50.000000000 +0100
++++ libjava/configure.ac	2007-12-07 18:36:56.000000000 +0100
+@@ -82,6 +82,13 @@ AC_ARG_ENABLE(java-maintainer-mode,
+ 	[allow rebuilding of .class and .h files]))
+ AM_CONDITIONAL(JAVA_MAINTAINER_MODE, test "$enable_java_maintainer_mode" = yes)
  
-+# Default to --enable-libjava-multilib
 +AC_ARG_ENABLE(libjava-multilib,
-+  AS_HELP_STRING([--enable-libjava-multilib],
-+                 [build many library versions (default)]),
-+[case "${enableval}" in
-+  yes) multilib=yes ;;
-+  no)  multilib=no ;;
-+  *)   AC_MSG_ERROR(bad value ${enableval} for libjava-multilib option) ;;
-+ esac], [multilib=yes])dnl
-+if test "$multilib" = no; then
-+  # Reset also --enable-multilib state, as that is what is looked at
-+  # by config-ml.in
++	AS_HELP_STRING([--enable-libjava-multilib], [build libjava as multilib]))
++if test "$enable_libjava_multilib" = no; then
++  multilib=no
 +  ac_configure_args="$ac_configure_args --disable-multilib"
 +fi
 +
  # It may not be safe to run linking tests in AC_PROG_CC/AC_PROG_CXX.
  GCC_NO_EXECUTABLES
  
---- gcc-4_2-branch/libjava/classpath/ltconfig.orig	2006-10-21 14:45:42.000000000 +0000
-+++ gcc-4_2-branch/libjava/classpath/ltconfig	2006-12-29 18:28:13.000000000 +0000
-@@ -1272,6 +1272,27 @@
-   # people can always --disable-shared, the test was removed, and we
-   # assume the GNU/Linux dynamic linker is in use.
-   dynamic_linker='GNU/Linux ld.so'
-+
-+
-+  # Find out which ABI we are using (multilib Linux x86_64 hack).
-+  libsuff=
-+  case "$host_cpu" in
-+  x86_64*|s390x*|powerpc64*|sparc64*)
-+    echo '#line 1281 "ltconfig"' > conftest.$ac_ext
-+    if (eval $ac_compile) && test -s conftest.$objext; then
-+      case `/usr/bin/file conftest.$objext` in
-+      *64-bit*)
-+        libsuff=64
-+        ;;
-+      esac
-+    fi
-+    rm -rf conftest*
-+    ;;
-+  *)
-+    ;;
-+  esac
-+  sys_lib_dlsearch_path_spec="/lib${libsuff} /usr/lib${libsuff}"
-+  sys_lib_search_path_spec="/lib${libsuff} /usr/lib${libsuff} /usr/local/lib${libsuff}"
-   ;;
+--- libjava/configure.jj	2007-12-07 17:55:50.000000000 +0100
++++ libjava/configure	2007-12-07 18:39:58.000000000 +0100
+@@ -1018,6 +1018,8 @@ Optional Features:
+   --enable-gconf-peer     compile GConf native peers for util.preferences
+   --enable-java-maintainer-mode
+                           allow rebuilding of .class and .h files
++  --enable-libjava-multilib
++                          build libjava as multilib
+   --disable-dependency-tracking  speeds up one-time build
+   --enable-dependency-tracking   do not reject slow dependency extractors
+   --enable-maintainer-mode  enable make rules and dependencies not useful
+@@ -1848,6 +1850,16 @@ else
+ fi
  
- netbsd*)
+ 
++# Check whether --enable-libjava-multilib was given.
++if test "${enable_libjava_multilib+set}" = set; then
++  enableval=$enable_libjava_multilib;
++fi
++
++if test "$enable_libjava_multilib" = no; then
++  multilib=no
++  ac_configure_args="$ac_configure_args --disable-multilib"
++fi
++
+ # It may not be safe to run linking tests in AC_PROG_CC/AC_PROG_CXX.
+ 
+ 
+
+	Jakub
+
