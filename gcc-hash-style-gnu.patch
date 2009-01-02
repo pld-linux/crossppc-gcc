@@ -33,30 +33,30 @@
      %{!ibcs: \
 --- gcc-4.2.0-20070316/gcc/config/sparc/linux64.h.orig	2006-03-02 17:47:02.000000000 -0500
 +++ gcc-4.2.0-20070316/gcc/config/sparc/linux64.h	2007-04-18 07:16:49.644880415 -0400
-@@ -167,7 +167,7 @@
+@@ -121,7 +121,7 @@
    { "link_arch_default", LINK_ARCH_DEFAULT_SPEC },	  \
    { "link_arch",	 LINK_ARCH_SPEC },
  
--#define LINK_ARCH32_SPEC "-m elf32_sparc -Y P,/usr/lib %{shared:-shared} \
-+#define LINK_ARCH32_SPEC "-m elf32_sparc --hash-style=gnu -Y P,/usr/lib %{shared:-shared} \
+-#define LINK_ARCH32_SPEC "-m elf32_sparc -Y P,%R/usr/lib %{shared:-shared} \
++#define LINK_ARCH32_SPEC "-m elf32_sparc --hash-style=gnu -Y P,%R/usr/lib %{shared:-shared} \
    %{!shared: \
      %{!ibcs: \
        %{!static: \
-@@ -176,7 +176,7 @@
+@@ -130,7 +130,7 @@
          %{static:-static}}} \
  "
  
--#define LINK_ARCH64_SPEC "-m elf64_sparc -Y P,/usr/lib64 %{shared:-shared} \
-+#define LINK_ARCH64_SPEC "-m elf64_sparc --hash-style=gnu -Y P,/usr/lib64 %{shared:-shared} \
+-#define LINK_ARCH64_SPEC "-m elf64_sparc -Y P,%R/usr/lib64 %{shared:-shared} \
++#define LINK_ARCH64_SPEC "-m elf64_sparc --hash-style=gnu -Y P,%R/usr/lib64 %{shared:-shared} \
    %{!shared: \
      %{!ibcs: \
        %{!static: \
-@@ -257,7 +257,7 @@
+@@ -211,7 +211,7 @@
  #else /* !SPARC_BI_ARCH */
  
  #undef LINK_SPEC
--#define LINK_SPEC "-m elf64_sparc -Y P,/usr/lib64 %{shared:-shared} \
-+#define LINK_SPEC "-m elf64_sparc --hash-style=gnu -Y P,/usr/lib64 %{shared:-shared} \
+-#define LINK_SPEC "-m elf64_sparc -Y P,%R/usr/lib64 %{shared:-shared} \
++#define LINK_SPEC "-m elf64_sparc --hash-style=gnu -Y P,%R/usr/lib64 %{shared:-shared} \
    %{!shared: \
      %{!ibcs: \
        %{!static: \
