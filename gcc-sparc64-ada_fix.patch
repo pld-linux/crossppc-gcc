@@ -1,5 +1,5 @@
---- a/gcc/ada/Makefile.in	2005-05-26 10:48:40.000000000 +0000
-+++ b/gcc/ada/Makefile.in	2005-05-26 10:59:25.000000000 +0000
+--- a/gcc/ada/gcc-interface/Makefile.in	2005-05-26 10:48:40.000000000 +0000
++++ b/gcc/ada/gcc-interface/Makefile.in	2005-05-26 10:59:25.000000000 +0000
 @@ -1180,6 +1180,31 @@
    LIBRARY_VERSION := $(LIB_VERSION)
  endif

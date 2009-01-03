@@ -13,8 +13,8 @@
  unsigned char __gnat_objlist_file_supported = 1;
  unsigned char __gnat_using_gnu_linker = 1;
  const char *__gnat_object_library_extension = ".a";
---- a/gcc/ada/Make-lang.in	2004-09-01 12:46:47.000000000 +0200
-+++ b/gcc/ada/Make-lang.in	2004-09-26 12:21:15.135188144 +0200
+--- a/gcc/ada/gcc-interface/Make-lang.in	2004-09-01 12:46:47.000000000 +0200
++++ b/gcc/ada/gcc-interface/Make-lang.in	2004-09-26 12:21:15.135188144 +0200
 @@ -378,7 +378,7 @@
  ada/doctools/xgnatugn$(build_exeext): ada/xgnatugn.adb
  	-$(MKDIR) ada/doctools
@@ -24,8 +24,8 @@
  
  # Note that gnat_ugn_unw.texi does not depend on xgnatugn 
  # being built so we can distribute a pregenerated gnat_ugn_unw.info
---- a/gcc/ada/Makefile.in	2005-05-26 10:48:40.000000000 +0000
-+++ b/gcc/ada/Makefile.in	2005-05-26 10:59:25.000000000 +0000
+--- a/gcc/ada/gcc-interface/Makefile.in	2005-05-26 10:48:40.000000000 +0000
++++ b/gcc/ada/gcc-interface/Makefile.in	2005-05-26 10:59:25.000000000 +0000
 @@ -138,7 +138,7 @@
  objext = .o
  exeext =
@@ -51,15 +51,15 @@
 -		$(THREADSLIB)
 +		$(THREADSLIB) \
 +		./libgnat-$(LIBRARY_VERSION)$(soext)
- 	cd rts; $(LN_S) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
+ 	cd $(RTSDIR); $(LN_S) libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		libgnat$(soext)
- 	cd rts; $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
+ 	cd $(RTSDIR); $(LN_S) libgnarl$(hyphen)$(LIBRARY_VERSION)$(soext) \
 @@ -1995,7 +1996,7 @@
  	     THREAD_KIND="$(THREAD_KIND)" \
               gnatlib
- 	$(RM) rts/libgna*$(soext)
--	cd rts; ../../xgcc -B../../ -shared $(TARGET_LIBGCC2_CFLAGS) \
-+	cd rts; ../../xgcc -B../../ -shared -shared-libgcc $(TARGET_LIBGCC2_CFLAGS) \
+ 	$(RM) $(RTSDIR)/libgna*$(soext)
+-	cd $(RTSDIR); ../../xgcc -B../../ -shared $(TARGET_LIBGCC2_CFLAGS) \
++	cd $(RTSDIR); ../../xgcc -B../../ -shared -shared-libgcc $(TARGET_LIBGCC2_CFLAGS) \
  		-o libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) \
  		$(GNATRTL_NONTASKING_OBJS) $(LIBGNAT_OBJS) \
  		$(SO_OPTS)libgnat$(hyphen)$(LIBRARY_VERSION)$(soext) $(MISCLIB)

@@ -1,13 +1,13 @@
 --- a/gcc/doc/cpp.texi	2004-09-17 10:22:36.000000000 +0200
 +++ b/gcc/doc/cpp.texi	2004-09-26 10:58:58.166721432 +0200
-@@ -52,9 +52,9 @@
+@@ -50,9 +50,9 @@
  @set cppmanual
  
  @ifinfo
 -@dircategory Software development
 +@dircategory Programming Languages:
  @direntry
--* Cpp: (cpp).		       The GNU C preprocessor.
+-* Cpp: (cpp).                  The GNU C preprocessor.
 +* Cpp: (cpp).				The GNU C preprocessor
  @end direntry
  @end ifinfo
@@ -72,14 +72,14 @@
  @macro syntax{element}
 --- a/gcc/ada/gnat_ugn.texi	2005-12-06 23:45:52.983574000 +0100
 +++ b/gcc/ada/gnat_ugn.texi	2005-12-11 02:35:45.580878360 +0100
-@@ -99,9 +99,9 @@
- @end ifset
+@@ -109,9 +109,9 @@
+ @end macro
  
  @settitle @value{EDITION} User's Guide @value{PLATFORM}
 -@dircategory GNU Ada tools
 +@dircategory Programming Languages:
  @direntry
--* @value{EDITION} User's Guide (@value{FILE}) @value{PLATFORM}
+-* @value{EDITION} User's Guide: (gnat_ugn). @value{PLATFORM}
 +* GNAT User's Guide (gnat_ugn_unw).     GNAT User's Guide
  @end direntry
  
@@ -100,7 +100,7 @@
  the GNU Fortran compiler, (@command{gfortran}).
 --- a/gcc/java/gcj.texi	2006-07-02 15:30:47.000000000 +0200
 +++ b/gcc/java/gcj.texi	2006-07-02 21:15:25.663463500 +0200
-@@ -54,24 +54,19 @@
+@@ -53,29 +53,22 @@
  
  @ifinfo
  @format
@@ -111,7 +111,7 @@
 +* Gcj: (gcj).				Ahead-of-time compiler for the Java language
  @end direntry
  
--@dircategory Individual utilities
+ @dircategory Individual utilities
 +@dircategory Programming tools:
  @direntry
 -* jcf-dump: (gcj)Invoking jcf-dump.
@@ -125,42 +125,65 @@
 -                            Generate stubs for Remote Method Invocation.
 -* gc-analyze: (gcj)Invoking gc-analyze.
 -                            Analyze Garbage Collector (GC) memory dumps.
+-* aot-compile: (gcj)Invoking aot-compile.
+-                            Compile bytecode to native and generate databases.
+-* rebuild-gcj-db: (gcj)Invoking rebuild-gcj-db.
+-                            Merge the per-solib databases made by aot-compile
+-                            into one system-wide database.
 +* jcf-dump: (gcj)jcf-dump.		Print information about Java class files
 +* gij: (gcj)gij.			GNU interpreter for Java bytecode
 +* jv-convert: (gcj)jv-convert.		Convert file from one encoding to another
 +* gcj-dbtool: (gcj)gcj-dbtool.		Db tool.
 +* grmic: (gcj)grmic.			Generate stubs for Remote Method Invocation.
 +* gc-analyze: (gcj)gc-analyze.		Analyze Garbage Collector (GC) memory dumps.
++* aot-compile:				Compile bytecode to native and generate databases.
++* rebuild-gcj-db:			Merge the per-solib databases made by aot-compile into one system-wide database.
  @end direntry
  @end format
  
-@@ -104,17 +99,17 @@
+@@ -108,33 +101,31 @@
  @file{.class} files.
  
  @menu
--* Copying::		 The GNU General Public License
+-* Copying::             The GNU General Public License
 +* Copying::		The GNU General Public License
  * GNU Free Documentation License::
- 			How you can share and copy this manual
--* Invoking gcj::	Compiler options supported by @command{gcj}
-+* gcj::			Compiler options supported by @command{gcj}
- * Compatibility::	Compatibility between gcj and other tools for Java
+-                        How you can share and copy this manual
+-* Invoking gcj::        Compiler options supported by @command{gcj}
+-* Compatibility::       Compatibility between gcj and other tools for Java
 -* Invoking jcf-dump::   Print information about class files
--* Invoking gij::	Interpreting Java bytecodes
+-* Invoking gij::        Interpreting Java bytecodes
 -* Invoking gcj-dbtool:: Tool for manipulating class file databases.
 -* Invoking jv-convert:: Converting from one encoding to another
 -* Invoking grmic::      Generate stubs for Remote Method Invocation.
 -* Invoking gc-analyze:: Analyze Garbage Collector (GC) memory dumps.
+-* Invoking aot-compile:: Compile bytecode to native and generate databases.
+-* Invoking rebuild-gcj-db:: Merge the per-solib databases made by aot-compile
+-                            into one system-wide database.
+-* About CNI::           Description of the Compiled Native Interface
+-* System properties::   Modifying runtime behavior of the libgcj library
+-* Resources::           Where to look for more information
+-* Index::               Index.
++			How you can share and copy this manual
++* gcj::			Compiler options supported by @command{gcj}
++* Compatibility::	Compatibility between gcj and other tools for Java
 +* jcf-dump::		Print information about class files
 +* gij::			Interpreting Java bytecodes
++* gcj-dbtool::		Tool for manipulating class file databases.
 +* jv-convert::		Converting from one encoding to another
-+* gcj-dbtool::		Db tool.
 +* grmic::		Generate stubs for Remote Method Invocation.
 +* gc-analyze::		Analyze Garbage Collector (GC) memory dumps.
- * About CNI::           Description of the Compiled Native Interface
- * System properties::   Modifying runtime behavior of the libgcj library
- * Resources::		Where to look for more information
-@@ -127,7 +122,7 @@
++* aot-compile::		Compile bytecode to native and generate databases.
++* rebuild-gcj-db::	Merge the per-solib databases made by aot-compile into one system-wide database.
++* About CNI::		Description of the Compiled Native Interface
++* System properties::	Modifying runtime behavior of the libgcj library
++* Resources::		Where to look for more information
++* Index::		Index.
+ @end menu
+ 
+-
+ @include gpl_v3.texi
+ 
  @include fdl.texi
  
  
@@ -169,7 +192,7 @@
  @chapter Invoking gcj
  
  @c man title gcj Ahead-of-time compiler for the Java language
-@@ -670,8 +665,8 @@
+@@ -678,8 +669,8 @@
  @code{-findirect-dispatch} then add them to the system-wide
  classmap.db file using @code{gcj-dbtool}, they will be automatically
  loaded by the @code{libgcj} system classloader.  This is the new,
@@ -180,7 +203,7 @@
  
  @item
  The old classname-to-library lookup mechanism is still supported
-@@ -718,7 +713,7 @@
+@@ -726,7 +717,7 @@
  @end itemize
  
  
@@ -189,7 +212,7 @@
  @chapter Invoking jcf-dump
  
  @c man title jcf-dump print information about Java class files
-@@ -778,7 +773,7 @@
+@@ -786,7 +777,7 @@
  
  @c man end
  
@@ -198,7 +221,7 @@
  @chapter Invoking gij
  
  @c man title gij GNU interpreter for Java bytecode
-@@ -907,7 +902,7 @@
+@@ -915,7 +906,7 @@
  
  @c man end
  
@@ -207,7 +230,7 @@
  @chapter Invoking gcj-dbtool.
  
  @c man title gcj-dbtool Manipulate class file mapping databases for libgcj
-@@ -998,7 +993,7 @@
+@@ -1006,7 +997,7 @@
  
  @c man end
  
@@ -216,7 +239,7 @@
  @chapter Invoking jv-convert
  
  @c man title jv-convert Convert file from one encoding to another
-@@ -1057,7 +1052,7 @@
+@@ -1065,7 +1056,7 @@
  
  @c man end
  
@@ -225,7 +248,7 @@
  @chapter Invoking grmic
  
  @c man title grmic Generate stubs for Remote Method Invocation
-@@ -1136,7 +1131,7 @@
+@@ -1144,7 +1135,7 @@
  @c man end
  
  
@@ -234,6 +257,24 @@
  @chapter Invoking gc-analyze
  
  @c man title gc-analyze Analyze Garbage Collector (GC) memory dumps
+@@ -1227,7 +1218,7 @@
+ 
+ @c man end
+ 
+-@node Invoking aot-compile
++@node aot-compile
+ @chapter Invoking aot-compile
+ 
+ @c man title aot-compile Compile bytecode to native and generate databases
+@@ -1285,7 +1276,7 @@
+ 
+ @c man end
+ 
+-@node Invoking rebuild-gcj-db
++@node rebuild-gcj-db
+ @chapter Invoking rebuild-gcj-db
+ 
+ @c man title rebuild-gcj-db Merge the per-solib databases made by aot-compile into one system-wide database.
 --- a/gcc/ada/gnat_rm.texi	2005-11-30 12:12:06.000000000 +0100
 +++ b/gcc/ada/gnat_rm.texi	2005-12-11 02:36:14.863426736 +0100
 @@ -26,9 +26,9 @@
