@@ -1,7 +1,7 @@
 Index: Makefile.in
 ===================================================================
---- Makefile.in	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ Makefile.in	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- Makefile.in	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ Makefile.in	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -51167,6 +51167,8 @@
  # Provide a GCC build when we're building target libraries.  This does
  # not work as a dependency, just as the minimum necessary to avoid errors.
@@ -13,8 +13,8 @@ Index: Makefile.in
  # Same as unstage, but not phony and defaulting to stage1-start.  We place
 Index: gcc/regrename.c
 ===================================================================
---- gcc/regrename.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/regrename.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/regrename.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/regrename.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -820,7 +820,7 @@
  		    OP_IN, 0);
  
@@ -24,10 +24,23 @@ Index: gcc/regrename.c
  	  for (i = 0; i < n_ops; i++)
  	    *recog_data.operand_loc[i] = old_operands[i];
  	  if (recog_data.n_dups)
+Index: gcc/doc/extend.texi
+===================================================================
+--- gcc/doc/extend.texi	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/doc/extend.texi	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -2687,7 +2687,7 @@
+ the loader, which might assume EAX, EDX and ECX can be clobbered, as
+ per the standard calling conventions.  Solaris 8 is affected by this.
+ GNU systems with GLIBC 2.1 or higher, and FreeBSD, are believed to be
+-safe since the loaders there save all registers.  (Lazy binding can be
++safe since the loaders there save EAX, EDX and ECX.  (Lazy binding can be
+ disabled with the linker or the loader if desired, to avoid the
+ problem.)
+ 
 Index: gcc/doc/invoke.texi
 ===================================================================
---- gcc/doc/invoke.texi	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/doc/invoke.texi	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/doc/invoke.texi	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/doc/invoke.texi	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -5406,8 +5406,9 @@
  This option implies @option{-fmerge-constants}.  In addition to
  @option{-fmerge-constants} this considers e.g.@: even constant initialized
@@ -42,15 +55,15 @@ Index: gcc/doc/invoke.texi
  @item -fmodulo-sched
 Index: gcc/DATESTAMP
 ===================================================================
---- gcc/DATESTAMP	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/DATESTAMP	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/DATESTAMP	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/DATESTAMP	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1 +1 @@
 -20090124
-+20090307
++20090331
 Index: gcc/tree.h
 ===================================================================
---- gcc/tree.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/tree.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/tree.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/tree.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -4753,6 +4753,7 @@
  
  extern tree fold (tree);
@@ -61,8 +74,8 @@ Index: gcc/tree.h
  extern tree fold_build1_stat (enum tree_code, tree, tree MEM_STAT_DECL);
 Index: gcc/fold-const.c
 ===================================================================
---- gcc/fold-const.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/fold-const.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/fold-const.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fold-const.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -8519,6 +8519,24 @@
      } /* switch (code) */
  }
@@ -100,8 +113,8 @@ Index: gcc/fold-const.c
  
 Index: gcc/real.c
 ===================================================================
---- gcc/real.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/real.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/real.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/real.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -905,15 +905,23 @@
        /* Sign of zero doesn't matter for compares.  */
        return 0;
@@ -161,8 +174,8 @@ Index: gcc/real.c
  
 Index: gcc/real.h
 ===================================================================
---- gcc/real.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/real.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/real.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/real.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -413,6 +413,11 @@
  /* Replace R by 1/R in the given machine mode, if the result is exact.  */
  extern bool exact_real_inverse (enum machine_mode, REAL_VALUE_TYPE *);
@@ -177,14 +190,14 @@ Index: gcc/real.h
  
 Index: gcc/DEV-PHASE
 ===================================================================
---- gcc/DEV-PHASE	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/DEV-PHASE	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/DEV-PHASE	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/DEV-PHASE	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1 @@
 +prerelease
 Index: gcc/tree-ssa-sccvn.c
 ===================================================================
---- gcc/tree-ssa-sccvn.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/tree-ssa-sccvn.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/tree-ssa-sccvn.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/tree-ssa-sccvn.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1507,7 +1507,7 @@
    if (op0 == TREE_OPERAND (rhs, 0))
      return rhs;
@@ -196,9 +209,56 @@ Index: gcc/tree-ssa-sccvn.c
        STRIP_USELESS_TYPE_CONVERSION (result);
 Index: gcc/ChangeLog
 ===================================================================
---- gcc/ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -1,3 +1,319 @@
+--- gcc/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,366 @@
++2009-03-26  Ben Elliston  <bje@au.ibm.com>
++
++	Backport from mainline:
++	2009-02-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/39175
++	* c-common.c (c_determine_visibility): If visibility changed and
++	DECL_RTL has been already set, call make_decl_rtl to update symbol
++	flags.
++
++2009-03-24  Ralf Corsépius <ralf.corsepius@rtems.org>
++
++	* config/m68k/t-rtems: Add m5329 multilib.
++
++2009-03-23  Uros Bizjak  <ubizjak@gmail.com>
++
++	Backport from mainline:
++	2009-03-17  Uros Bizjak  <ubizjak@gmail.com>
++
++	PR target/39482
++	* config/i386/i386.md (*truncdfsf_mixed): Avoid combining registers
++	from different units in a single alternative.
++	(*truncdfsf_i387): Ditto.
++	(*truncxfsf2_mixed): Ditto.
++	(*truncxfdf2_mixed): Ditto.
++
++2009-03-17  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-17  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/39477
++	* doc/extend.texi: Correct register behavior for regparm on Intel 386.
++
++2009-03-12  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-12  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/39327
++	* config/i386/sse.md (sse3_addsubv4sf3): Correct item bits.
++	(sse3_addsubv2df3): Likewise.
++
++2009-03-09  Denis Chertykov  <denisc@overta.ru>
++
++	* config/avr/avr.md ("andsi3"): Fix wrong cc attribute.
++
 +2009-03-02  Richard Sandiford  <rdsandiford@googlemail.com>
 +
 +	* config/mips/mips.c (mips_mdebug_abi_name): Fix the handling
@@ -518,7 +578,7 @@ Index: gcc/ChangeLog
  2009-01-24  Release Manager
  
  	* GCC 4.3.3 released.
-@@ -5,8 +321,7 @@
+@@ -5,8 +368,7 @@
  2009-01-20  Joseph Myers  <joseph@codesourcery.com>
  
  	PR other/38758
@@ -528,7 +588,7 @@ Index: gcc/ChangeLog
  
  2009-01-19  Richard Guenther  <rguenther@suse.de>
  
-@@ -41,7 +356,8 @@
+@@ -41,7 +403,8 @@
  	
  2009-01-11  Matthias Klose  <doko@ubuntu.com>
  
@@ -538,7 +598,7 @@ Index: gcc/ChangeLog
  	2008-05-04  Uros Bizjak  <ubizjak@gmail.com>
  
  	* config/i386/i386.md (*strmovsi_1): Simplify asm alternatives.
-@@ -509,8 +825,8 @@
+@@ -509,8 +872,8 @@
  	PR tree-optimization/37102
  	* tree-outof-ssa.c (remove_gimple_phi_args): Remove all the PHI args  
  	from a node. Check to see if another PHI is dead.
@@ -549,7 +609,7 @@ Index: gcc/ChangeLog
  	(rewrite_out_of_ssa): Call eliminate_useless_phis.
  
  2008-10-08  Simon Martin  <simartin@users.sourceforge.net>
-@@ -986,8 +1302,10 @@
+@@ -986,8 +1349,10 @@
  
  	(MFC_MIN_DMA_LIST_ELEMENTS): New define.
  	(MFC_MAX_DMA_LIST_ELEMENTS): Likewise.
@@ -564,8 +624,8 @@ Index: gcc/ChangeLog
  	(MFC_PUTS_CMD, MFC_PUTFS_CMD, MFC_PUTBS_CMD): Likewise.
 Index: gcc/testsuite/gcc.c-torture/execute/pr39100.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/pr39100.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/execute/pr39100.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/execute/pr39100.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/pr39100.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,65 @@
 +/* Bad PTA results (incorrect store handling) was causing us to delete
 +   *na = 0 store.  */
@@ -634,8 +694,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/pr39100.c
 +
 Index: gcc/testsuite/gcc.c-torture/execute/pr39228.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/pr39228.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/execute/pr39228.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/execute/pr39228.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/pr39228.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,36 @@
 +extern void abort (void);
 +
@@ -675,8 +735,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/pr39228.c
 +}
 Index: gcc/testsuite/gcc.c-torture/execute/pr39228.x
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/pr39228.x	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/execute/pr39228.x	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/execute/pr39228.x	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/pr39228.x	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,10 @@
 +if { [istarget "alpha*-*-*"] || [istarget "sh*-*-*"] } {
 +	# alpha and SH require -mieee for this test.
@@ -690,8 +750,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/pr39228.x
 +return 0
 Index: gcc/testsuite/gcc.c-torture/execute/shiftopt-1.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/shiftopt-1.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/gcc.c-torture/execute/shiftopt-1.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/execute/shiftopt-1.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.c-torture/execute/shiftopt-1.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -43,12 +43,6 @@
  
    if (0 >> x != 0)
@@ -707,8 +767,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/shiftopt-1.c
  int
 Index: gcc/testsuite/gcc.c-torture/execute/pr38969.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/pr38969.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/execute/pr38969.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/execute/pr38969.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/pr38969.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,25 @@
 +__complex__ float
 +__attribute__ ((noinline)) foo (__complex__ float x)
@@ -737,8 +797,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/pr38969.c
 +}
 Index: gcc/testsuite/gcc.c-torture/execute/struct-aliasing-1.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/execute/struct-aliasing-1.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/execute/struct-aliasing-1.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/execute/struct-aliasing-1.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/execute/struct-aliasing-1.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +struct S { float f; };
 +int __attribute__((noinline))
@@ -759,8 +819,8 @@ Index: gcc/testsuite/gcc.c-torture/execute/struct-aliasing-1.c
 +}
 Index: gcc/testsuite/gcc.c-torture/compile/pr38789.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/compile/pr38789.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr38789.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/compile/pr38789.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/compile/pr38789.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,18 @@
 +/* PR tree-optimization/38789 */
 +
@@ -782,8 +842,8 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr38789.c
 +}
 Index: gcc/testsuite/gcc.c-torture/compile/pr38359.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/compile/pr38359.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr38359.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/compile/pr38359.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/compile/pr38359.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +unsigned _ov_64_seek_lap (_Bool x1, _Bool x2, _Bool x3)
 +{
@@ -804,8 +864,8 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr38359.c
 +
 Index: gcc/testsuite/gcc.c-torture/compile/pr39041.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/compile/pr39041.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr39041.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/compile/pr39041.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/compile/pr39041.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,28 @@
 +int test_bit(int nr, void *addr)
 +{
@@ -837,8 +897,8 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr39041.c
 +}
 Index: gcc/testsuite/gcc.c-torture/compile/pr38926.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/compile/pr38926.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr38926.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/compile/pr38926.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/compile/pr38926.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,41 @@
 +static inline int foo (unsigned _si1)
 +{
@@ -883,8 +943,8 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr38926.c
 +
 Index: gcc/testsuite/gcc.c-torture/compile/pr38857.c
 ===================================================================
---- gcc/testsuite/gcc.c-torture/compile/pr38857.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr38857.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.c-torture/compile/pr38857.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.c-torture/compile/pr38857.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,22 @@
 +static const int vs_total_ac_bits = 2680;
 +typedef struct EncBlockInfo {
@@ -910,8 +970,8 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr38857.c
 +}
 Index: gcc/testsuite/gcc.target/i386/pr36578-1.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr36578-1.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/i386/pr36578-1.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/i386/pr36578-1.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr36578-1.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,22 @@
 +/* Test for unsafe floating-point conversions.  PR 36578.  */
 +/* { dg-do run } */
@@ -937,8 +997,8 @@ Index: gcc/testsuite/gcc.target/i386/pr36578-1.c
 +}
 Index: gcc/testsuite/gcc.target/i386/pr36578-2.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr36578-2.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/i386/pr36578-2.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/i386/pr36578-2.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr36578-2.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,23 @@
 +/* Test for unsafe floating-point conversions.  */
 +/* { dg-do run } */
@@ -965,8 +1025,8 @@ Index: gcc/testsuite/gcc.target/i386/pr36578-2.c
 +}
 Index: gcc/testsuite/gcc.target/i386/pr38988.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr38988.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/i386/pr38988.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/i386/pr38988.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr38988.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,24 @@
 +/* { dg-do compile } */
 +/* { dg-require-effective-target lp64 } */
@@ -994,8 +1054,8 @@ Index: gcc/testsuite/gcc.target/i386/pr38988.c
 +}
 Index: gcc/testsuite/gcc.target/i386/pr38931.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr38931.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/i386/pr38931.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/i386/pr38931.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr38931.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,23 @@
 +/* { dg-do compile } */
 +/* { dg-options "-O2 -msse" } */
@@ -1020,10 +1080,24 @@ Index: gcc/testsuite/gcc.target/i386/pr38931.c
 +      __builtin_prefetch (a0, 0);
 +    }
 +}
+Index: gcc/testsuite/gcc.target/i386/pr39482.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/pr39482.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr39482.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,9 @@
++/* { dg-do compile } */
++/* { dg-options "-mno-sse2" } */
++
++extern double log (double __x);
++
++double foo (unsigned long int m_liOutputBufferLen)
++{
++  return log ((double) m_liOutputBufferLen);
++}
 Index: gcc/testsuite/gcc.target/i386/pr39058.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pr39058.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/i386/pr39058.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/i386/pr39058.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/i386/pr39058.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,34 @@
 +/* PR inline-asm/39058 */
 +/* { dg-options "-O2" } */
@@ -1061,8 +1135,8 @@ Index: gcc/testsuite/gcc.target/i386/pr39058.c
 +}
 Index: gcc/testsuite/gcc.target/ia64/sibcall-opt-1.c
 ===================================================================
---- gcc/testsuite/gcc.target/ia64/sibcall-opt-1.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/ia64/sibcall-opt-1.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/ia64/sibcall-opt-1.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/ia64/sibcall-opt-1.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,12 @@
 +/* PR target/38056.  Do not do sibcall optimization across object file
 +   boundery when -mconstant-gp is not used.  */
@@ -1078,8 +1152,8 @@ Index: gcc/testsuite/gcc.target/ia64/sibcall-opt-1.c
 +}
 Index: gcc/testsuite/gcc.target/ia64/sibcall-opt-2.c
 ===================================================================
---- gcc/testsuite/gcc.target/ia64/sibcall-opt-2.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.target/ia64/sibcall-opt-2.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.target/ia64/sibcall-opt-2.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.target/ia64/sibcall-opt-2.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,12 @@
 +/* PR target/38056.  Do sibcall optimization across object file
 +   boundery when -mconstant-gp is used.  */
@@ -1093,10 +1167,25 @@ Index: gcc/testsuite/gcc.target/ia64/sibcall-opt-2.c
 +{
 +  return (bar(x + 1));
 +}
+Index: gcc/testsuite/gcc.dg/asm-b.c
+===================================================================
+--- gcc/testsuite/gcc.dg/asm-b.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.dg/asm-b.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -24,8 +24,8 @@
+ #if defined (__powerpc__) || defined (__PPC__) || defined (__ppc__) || defined (_POWER) || defined (__ppc64__)
+   __asm __volatile ("sthbrx %1,0,%2" : "=m" (*z) : "r" (y), "r" (z));
+ #elif defined __i386__ || defined __x86_64__
+-  __asm __volatile ("movb %b1,1(%2); movb %h1,(%2)" : "=m" (*z) : "r" (y), "r"
+-(z));
++  __asm __volatile ("movb %b1,1(%2)\n\tmovb %h1,(%2)"
++		    : "=m" (*z) : "Q" (y), "R" (z));
+ #endif
+   return (x & 1) == 0;
+ }
 Index: gcc/testsuite/gcc.dg/c90-flex-array-2.c
 ===================================================================
---- gcc/testsuite/gcc.dg/c90-flex-array-2.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/c90-flex-array-2.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/c90-flex-array-2.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/c90-flex-array-2.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,15 @@
 +/* [] does not indicate a flexible array member unless it is the field
 +   itself being declared as an incomplete array type rather than a
@@ -1115,8 +1204,8 @@ Index: gcc/testsuite/gcc.dg/c90-flex-array-2.c
 +}
 Index: gcc/testsuite/gcc.dg/attr-alias-4.c
 ===================================================================
---- gcc/testsuite/gcc.dg/attr-alias-4.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/attr-alias-4.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/attr-alias-4.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/attr-alias-4.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,4 @@
 +/* ICE on invalid alias attribute: PR 35434.  */
 +/* { dg-do compile } */
@@ -1124,8 +1213,8 @@ Index: gcc/testsuite/gcc.dg/attr-alias-4.c
 +typedef int i __attribute__((alias("j"))); /* { dg-warning "ignored" } */
 Index: gcc/testsuite/gcc.dg/pr38932.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38932.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38932.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38932.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38932.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,19 @@
 +/* { dg-do compile } */
 +/* { dg-options "-O2" } */
@@ -1146,10 +1235,33 @@ Index: gcc/testsuite/gcc.dg/pr38932.c
 +}
 +
 +
+Index: gcc/testsuite/gcc.dg/visibility-20.c
+===================================================================
+--- gcc/testsuite/gcc.dg/visibility-20.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/visibility-20.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,18 @@
++/* PR target/39175 */
++/* { dg-do compile } */
++/* { dg-require-visibility "" } */
++/* { dg-options "-O2 -fvisibility=hidden -fpic" { target fpic } } */
++
++__attribute__((noinline)) int
++foo (int x)
++{
++  return x;
++}
++
++int foo (int x);
++
++int
++bar (int x)
++{
++  return foo (x);
++}
 Index: gcc/testsuite/gcc.dg/pr38245-4.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38245-4.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38245-4.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38245-4.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38245-4.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,107 @@
 +/* PR rtl-optimization/38245 */
 +/* { dg-do compile } */
@@ -1260,8 +1372,8 @@ Index: gcc/testsuite/gcc.dg/pr38245-4.c
 +}
 Index: gcc/testsuite/gcc.dg/torture/pr39241.c
 ===================================================================
---- gcc/testsuite/gcc.dg/torture/pr39241.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/torture/pr39241.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/torture/pr39241.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/torture/pr39241.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,16 @@
 +/* { dg-do compile } */
 +/* { dg-options "-w" } */
@@ -1281,8 +1393,8 @@ Index: gcc/testsuite/gcc.dg/torture/pr39241.c
 +}
 Index: gcc/testsuite/gcc.dg/tree-ssa/struct-aliasing-1.c
 ===================================================================
---- gcc/testsuite/gcc.dg/tree-ssa/struct-aliasing-1.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/tree-ssa/struct-aliasing-1.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/tree-ssa/struct-aliasing-1.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/tree-ssa/struct-aliasing-1.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,15 @@
 +/* { dg-do "compile" } */
 +/* { dg-options "-O2 -fdump-tree-fre" } */
@@ -1301,8 +1413,8 @@ Index: gcc/testsuite/gcc.dg/tree-ssa/struct-aliasing-1.c
 +/* { dg-final { cleanup-tree-dump "fre" } } */
 Index: gcc/testsuite/gcc.dg/tls/diag-6.c
 ===================================================================
---- gcc/testsuite/gcc.dg/tls/diag-6.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/tls/diag-6.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/tls/diag-6.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/tls/diag-6.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,8 @@
 +/* Invalid tls_model attributes.  PR 35435.  */
 +/* { dg-require-effective-target tls } */
@@ -1314,8 +1426,8 @@ Index: gcc/testsuite/gcc.dg/tls/diag-6.c
 +__thread int b __attribute__((tls_model("unknown"))); /* { dg-error "tls_model argument must be one of" } */
 Index: gcc/testsuite/gcc.dg/pr38615.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38615.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38615.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38615.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38615.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,19 @@
 +/* { dg-do run } */
 +
@@ -1338,8 +1450,8 @@ Index: gcc/testsuite/gcc.dg/pr38615.c
 +}
 Index: gcc/testsuite/gcc.dg/pr39084.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr39084.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr39084.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr39084.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr39084.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,11 @@
 +/* { dg-do compile } */
 +/* { dg-options "-O2" } */
@@ -1354,8 +1466,8 @@ Index: gcc/testsuite/gcc.dg/pr39084.c
 +struct color { int j; }; /* { dg-error "redefinition of" } */
 Index: gcc/testsuite/gcc.dg/pr38364.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38364.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38364.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38364.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38364.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,79 @@
 +/* PR middle-end/38364 */
 +/* { dg-do run } */
@@ -1438,8 +1550,8 @@ Index: gcc/testsuite/gcc.dg/pr38364.c
 +}
 Index: gcc/testsuite/gcc.dg/pr38902.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38902.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38902.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38902.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38902.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,131 @@
 +/* PR target/38902 */
 +/* { dg-do run } */
@@ -1574,8 +1686,8 @@ Index: gcc/testsuite/gcc.dg/pr38902.c
 +}
 Index: gcc/testsuite/gcc.dg/struct/wo_prof_single_str_pointer.c
 ===================================================================
---- gcc/testsuite/gcc.dg/struct/wo_prof_single_str_pointer.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/gcc.dg/struct/wo_prof_single_str_pointer.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/struct/wo_prof_single_str_pointer.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.dg/struct/wo_prof_single_str_pointer.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -29,7 +29,9 @@
    if (p->a != res)
      abort ();
@@ -1589,8 +1701,8 @@ Index: gcc/testsuite/gcc.dg/struct/wo_prof_single_str_pointer.c
  /*--------------------------------------------------------------------------*/
 Index: gcc/testsuite/gcc.dg/struct/w_prof_single_str_global.c
 ===================================================================
---- gcc/testsuite/gcc.dg/struct/w_prof_single_str_global.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/gcc.dg/struct/w_prof_single_str_global.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/struct/w_prof_single_str_global.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.dg/struct/w_prof_single_str_global.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -22,7 +22,9 @@
    if (str.a != res)
      abort ();
@@ -1604,8 +1716,8 @@ Index: gcc/testsuite/gcc.dg/struct/w_prof_single_str_global.c
  /*--------------------------------------------------------------------------*/
 Index: gcc/testsuite/gcc.dg/struct/wo_prof_single_str_local.c
 ===================================================================
---- gcc/testsuite/gcc.dg/struct/wo_prof_single_str_local.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/gcc.dg/struct/wo_prof_single_str_local.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/struct/wo_prof_single_str_local.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.dg/struct/wo_prof_single_str_local.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -25,7 +25,9 @@
    if (str.a != res)
      abort ();
@@ -1619,8 +1731,8 @@ Index: gcc/testsuite/gcc.dg/struct/wo_prof_single_str_local.c
  /*--------------------------------------------------------------------------*/
 Index: gcc/testsuite/gcc.dg/struct/wo_prof_single_str_global.c
 ===================================================================
---- gcc/testsuite/gcc.dg/struct/wo_prof_single_str_global.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/gcc.dg/struct/wo_prof_single_str_global.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/struct/wo_prof_single_str_global.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.dg/struct/wo_prof_single_str_global.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -25,7 +25,9 @@
    if (str.a != res)
      abort ();
@@ -1634,8 +1746,8 @@ Index: gcc/testsuite/gcc.dg/struct/wo_prof_single_str_global.c
  /*--------------------------------------------------------------------------*/
 Index: gcc/testsuite/gcc.dg/c99-flex-array-6.c
 ===================================================================
---- gcc/testsuite/gcc.dg/c99-flex-array-6.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/c99-flex-array-6.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/c99-flex-array-6.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/c99-flex-array-6.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,15 @@
 +/* [] does not indicate a flexible array member unless it is the field
 +   itself being declared as an incomplete array type rather than a
@@ -1654,8 +1766,8 @@ Index: gcc/testsuite/gcc.dg/c99-flex-array-6.c
 +}
 Index: gcc/testsuite/gcc.dg/pr38245-3.c
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38245-3.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38245-3.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38245-3.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38245-3.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,112 @@
 +/* PR rtl-optimization/38245 */
 +/* { dg-do run } */
@@ -1771,8 +1883,8 @@ Index: gcc/testsuite/gcc.dg/pr38245-3.c
 +}
 Index: gcc/testsuite/gcc.dg/dfp/convert-bfp-13.c
 ===================================================================
---- gcc/testsuite/gcc.dg/dfp/convert-bfp-13.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/dfp/convert-bfp-13.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/dfp/convert-bfp-13.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/dfp/convert-bfp-13.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,20 @@
 +/* Test for bug where fold changed binary operation to decimal
 +   depending on typedefs.  */
@@ -1796,8 +1908,8 @@ Index: gcc/testsuite/gcc.dg/dfp/convert-bfp-13.c
 +}
 Index: gcc/testsuite/gcc.dg/dfp/pr39035.c
 ===================================================================
---- gcc/testsuite/gcc.dg/dfp/pr39035.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/dfp/pr39035.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/dfp/pr39035.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/dfp/pr39035.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,81 @@
 +/* { dg-do run } */
 +/* { dg-options "-std=gnu99 -O" } */
@@ -1882,8 +1994,8 @@ Index: gcc/testsuite/gcc.dg/dfp/pr39035.c
 +}
 Index: gcc/testsuite/gcc.dg/dfp/convert-dfp-fold-2.c
 ===================================================================
---- gcc/testsuite/gcc.dg/dfp/convert-dfp-fold-2.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/dfp/convert-dfp-fold-2.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/dfp/convert-dfp-fold-2.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/dfp/convert-dfp-fold-2.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +/* Test for bug where fold narrowed decimal floating-point
 +   operations.  */
@@ -1904,8 +2016,8 @@ Index: gcc/testsuite/gcc.dg/dfp/convert-dfp-fold-2.c
 +}
 Index: gcc/testsuite/gcc.dg/dfp/convert-bfp-14.c
 ===================================================================
---- gcc/testsuite/gcc.dg/dfp/convert-bfp-14.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/dfp/convert-bfp-14.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/dfp/convert-bfp-14.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/dfp/convert-bfp-14.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +/* Test for bug where fold narrowed decimal floating-point
 +   operations.  */
@@ -1926,8 +2038,8 @@ Index: gcc/testsuite/gcc.dg/dfp/convert-bfp-14.c
 +}
 Index: gcc/testsuite/gcc.dg/dfp/pr39034.c
 ===================================================================
---- gcc/testsuite/gcc.dg/dfp/pr39034.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/dfp/pr39034.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/dfp/pr39034.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/dfp/pr39034.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,110 @@
 +/* { dg-do run } */
 +/* { dg-options "-std=gnu99 -O" } */
@@ -2041,8 +2153,8 @@ Index: gcc/testsuite/gcc.dg/dfp/pr39034.c
 +}
 Index: gcc/testsuite/gcc.dg/pr38245-3.h
 ===================================================================
---- gcc/testsuite/gcc.dg/pr38245-3.h	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr38245-3.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/pr38245-3.h	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/pr38245-3.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,35 @@
 +/* PR rtl-optimization/38245 */
 +
@@ -2081,8 +2193,8 @@ Index: gcc/testsuite/gcc.dg/pr38245-3.h
 +     __attribute__((const, noinline));
 Index: gcc/testsuite/gcc.dg/noncompile/init-5.c
 ===================================================================
---- gcc/testsuite/gcc.dg/noncompile/init-5.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/noncompile/init-5.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/noncompile/init-5.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/noncompile/init-5.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,4 @@
 +/* Test for ICE after syntax error in initializer with range
 +   designator: PR 35446.  */
@@ -2090,16 +2202,16 @@ Index: gcc/testsuite/gcc.dg/noncompile/init-5.c
 +int a[2][2] = { [0 ... 1] = { ; } }; /* { dg-error "expected expression" } */
 Index: gcc/testsuite/gcc.dg/noncompile/pr35444-1.c
 ===================================================================
---- gcc/testsuite/gcc.dg/noncompile/pr35444-1.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/noncompile/pr35444-1.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/noncompile/pr35444-1.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/noncompile/pr35444-1.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,3 @@
 +/* PR 35444: ICE from pending VLA sizes in invalid parameter list.  */
 +void foo(int n, int a[n], int 0); /* { dg-error "expected" } */
 +void bar() {}
 Index: gcc/testsuite/gcc.dg/noncompile/pr35444-2.c
 ===================================================================
---- gcc/testsuite/gcc.dg/noncompile/pr35444-2.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/noncompile/pr35444-2.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/noncompile/pr35444-2.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/noncompile/pr35444-2.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,4 @@
 +/* PR 35444: ICE from pending VLA sizes in invalid parameter list.
 +   Similar case to the PR, but with "..." before the syntax error.  */
@@ -2107,8 +2219,8 @@ Index: gcc/testsuite/gcc.dg/noncompile/pr35444-2.c
 +void bar() {}
 Index: gcc/testsuite/gcc.dg/init-bad-4.c
 ===================================================================
---- gcc/testsuite/gcc.dg/init-bad-4.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/gcc.dg/init-bad-4.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/init-bad-4.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/gcc.dg/init-bad-4.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -2,4 +2,4 @@
  /* Origin: Richard Guenther <rguenth@gcc.gnu.org> */
  /* { dg-do compile } */
@@ -2117,8 +2229,8 @@ Index: gcc/testsuite/gcc.dg/init-bad-4.c
 +struct A { } a = (struct A) {{ (X)0 }};  /* { dg-error "no members|extra brace|near|undeclared|constant|compound|excess" } */
 Index: gcc/testsuite/gcc.dg/init-bad-6.c
 ===================================================================
---- gcc/testsuite/gcc.dg/init-bad-6.c	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/init-bad-6.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gcc.dg/init-bad-6.c	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gcc.dg/init-bad-6.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,12 @@
 +/* ICE arising from bug computing composite type of zero-length array
 +   types: PR 35433.  */
@@ -2134,9 +2246,60 @@ Index: gcc/testsuite/gcc.dg/init-bad-6.c
 +typeof(*(0 ? p : q)) x = { 0 }; /* { dg-warning "excess elements in array initializer|near initialization" } */
 Index: gcc/testsuite/ChangeLog
 ===================================================================
---- gcc/testsuite/ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -1,3 +1,335 @@
+--- gcc/testsuite/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,386 @@
++2009-03-26  Ben Elliston  <bje@au.ibm.com>
++
++	Backport from mainline:
++	2009-02-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/39175
++	* gcc.dg/visibility-20.c: New test.
++	* g++.dg/ext/visibility/visibility-11.C: New test.
++
++2009-03-23  Uros Bizjak  <ubizjak@gmail.com>
++
++	Backport from mainline:
++	2009-03-17  Uros Bizjak  <ubizjak@gmail.com>
++
++	PR target/39482
++	* gcc.target/i386/pr39482.c: New test.
++
++2009-03-18  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-18  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR c++/39425
++	* g++.dg/template/pr39425.C: New.
++
++	* g++.dg/template/spec33.C: Updated.
++
++2009-03-13  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-13  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR testsuite/39451
++	* gcc.dg/asm-b.c: Use "Q" constraint on %b1/%h1 and "R"
++	constraint on (%2).
++
++2009-03-11  Ulrich Weigand  <Ulrich.Weigand@de.ibm.com>
++
++	* g++.old-deja/g++.jason/thunk2.C: Skip on SPU.
++
++2009-03-07  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/39295
++	* gfortran.dg/interface_25.f90: New test.
++	* gfortran.dg/interface_26.f90: New test.
++
++2009-03-07  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/39292
++	* gfortran.dg/initialization_22.f90: New test.
++
 +2009-03-04  Jason Merrill  <jason@redhat.com>
 +	    Giovanni Bajo  <giovannibajo@gcc.gnu.org>
 +
@@ -2472,7 +2635,7 @@ Index: gcc/testsuite/ChangeLog
  2009-01-24  Release Manager
  
  	* GCC 4.3.3 released.
-@@ -89,7 +421,7 @@
+@@ -89,7 +472,7 @@
  
  	Backport from mainline:
  	2008-12-29  Dorit Nuzman  <dorit@il.ibm.com>
@@ -2481,7 +2644,7 @@ Index: gcc/testsuite/ChangeLog
  
  	PR tree-optimization/38529
  	* gcc.dg/vect/pr38529.c: New test.
-@@ -426,8 +758,8 @@
+@@ -426,8 +809,8 @@
  
  2008-11-14  Paul Thomas  <pault@gcc.gnu.org>
  
@@ -2492,10 +2655,22 @@ Index: gcc/testsuite/ChangeLog
  
  2008-11-13  Jason Merrill  <jason@redhat.com>
  
+Index: gcc/testsuite/g++.old-deja/g++.jason/thunk2.C
+===================================================================
+--- gcc/testsuite/g++.old-deja/g++.jason/thunk2.C	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/g++.old-deja/g++.jason/thunk2.C	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,6 +1,7 @@
+ // { dg-do run { target fpic } }
+ // { dg-options "-fPIC" }
+ // { dg-bogus "\[Uu\]nresolved symbol .(_GLOBAL_OFFSET_TABLE_|\[_.A-Za-z\]\[_.0-9A-Za-z\]*@(PLT|GOT|GOTOFF))|\[Bb\]ad fixup at .DATA.:" "PIC unsupported" { xfail *-*-netware* } 0 }
++// { dg-skip-if "requires unsupported run-time relocation" { spu-*-* } { "*" } { "" } }
+ // Test that non-variadic function calls using thunks and PIC work right.
+ 
+ struct A {
 Index: gcc/testsuite/g++.dg/other/pr38706.C
 ===================================================================
---- gcc/testsuite/g++.dg/other/pr38706.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/other/pr38706.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/other/pr38706.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/other/pr38706.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,19 @@
 +// PR target/38706
 +// { dg-do compile }
@@ -2516,10 +2691,33 @@ Index: gcc/testsuite/g++.dg/other/pr38706.C
 +};
 +
 +istrstream::~istrstream () {}
+Index: gcc/testsuite/g++.dg/ext/visibility/visibility-11.C
+===================================================================
+--- gcc/testsuite/g++.dg/ext/visibility/visibility-11.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/ext/visibility/visibility-11.C	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,18 @@
++// PR target/39175
++// { dg-do compile }
++// { dg-require-visibility "" }
++// { dg-options "-O2 -fvisibility=hidden -fpic" { target fpic } }
++
++__attribute__((noinline)) int
++foo (int x)
++{
++  return x;
++}
++
++int foo (int x);
++
++int
++bar (int x)
++{
++  return foo (x);
++}
 Index: gcc/testsuite/g++.dg/warn/Wstrict-aliasing-bogus-placement-new.C
 ===================================================================
---- gcc/testsuite/g++.dg/warn/Wstrict-aliasing-bogus-placement-new.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/warn/Wstrict-aliasing-bogus-placement-new.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/warn/Wstrict-aliasing-bogus-placement-new.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/warn/Wstrict-aliasing-bogus-placement-new.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,29 @@
 +/* { dg-do compile } */
 +/* { dg-options "-O2 -Wstrict-aliasing" } */
@@ -2552,8 +2750,8 @@ Index: gcc/testsuite/g++.dg/warn/Wstrict-aliasing-bogus-placement-new.C
 +
 Index: gcc/testsuite/g++.dg/warn/Wuninitialized-2.C
 ===================================================================
---- gcc/testsuite/g++.dg/warn/Wuninitialized-2.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/warn/Wuninitialized-2.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/warn/Wuninitialized-2.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/warn/Wuninitialized-2.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,53 @@
 +/* { dg-do compile } */
 +/* { dg-options "-O -Wuninitialized" } */
@@ -2610,8 +2808,8 @@ Index: gcc/testsuite/g++.dg/warn/Wuninitialized-2.C
 +
 Index: gcc/testsuite/g++.dg/warn/Wuninitialized-1.C
 ===================================================================
---- gcc/testsuite/g++.dg/warn/Wuninitialized-1.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/warn/Wuninitialized-1.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/warn/Wuninitialized-1.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/warn/Wuninitialized-1.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,15 @@
 +/* { dg-options "-O2 -Wuninitialized" } */
 +
@@ -2630,8 +2828,8 @@ Index: gcc/testsuite/g++.dg/warn/Wuninitialized-1.C
 +
 Index: gcc/testsuite/g++.dg/parse/dtor14.C
 ===================================================================
---- gcc/testsuite/g++.dg/parse/dtor14.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/parse/dtor14.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/parse/dtor14.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/parse/dtor14.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,8 @@
 +// PR c++/39054
 +
@@ -2643,8 +2841,8 @@ Index: gcc/testsuite/g++.dg/parse/dtor14.C
 +}
 Index: gcc/testsuite/g++.dg/parse/dtor15.C
 ===================================================================
---- gcc/testsuite/g++.dg/parse/dtor15.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/parse/dtor15.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/parse/dtor15.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/parse/dtor15.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,16 @@
 +// PR c++/39225
 +
@@ -2664,8 +2862,8 @@ Index: gcc/testsuite/g++.dg/parse/dtor15.C
 +}
 Index: gcc/testsuite/g++.dg/cpp0x/decltype16.C
 ===================================================================
---- gcc/testsuite/g++.dg/cpp0x/decltype16.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/cpp0x/decltype16.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/cpp0x/decltype16.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/cpp0x/decltype16.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,10 @@
 +// PR c++/39070
 +// { dg-options "-std=c++0x" }
@@ -2679,8 +2877,8 @@ Index: gcc/testsuite/g++.dg/cpp0x/decltype16.C
 +typedef char type[junk<int>::value==sizeof(char) ? 1 : -1];
 Index: gcc/testsuite/g++.dg/torture/pr38745.C
 ===================================================================
---- gcc/testsuite/g++.dg/torture/pr38745.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/torture/pr38745.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/torture/pr38745.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/torture/pr38745.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,36 @@
 +/* { dg-do compile } */
 +
@@ -2718,10 +2916,21 @@ Index: gcc/testsuite/g++.dg/torture/pr38745.C
 +  return c64;
 +}
 +
+Index: gcc/testsuite/g++.dg/template/spec33.C
+===================================================================
+--- gcc/testsuite/g++.dg/template/spec33.C	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/g++.dg/template/spec33.C	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -3,5 +3,5 @@
+ struct A
+ {
+     template<int> static void foo   () {}
+-    template<>    static void foo<0>() {}  // { dg-error "explicit" }
++    template<>    static void foo<0>() {}  // { dg-error "explicit|template" }
+ }; 
 Index: gcc/testsuite/g++.dg/template/dependent-name5.C
 ===================================================================
---- gcc/testsuite/g++.dg/template/dependent-name5.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/template/dependent-name5.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/template/dependent-name5.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/dependent-name5.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,45 @@
 +// PR c++/9634, c++/29469, c++/29607
 +// Contributed by: Giovanni Bajo <giovannibajo at gcc dot gnu dot org>
@@ -2770,8 +2979,8 @@ Index: gcc/testsuite/g++.dg/template/dependent-name5.C
 +};
 Index: gcc/testsuite/g++.dg/template/func2.C
 ===================================================================
---- gcc/testsuite/g++.dg/template/func2.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/template/func2.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/template/func2.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/func2.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,12 @@
 +// { dg-do compile }
 +
@@ -2787,8 +2996,8 @@ Index: gcc/testsuite/g++.dg/template/func2.C
 +foo<int,&f> m_foo;
 Index: gcc/testsuite/g++.dg/template/array20.C
 ===================================================================
---- gcc/testsuite/g++.dg/template/array20.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/template/array20.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/template/array20.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/array20.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,10 @@
 +// PR c++/38950
 +
@@ -2802,8 +3011,8 @@ Index: gcc/testsuite/g++.dg/template/array20.C
 +}
 Index: gcc/testsuite/g++.dg/template/typename15.C
 ===================================================================
---- gcc/testsuite/g++.dg/template/typename15.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/template/typename15.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/template/typename15.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/typename15.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,12 @@
 +// PR37314 ice-on-valid-code, from w.doeringer
 +template <typename T>
@@ -2819,8 +3028,8 @@ Index: gcc/testsuite/g++.dg/template/typename15.C
 +
 Index: gcc/testsuite/g++.dg/template/dtor5.C
 ===================================================================
---- gcc/testsuite/g++.dg/template/dtor5.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/template/dtor5.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/template/dtor5.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/dtor5.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,21 @@
 +// PR c++/23287
 +
@@ -2845,8 +3054,8 @@ Index: gcc/testsuite/g++.dg/template/dtor5.C
 +}
 Index: gcc/testsuite/g++.dg/template/typename16.C
 ===================================================================
---- gcc/testsuite/g++.dg/template/typename16.C	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/template/typename16.C	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/g++.dg/template/typename16.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/typename16.C	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,25 @@
 +// PR37314 rejects-valid, from w.doeringer
 +template <typename T>
@@ -2873,10 +3082,33 @@ Index: gcc/testsuite/g++.dg/template/typename16.C
 +}
 +
 +
+Index: gcc/testsuite/g++.dg/template/pr39425.C
+===================================================================
+--- gcc/testsuite/g++.dg/template/pr39425.C	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/g++.dg/template/pr39425.C	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,18 @@
++// PR c++/39425
++// { dg-do compile }
++
++class a {
++
++  template<unsigned int s>
++    struct _rec {
++      static const char size = _rec< (s >> 1) >::size;
++    };
++
++  template<>	// { dg-error "explicit" }
++  struct _rec <0> {
++    static const char size = 0;
++  };
++
++  static const unsigned int value = _rec < 1 >::size;
++
++}		// { dg-error "unqualified-id" }
 Index: gcc/testsuite/objc.dg/gnu-encoding/gnu-encoding.exp
 ===================================================================
---- gcc/testsuite/objc.dg/gnu-encoding/gnu-encoding.exp	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/testsuite/objc.dg/gnu-encoding/gnu-encoding.exp	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/objc.dg/gnu-encoding/gnu-encoding.exp	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/testsuite/objc.dg/gnu-encoding/gnu-encoding.exp	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -37,8 +37,20 @@
  set generator_src "$generator_src $srcdir/$subdir/generate-random.c"
  set generator_src "$generator_src $srcdir/$subdir/generate-random_r.c"
@@ -2900,8 +3132,8 @@ Index: gcc/testsuite/objc.dg/gnu-encoding/gnu-encoding.exp
      file mkdir $tstobjdir
 Index: gcc/testsuite/gfortran.dg/mvbits_5.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/mvbits_5.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/mvbits_5.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/mvbits_5.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/mvbits_5.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +! { dg-do run }
 +
@@ -2922,8 +3154,8 @@ Index: gcc/testsuite/gfortran.dg/mvbits_5.f90
 +END SUBROUTINE
 Index: gcc/testsuite/gfortran.dg/mvbits_6.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/mvbits_6.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/mvbits_6.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/mvbits_6.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/mvbits_6.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,33 @@
 +! { dg-do compile }
 +
@@ -2960,8 +3192,8 @@ Index: gcc/testsuite/gfortran.dg/mvbits_6.f90
 +      end
 Index: gcc/testsuite/gfortran.dg/mvbits_7.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/mvbits_7.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/mvbits_7.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/mvbits_7.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/mvbits_7.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,30 @@
 +! { dg-do run }
 +
@@ -2993,10 +3225,25 @@ Index: gcc/testsuite/gfortran.dg/mvbits_7.f90
 +                 6, x(-MF4:-MF1:-NF1, -MF1:-MF3)%i, 9)
 +  END SUBROUTINE
 +end
+Index: gcc/testsuite/gfortran.dg/initialization_22.f90
+===================================================================
+--- gcc/testsuite/gfortran.dg/initialization_22.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/initialization_22.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,10 @@
++! { dg-do run }
++! tests the fix for PR39292, where the intitialization expression
++! did not simplify and caused an ICE in gfc_conv_array_initializer.
++!
++! Contributed by Richard Guenther <rguenth@gcc.gnu.org>
++!
++  integer :: n
++  real, dimension(2) :: a = (/ ( (float(n))**(1.0), n=1,2) /)
++  if (any (a .ne. (/ ( (float(n))**(1.0), n=1,2) /))) call abort
++end
 Index: gcc/testsuite/gfortran.dg/mvbits_8.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/mvbits_8.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/mvbits_8.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/mvbits_8.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/mvbits_8.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,36 @@
 +! { dg-do run }
 +
@@ -3036,8 +3283,8 @@ Index: gcc/testsuite/gfortran.dg/mvbits_8.f90
 +END PROGRAM main
 Index: gcc/testsuite/gfortran.dg/host_assoc_blockdata_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/host_assoc_blockdata_1.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/host_assoc_blockdata_1.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/host_assoc_blockdata_1.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/host_assoc_blockdata_1.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,11 @@
 +! { dg-do compile }
 +! PR 38672 - this used to ICE.
@@ -3050,10 +3297,60 @@ Index: gcc/testsuite/gfortran.dg/host_assoc_blockdata_1.f90
 +BLOCK DATA
 +   use globals
 +END BLOCK DATA
+Index: gcc/testsuite/gfortran.dg/interface_25.f90
+===================================================================
+--- gcc/testsuite/gfortran.dg/interface_25.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/interface_25.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,45 @@
++! { dg-do compile }
++! Tests the fix for PR39295, in which the check of the interfaces
++! at lines 25 and 42 failed because opfunc1 is identified as a 
++! function by usage, whereas opfunc2 is not.
++!
++! Contributed by Jon Hurst <jhurst@ucar.edu>
++!
++MODULE  funcs
++CONTAINS
++  INTEGER FUNCTION test1(a,b,opfunc1) 
++    INTEGER :: a,b
++    INTEGER, EXTERNAL :: opfunc1
++    test1 = opfunc1( a, b ) 
++  END FUNCTION test1
++  INTEGER FUNCTION sumInts(a,b)
++    INTEGER :: a,b
++    sumInts = a + b
++  END FUNCTION sumInts
++END MODULE funcs
++
++PROGRAM test
++  USE funcs 
++  INTEGER :: rs
++  INTEGER, PARAMETER :: a = 2, b = 1
++  rs = recSum( a, b, test1, sumInts )
++  write(*,*) "Results", rs
++CONTAINS
++  RECURSIVE INTEGER FUNCTION recSum( a,b,UserFunction,UserOp ) RESULT( res )
++    IMPLICIT NONE
++    INTEGER :: a,b
++    INTERFACE 
++       INTEGER FUNCTION UserFunction(a,b,opfunc2) 
++         INTEGER :: a,b
++         INTEGER, EXTERNAL :: opfunc2
++       END FUNCTION UserFunction
++    END INTERFACE
++    INTEGER, EXTERNAL :: UserOp 
++
++    res = UserFunction( a,b, UserOp )
++
++    if( res .lt. 10 ) then
++       res = recSum( a, res, UserFunction, UserOp ) 
++    end if
++  END FUNCTION recSum
++END PROGRAM test
 Index: gcc/testsuite/gfortran.dg/host_assoc_blockdata_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/host_assoc_blockdata_2.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/host_assoc_blockdata_2.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/host_assoc_blockdata_2.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/host_assoc_blockdata_2.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +! { dg-do compile }
 +MODULE globals
@@ -3072,10 +3369,61 @@ Index: gcc/testsuite/gfortran.dg/host_assoc_blockdata_2.f90
 +  use globals
 +  common /co/ pdm_bps ! { dg-error "already in a COMMON block" }
 +end program main
+Index: gcc/testsuite/gfortran.dg/interface_26.f90
+===================================================================
+--- gcc/testsuite/gfortran.dg/interface_26.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/interface_26.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,46 @@
++! { dg-do compile }
++! Tests the fix for PR39295, in which the check of the interfaces
++! at lines 26 and 43 failed because opfunc1 is identified as a 
++! function by usage, whereas opfunc2 is not. This testcase checks
++! that TKR is stll OK in these cases.
++!
++! Contributed by Jon Hurst <jhurst@ucar.edu>
++!
++MODULE  funcs
++CONTAINS
++  INTEGER FUNCTION test1(a,b,opfunc1) 
++    INTEGER :: a,b
++    INTEGER, EXTERNAL :: opfunc1
++    test1 = opfunc1( a, b ) 
++  END FUNCTION test1
++  INTEGER FUNCTION sumInts(a,b)
++    INTEGER :: a,b
++    sumInts = a + b
++  END FUNCTION sumInts
++END MODULE funcs
++
++PROGRAM test
++  USE funcs 
++  INTEGER :: rs
++  INTEGER, PARAMETER :: a = 2, b = 1
++  rs = recSum( a, b, test1, sumInts ) ! { dg-error "Type/rank mismatch in argument" }
++  write(*,*) "Results", rs
++CONTAINS
++  RECURSIVE INTEGER FUNCTION recSum( a,b,UserFunction,UserOp ) RESULT( res )
++    IMPLICIT NONE
++    INTEGER :: a,b
++    INTERFACE 
++       INTEGER FUNCTION UserFunction(a,b,opfunc2) 
++         INTEGER :: a,b
++         REAL, EXTERNAL :: opfunc2
++       END FUNCTION UserFunction
++    END INTERFACE
++    INTEGER, EXTERNAL :: UserOp 
++
++    res = UserFunction( a,b, UserOp )
++
++    if( res .lt. 10 ) then
++       res = recSum( a, res, UserFunction, UserOp ) 
++    end if
++  END FUNCTION recSum
++END PROGRAM test
 Index: gcc/testsuite/gfortran.dg/bound_6.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/bound_6.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/bound_6.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/bound_6.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/bound_6.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,48 @@
 +! { dg-do run }
 +! Test the fix for PR38852 and PR39006 in which LBOUND did not work
@@ -3127,8 +3475,8 @@ Index: gcc/testsuite/gfortran.dg/bound_6.f90
 +END SUBROUTINE
 Index: gcc/testsuite/gfortran.dg/module_commons_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/module_commons_3.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/module_commons_3.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/module_commons_3.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/module_commons_3.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,57 @@
 +! { dg-do run }
 +!
@@ -3189,8 +3537,8 @@ Index: gcc/testsuite/gfortran.dg/module_commons_3.f90
 +! { dg-final { cleanup-modules "TEST2 TEST3 TEST4" } }
 Index: gcc/testsuite/gfortran.dg/bounds_5.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/bounds_5.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/bounds_5.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/bounds_5.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/bounds_5.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,26 @@
 +! { dg-do run }
 +!
@@ -3220,8 +3568,8 @@ Index: gcc/testsuite/gfortran.dg/bounds_5.f90
 +       end
 Index: gcc/testsuite/gfortran.dg/host_assoc_function_7.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/host_assoc_function_7.f90	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/host_assoc_function_7.f90	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/host_assoc_function_7.f90	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/host_assoc_function_7.f90	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,41 @@
 +! { dg-do run }
 +! Tests the fix for PR38907, in which any expressions, including unary plus,
@@ -3266,8 +3614,8 @@ Index: gcc/testsuite/gfortran.dg/host_assoc_function_7.f90
 +! { dg-final { cleanup-modules "sa0054_stuff" } }
 Index: gcc/testsuite/gfortran.dg/pr38868.f
 ===================================================================
---- gcc/testsuite/gfortran.dg/pr38868.f	(.../tags/gcc_4_3_3_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.dg/pr38868.f	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/testsuite/gfortran.dg/pr38868.f	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ gcc/testsuite/gfortran.dg/pr38868.f	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -0,0 +1,17 @@
 +! { dg-do compile }
 +! { dg-options "-O2 -fdump-rtl-expand" }
@@ -3288,8 +3636,8 @@ Index: gcc/testsuite/gfortran.dg/pr38868.f
 +! { dg-final { cleanup-rtl-dump "expand" } } */
 Index: gcc/cp/typeck.c
 ===================================================================
---- gcc/cp/typeck.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/typeck.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/typeck.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/typeck.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -608,6 +608,20 @@
  
    code1 = TREE_CODE (t1);
@@ -3348,8 +3696,8 @@ Index: gcc/cp/typeck.c
        return error_mark_node;
 Index: gcc/cp/class.c
 ===================================================================
---- gcc/cp/class.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/class.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/class.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/class.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -5688,6 +5688,9 @@
  {
    int i;
@@ -3362,8 +3710,8 @@ Index: gcc/cp/class.c
    for (i = current_class_depth; i > 0; --i)
 Index: gcc/cp/decl.c
 ===================================================================
---- gcc/cp/decl.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/decl.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/decl.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/decl.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -2978,12 +2978,6 @@
    gcc_assert (TREE_CODE (name) == IDENTIFIER_NODE);
    gcc_assert (TYPE_P (context));
@@ -3456,8 +3804,8 @@ Index: gcc/cp/decl.c
  	      }
 Index: gcc/cp/cp-tree.h
 ===================================================================
---- gcc/cp/cp-tree.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/cp-tree.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/cp-tree.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/cp-tree.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -4460,6 +4460,7 @@
  extern tree maybe_get_template_decl_from_type_decl (tree);
  extern int processing_template_parmlist;
@@ -3477,9 +3825,29 @@ Index: gcc/cp/cp-tree.h
  extern tree finish_pseudo_destructor_expr       (tree, tree, tree);
 Index: gcc/cp/ChangeLog
 ===================================================================
---- gcc/cp/ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -1,3 +1,56 @@
+--- gcc/cp/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,76 @@
++2009-03-26  Ben Elliston  <bje@au.ibm.com>
++
++	Backport from mainline:
++	2009-02-19  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/39175
++	* decl2.c (determine_visibility): If visibility changed and
++	DECL_RTL has been already set, call make_decl_rtl to update symbol
++	flags.
++
++2009-03-18  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-18  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR c++/39425
++	* parser.c (cp_parser_explicit_specialization): Don't skip the
++	rest of the specialization when begin_specialization returns
++	false.
++
 +2009-03-04  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/9634
@@ -3538,8 +3906,8 @@ Index: gcc/cp/ChangeLog
  	* GCC 4.3.3 released.
 Index: gcc/cp/pt.c
 ===================================================================
---- gcc/cp/pt.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/pt.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/pt.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/pt.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -4555,6 +4555,13 @@
        expr = convert_nontype_argument_function (type, expr);
        if (!expr || expr == error_mark_node)
@@ -3606,8 +3974,8 @@ Index: gcc/cp/pt.c
    if (DECL_P (name)
 Index: gcc/cp/semantics.c
 ===================================================================
---- gcc/cp/semantics.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/semantics.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/semantics.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/semantics.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1832,10 +1832,14 @@
     qualified.  For example a call to `X::f' never generates a virtual
     call.)
@@ -3642,10 +4010,57 @@ Index: gcc/cp/semantics.c
      }
    else if (TREE_CODE (fn) == PSEUDO_DTOR_EXPR)
      {
+Index: gcc/cp/decl2.c
+===================================================================
+--- gcc/cp/decl2.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/decl2.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,6 +1,6 @@
+ /* Process declarations and variables for C++ compiler.
+    Copyright (C) 1988, 1992, 1993, 1994, 1995, 1996, 1997, 1998,
+-   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008
++   1999, 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009
+    Free Software Foundation, Inc.
+    Hacked by Michael Tiemann (tiemann@cygnus.com)
+ 
+@@ -1887,6 +1887,8 @@
+ {
+   tree class_type = NULL_TREE;
+   bool use_template;
++  bool orig_visibility_specified;
++  enum symbol_visibility orig_visibility;
+ 
+   /* Remember that all decls get VISIBILITY_DEFAULT when built.  */
+ 
+@@ -1899,6 +1901,9 @@
+      maybe_clone_body.  */
+   gcc_assert (!DECL_CLONED_FUNCTION_P (decl));
+ 
++  orig_visibility_specified = DECL_VISIBILITY_SPECIFIED (decl);
++  orig_visibility = DECL_VISIBILITY (decl);
++
+   if (TREE_CODE (decl) == TYPE_DECL)
+     {
+       if (CLASS_TYPE_P (TREE_TYPE (decl)))
+@@ -2019,6 +2024,15 @@
+ 	  || ! DECL_VISIBILITY_SPECIFIED (decl))
+ 	constrain_visibility (decl, tvis);
+     }
++
++  /* If visibility changed and DECL already has DECL_RTL, ensure
++     symbol flags are updated.  */
++  if ((DECL_VISIBILITY (decl) != orig_visibility
++       || DECL_VISIBILITY_SPECIFIED (decl) != orig_visibility_specified)
++      && ((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
++	  || TREE_CODE (decl) == FUNCTION_DECL)
++      && DECL_RTL_SET_P (decl))
++    make_decl_rtl (decl);
+ }
+ 
+ /* By default, static data members and function members receive
 Index: gcc/cp/parser.c
 ===================================================================
---- gcc/cp/parser.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/cp/parser.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/cp/parser.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/cp/parser.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -3791,6 +3791,8 @@
  	    parser->scope = NULL_TREE;
  	    parser->object_scope = NULL_TREE;
@@ -3681,7 +4096,15 @@ Index: gcc/cp/parser.c
  	  /* Do not do this for dtors (or ctors), since they never
  	     need the template keyword before their name.  */
  	  && !constructor_name_p (identifier, parser->scope))
-@@ -16214,35 +16226,11 @@
+@@ -10485,7 +10497,6 @@
+   if (!begin_specialization ())
+     {
+       end_specialization ();
+-      cp_parser_skip_to_end_of_block_or_statement (parser);
+       return;
+     }
+ 
+@@ -16214,35 +16225,11 @@
  	 cannot look up the name if the scope is not a class type; it
  	 might, for example, be a template type parameter.  */
        dependent_p = (TYPE_P (parser->scope)
@@ -3721,7 +4144,7 @@ Index: gcc/cp/parser.c
        else
  	{
  	  tree pushed_scope = NULL_TREE;
-@@ -16263,14 +16251,42 @@
+@@ -16263,14 +16250,42 @@
  					/*complain=*/true);
  
  	  /* If we have a single function from a using decl, pull it out.  */
@@ -3768,8 +4191,8 @@ Index: gcc/cp/parser.c
      }
 Index: gcc/tree-ssa-ccp.c
 ===================================================================
---- gcc/tree-ssa-ccp.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/tree-ssa-ccp.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/tree-ssa-ccp.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/tree-ssa-ccp.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -938,7 +938,7 @@
        if ((code == NOP_EXPR || code == CONVERT_EXPR)
  	  && useless_type_conversion_p (TREE_TYPE (rhs), TREE_TYPE (op0)))
@@ -3781,8 +4204,8 @@ Index: gcc/tree-ssa-ccp.c
    /* Binary and comparison operators.  We know one or both of the
 Index: gcc/recog.c
 ===================================================================
---- gcc/recog.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/recog.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/recog.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/recog.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,6 +1,6 @@
  /* Subroutines used by or related to instruction recognition.
     Copyright (C) 1987, 1988, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998
@@ -3851,11 +4274,30 @@ Index: gcc/recog.c
  	  continue;
  
  	case 'p':
+Index: gcc/ada/system-linux-s390x.ads
+===================================================================
+--- gcc/ada/system-linux-s390x.ads	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ada/system-linux-s390x.ads	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -126,7 +126,6 @@
+    Exit_Status_Supported     : constant Boolean := True;
+    Fractional_Fixed_Ops      : constant Boolean := False;
+    Frontend_Layout           : constant Boolean := False;
+-   Functions_Return_By_DSP   : constant Boolean := False;
+    Machine_Overflows         : constant Boolean := False;
+    Machine_Rounds            : constant Boolean := True;
+    OpenVMS                   : constant Boolean := False;
 Index: gcc/ada/ChangeLog
 ===================================================================
---- gcc/ada/ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/ada/ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -1,3 +1,8 @@
+--- gcc/ada/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ada/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,15 @@
++2009-03-31  Eric Botcazou  <ebotcazou@adacore.com>
++
++	* system-linux-alpha.ads (Functions_Return_By_DSP): Remove.
++	* system-linux-s390.ads (Functions_Return_By_DSP): Likewise.
++	* system-linux-s390x.ads (Functions_Return_By_DSP): Likewise.
++	* system-linux-sparc.ads (Functions_Return_By_DSP): Likewise.
++
 +2009-02-28  Eric Botcazou  <ebotcazou@adacore.com>
 +
 +	* Makefile.in (cygwin/mingw): Revert accidental EH_MECHANISM change
@@ -3864,10 +4306,22 @@ Index: gcc/ada/ChangeLog
  2009-01-24  Release Manager
  
  	* GCC 4.3.3 released.
+Index: gcc/ada/system-linux-alpha.ads
+===================================================================
+--- gcc/ada/system-linux-alpha.ads	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ada/system-linux-alpha.ads	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -126,7 +126,6 @@
+    Exit_Status_Supported     : constant Boolean := True;
+    Fractional_Fixed_Ops      : constant Boolean := False;
+    Frontend_Layout           : constant Boolean := False;
+-   Functions_Return_By_DSP   : constant Boolean := False;
+    Machine_Overflows         : constant Boolean := False;
+    Machine_Rounds            : constant Boolean := True;
+    OpenVMS                   : constant Boolean := False;
 Index: gcc/ada/Makefile.in
 ===================================================================
---- gcc/ada/Makefile.in	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/ada/Makefile.in	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/ada/Makefile.in	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ada/Makefile.in	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1353,7 +1353,6 @@
    mlib-tgt-specific.adb<mlib-tgt-mingw.adb \
    indepsw.adb<indepsw-mingw.adb
@@ -3876,10 +4330,34 @@ Index: gcc/ada/Makefile.in
    GMEM_LIB = gmemlib
    PREFIX_OBJS = $(PREFIX_REAL_OBJS)
    EXTRA_GNATTOOLS = ../../gnatdll$(exeext)
+Index: gcc/ada/system-linux-s390.ads
+===================================================================
+--- gcc/ada/system-linux-s390.ads	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ada/system-linux-s390.ads	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -126,7 +126,6 @@
+    Exit_Status_Supported     : constant Boolean := True;
+    Fractional_Fixed_Ops      : constant Boolean := False;
+    Frontend_Layout           : constant Boolean := False;
+-   Functions_Return_By_DSP   : constant Boolean := False;
+    Machine_Overflows         : constant Boolean := False;
+    Machine_Rounds            : constant Boolean := True;
+    OpenVMS                   : constant Boolean := False;
+Index: gcc/ada/system-linux-sparc.ads
+===================================================================
+--- gcc/ada/system-linux-sparc.ads	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/ada/system-linux-sparc.ads	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -126,7 +126,6 @@
+    Exit_Status_Supported     : constant Boolean := True;
+    Fractional_Fixed_Ops      : constant Boolean := False;
+    Frontend_Layout           : constant Boolean := False;
+-   Functions_Return_By_DSP   : constant Boolean := False;
+    Machine_Overflows         : constant Boolean := False;
+    Machine_Rounds            : constant Boolean := True;
+    OpenVMS                   : constant Boolean := False;
 Index: gcc/recog.h
 ===================================================================
---- gcc/recog.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/recog.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/recog.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/recog.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,6 +1,6 @@
  /* Declarations for interface to insn recognizer and insn-output.c.
     Copyright (C) 1987, 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004,
@@ -3899,8 +4377,8 @@ Index: gcc/recog.h
  extern bool canonicalize_change_group (rtx insn, rtx x);
 Index: gcc/c-decl.c
 ===================================================================
---- gcc/c-decl.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/c-decl.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/c-decl.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/c-decl.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -4386,12 +4386,20 @@
  	      }
  	    else if (decl_context == FIELD)
@@ -3933,11 +4411,87 @@ Index: gcc/c-decl.c
  	}
        else if (C_TYPE_BEING_DEFINED (ref))
  	{
+Index: gcc/fortran/interface.c
+===================================================================
+--- gcc/fortran/interface.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/interface.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -492,17 +492,26 @@
+   if (s1 == NULL || s2 == NULL)
+     return s1 == s2 ? 1 : 0;
+ 
++  if (s1 == s2)
++    return 1;
++
+   if (s1->attr.flavor != FL_PROCEDURE && s2->attr.flavor != FL_PROCEDURE)
+     return compare_type_rank (s1, s2);
+ 
+   if (s1->attr.flavor != FL_PROCEDURE || s2->attr.flavor != FL_PROCEDURE)
+     return 0;
+ 
+-  /* At this point, both symbols are procedures.  */
+-  if ((s1->attr.function == 0 && s1->attr.subroutine == 0)
+-      || (s2->attr.function == 0 && s2->attr.subroutine == 0))
+-    return 0;
++  /* At this point, both symbols are procedures.  It can happen that
++     a external procedures are compared where one is identified by usage
++     to be a function or subroutine but the other is not.  Check TKR
++     nonetheless for these cases.  */
++  if (s1->attr.function == 0 && s1->attr.subroutine == 0)
++    return s1->attr.external == 1 ? compare_type_rank (s1, s2) : 0;
+ 
++  if (s2->attr.function == 0 && s2->attr.subroutine == 0)
++    return s2->attr.external == 1 ? compare_type_rank (s1, s2) : 0;
++
++  /* Now the type of procedure has been identified.  */
+   if (s1->attr.function != s2->attr.function
+       || s1->attr.subroutine != s2->attr.subroutine)
+     return 0;
+Index: gcc/fortran/trans-array.c
+===================================================================
+--- gcc/fortran/trans-array.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/trans-array.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -3867,8 +3867,21 @@
+ 	      CONSTRUCTOR_APPEND_ELT (v, index, se.expr);
+ 	      break;
+ 
++
+ 	    default:
+-	      gcc_unreachable ();
++	      /* Catch those occasional beasts that do not simplify
++		 for one reason or another, assuming that if they are
++		 standard defying the frontend will catch them.  */
++	      gfc_conv_expr (&se, c->expr);
++	      if (range == NULL_TREE)
++		CONSTRUCTOR_APPEND_ELT (v, index, se.expr);
++	      else
++		{
++		  if (index != NULL_TREE)
++		  CONSTRUCTOR_APPEND_ELT (v, index, se.expr);
++		  CONSTRUCTOR_APPEND_ELT (v, range, se.expr);
++		}
++	      break;
+ 	    }
+         }
+       break;
 Index: gcc/fortran/ChangeLog
 ===================================================================
---- gcc/fortran/ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/fortran/ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -1,3 +1,43 @@
+--- gcc/fortran/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,57 @@
++2009-03-07  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/39295
++	* interface.c (compare_type_rank_if): Return 1 if the symbols
++	are the same and deal with external procedures where one is
++	identified to be a function or subroutine by usage but the
++	other is not.
++
++2009-03-07  Paul Thomas  <pault@gcc.gnu.org>
++
++	PR fortran/39292
++	* trans-array.c (gfc_conv_array_initializer): Convert all
++	expressions rather than ICEing.
++
 +2009-02-19  Paul Thomas  <pault@gcc.gnu.org>
 +
 +	PR fortran/38852
@@ -3983,8 +4537,8 @@ Index: gcc/fortran/ChangeLog
  	* GCC 4.3.3 released.
 Index: gcc/fortran/module.c
 ===================================================================
---- gcc/fortran/module.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/fortran/module.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/fortran/module.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/module.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -3992,7 +3992,7 @@
  /* Write a common block to the module -- recursive helper function.  */
  
@@ -4041,8 +4595,8 @@ Index: gcc/fortran/module.c
  }
 Index: gcc/fortran/resolve.c
 ===================================================================
---- gcc/fortran/resolve.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/fortran/resolve.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/fortran/resolve.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/resolve.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -4189,15 +4189,17 @@
  /* Checks to see that the correct symbol has been host associated.
     The only situation where this arises is that in which a twice
@@ -4178,8 +4732,8 @@ Index: gcc/fortran/resolve.c
        gfc_symbol *ds;
 Index: gcc/fortran/trans-intrinsic.c
 ===================================================================
---- gcc/fortran/trans-intrinsic.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/fortran/trans-intrinsic.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/fortran/trans-intrinsic.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/trans-intrinsic.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -917,12 +917,17 @@
  
        cond4 = fold_build2 (LT_EXPR, boolean_type_node, stride,
@@ -4201,8 +4755,8 @@ Index: gcc/fortran/trans-intrinsic.c
  	}
 Index: gcc/fortran/simplify.c
 ===================================================================
---- gcc/fortran/simplify.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/fortran/simplify.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/fortran/simplify.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/fortran/simplify.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -2104,8 +2104,11 @@
  	    case AR_FULL:
  	      /* We're done because 'as' has already been set in the
@@ -4218,15 +4772,15 @@ Index: gcc/fortran/simplify.c
  	      return NULL;
 Index: gcc/BASE-VER
 ===================================================================
---- gcc/BASE-VER	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/BASE-VER	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/BASE-VER	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/BASE-VER	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1 +1 @@
 -4.3.3
 +4.3.4
 Index: gcc/alias.c
 ===================================================================
---- gcc/alias.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/alias.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/alias.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/alias.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1508,26 +1508,27 @@
    if (rtx_equal_p (x_base, y_base))
      return 1;
@@ -4276,8 +4830,8 @@ Index: gcc/alias.c
       stack references using different base registers do not alias,
 Index: gcc/c-typeck.c
 ===================================================================
---- gcc/c-typeck.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/c-typeck.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/c-typeck.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/c-typeck.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -327,10 +327,14 @@
  	tree d2 = TYPE_DOMAIN (t2);
  	bool d1_variable, d2_variable;
@@ -4311,8 +4865,8 @@ Index: gcc/c-typeck.c
        }
 Index: gcc/gimplify.c
 ===================================================================
---- gcc/gimplify.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/gimplify.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/gimplify.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/gimplify.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -3206,7 +3206,8 @@
  	if (valid_const_initializer
  	    && num_nonzero_elements > 1
@@ -4325,8 +4879,8 @@ Index: gcc/gimplify.c
  	      return GS_ERROR;
 Index: gcc/calls.c
 ===================================================================
---- gcc/calls.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/calls.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/calls.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/calls.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -978,7 +978,6 @@
  	    && targetm.calls.split_complex_arg (argtype))
  	  {
@@ -4350,8 +4904,8 @@ Index: gcc/calls.c
  
 Index: gcc/tree-ssa-forwprop.c
 ===================================================================
---- gcc/tree-ssa-forwprop.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/tree-ssa-forwprop.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/tree-ssa-forwprop.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/tree-ssa-forwprop.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -487,28 +487,36 @@
  forward_propagate_addr_into_variable_array_index (tree offset,
  						  tree def_rhs, tree use_stmt)
@@ -4409,9 +4963,18 @@ Index: gcc/tree-ssa-forwprop.c
        && useless_type_conversion_p (TREE_TYPE (rhs), TREE_TYPE (name)))
 Index: gcc/c-common.c
 ===================================================================
---- gcc/c-common.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/c-common.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -5534,7 +5534,12 @@
+--- gcc/c-common.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/c-common.c	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,6 +1,7 @@
+ /* Subroutines shared by all languages that are variants of C.
+    Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
+-   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 Free Software Foundation, Inc.
++   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
++   Free Software Foundation, Inc.
+ 
+ This file is part of GCC.
+ 
+@@ -5534,7 +5535,12 @@
  {
    tree decl = *node;
  
@@ -4425,7 +4988,28 @@ Index: gcc/c-common.c
        || (TREE_CODE (decl) != FUNCTION_DECL 
  	  && TREE_PUBLIC (decl) && !DECL_EXTERNAL (decl))
        /* A static variable declaration is always a tentative definition,
-@@ -5782,7 +5787,7 @@
+@@ -5763,8 +5769,18 @@
+      visibility_specified depending on #pragma GCC visibility.  */
+   if (!DECL_VISIBILITY_SPECIFIED (decl))
+     {
+-      DECL_VISIBILITY (decl) = default_visibility;
+-      DECL_VISIBILITY_SPECIFIED (decl) = visibility_options.inpragma;
++      if (visibility_options.inpragma
++	  || DECL_VISIBILITY (decl) != default_visibility)
++	{
++	  DECL_VISIBILITY (decl) = default_visibility;
++	  DECL_VISIBILITY_SPECIFIED (decl) = visibility_options.inpragma;
++	  /* If visibility changed and DECL already has DECL_RTL, ensure
++	     symbol flags are updated.  */
++	  if (((TREE_CODE (decl) == VAR_DECL && TREE_STATIC (decl))
++	       || TREE_CODE (decl) == FUNCTION_DECL)
++	      && DECL_RTL_SET_P (decl))
++	    make_decl_rtl (decl);
++	}
+     }
+   return false;
+ }
+@@ -5782,7 +5798,7 @@
  
    *no_add_attrs = true;
  
@@ -4436,8 +5020,8 @@ Index: gcc/c-common.c
        return NULL_TREE;
 Index: gcc/tree-ssa-structalias.c
 ===================================================================
---- gcc/tree-ssa-structalias.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/tree-ssa-structalias.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/tree-ssa-structalias.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/tree-ssa-structalias.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1509,24 +1509,23 @@
  	  varinfo_t v;
  	  unsigned int t;
@@ -4474,8 +5058,8 @@ Index: gcc/tree-ssa-structalias.c
  	}
 Index: gcc/c-parser.c
 ===================================================================
---- gcc/c-parser.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/c-parser.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/c-parser.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/c-parser.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -2680,6 +2680,7 @@
  			     "expected %<;%>, %<,%> or %<)%>"))
  	{
@@ -4502,8 +5086,8 @@ Index: gcc/c-parser.c
    c_parser_consume_token (parser);
 Index: gcc/config/alpha/elf.h
 ===================================================================
---- gcc/config/alpha/elf.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/alpha/elf.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/alpha/elf.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/alpha/elf.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -423,3 +423,13 @@
  #if defined(HAVE_LD_EH_FRAME_HDR)
  #define LINK_EH_SPEC "%{!static:--eh-frame-hdr} "
@@ -4520,8 +5104,8 @@ Index: gcc/config/alpha/elf.h
 +#endif
 Index: gcc/config/alpha/alpha.c
 ===================================================================
---- gcc/config/alpha/alpha.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/alpha/alpha.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/alpha/alpha.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/alpha/alpha.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,6 +1,7 @@
  /* Subroutines used for code generation on the DEC Alpha.
     Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001,
@@ -4762,8 +5346,8 @@ Index: gcc/config/alpha/alpha.c
  
 Index: gcc/config/spu/spu.c
 ===================================================================
---- gcc/config/spu/spu.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/spu/spu.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/spu/spu.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/spu/spu.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -142,6 +142,7 @@
  static bool spu_vector_alignment_reachable (const_tree, bool);
  static int spu_sms_res_mii (struct ddg *g);
@@ -4798,8 +5382,8 @@ Index: gcc/config/spu/spu.c
 +
 Index: gcc/config/sparc/linux.h
 ===================================================================
---- gcc/config/sparc/linux.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/sparc/linux.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/sparc/linux.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/sparc/linux.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -148,10 +148,6 @@
    "%{V} %{v:%{!V:-V}} %{!Qn:-Qy} %{n} %{T} %{Ym,*} %{Wa,*:%*} -s \
     %{fpic|fPIC|fpie|fPIE:-K PIC} %(asm_cpu) %(asm_relax)"
@@ -4813,8 +5397,8 @@ Index: gcc/config/sparc/linux.h
  do {									\
 Index: gcc/config/sparc/linux64.h
 ===================================================================
---- gcc/config/sparc/linux64.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/sparc/linux64.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/sparc/linux64.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/sparc/linux64.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -285,10 +285,6 @@
  %{mlittle-endian:-EL} \
  %(asm_cpu) %(asm_arch) %(asm_relax)"
@@ -4828,8 +5412,8 @@ Index: gcc/config/sparc/linux64.h
  do {									\
 Index: gcc/config/sparc/sysv4.h
 ===================================================================
---- gcc/config/sparc/sysv4.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/sparc/sysv4.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/sparc/sysv4.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/sparc/sysv4.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -93,22 +93,6 @@
  	fprintf (FILE, "\n");						\
    } while (0)
@@ -4855,8 +5439,8 @@ Index: gcc/config/sparc/sysv4.h
     in all places where we simply want to switch to a section, and
 Index: gcc/config/i386/i386.md
 ===================================================================
---- gcc/config/i386/i386.md	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/i386/i386.md	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/i386/i386.md	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/i386/i386.md	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -67,12 +67,13 @@
     (UNSPEC_DEF_CFA		15)
     (UNSPEC_SET_RIP		16)
@@ -4919,7 +5503,112 @@ Index: gcc/config/i386/i386.md
  	    (eq_attr "alternative" "6,7,8,9,10")
  	      (const_string "mmxmov")
  	    (eq_attr "alternative" "11")
-@@ -14877,6 +14879,24 @@
+@@ -4178,34 +4180,32 @@
+    (set_attr "mode" "SF")])
+ 
+ (define_insn "*truncdfsf_mixed"
+-  [(set (match_operand:SF 0 "nonimmediate_operand"   "=m,?fx*r,Y2")
++  [(set (match_operand:SF 0 "nonimmediate_operand"   "=m,Y2 ,?f,?x,?*r")
+ 	(float_truncate:SF
+-	  (match_operand:DF 1 "nonimmediate_operand" "f ,f    ,Y2m")))
+-   (clobber (match_operand:SF 2 "memory_operand"     "=X,m    ,X"))]
++	  (match_operand:DF 1 "nonimmediate_operand" "f ,Y2m,f ,f ,f")))
++   (clobber (match_operand:SF 2 "memory_operand"     "=X,X  ,m ,m ,m"))]
+   "TARGET_MIX_SSE_I387"
+ {
+   switch (which_alternative)
+     {
+     case 0:
+       return output_387_reg_move (insn, operands);
+-
+     case 1:
+-      return "#";
+-    case 2:
+       return "cvtsd2ss\t{%1, %0|%0, %1}";
++
+     default:
+-      gcc_unreachable ();
++      return "#";
+     }
+ }
+-  [(set_attr "type" "fmov,multi,ssecvt")
+-   (set_attr "unit" "*,i387,*")
++  [(set_attr "type" "fmov,ssecvt,multi,multi,multi")
++   (set_attr "unit" "*,*,i387,i387,i387")
+    (set_attr "mode" "SF")])
+ 
+ (define_insn "*truncdfsf_i387"
+-  [(set (match_operand:SF 0 "nonimmediate_operand" "=m,?fx*r")
++  [(set (match_operand:SF 0 "nonimmediate_operand"   "=m,?f,?x,?*r")
+ 	(float_truncate:SF
+-	  (match_operand:DF 1 "nonimmediate_operand" "f,f")))
+-   (clobber (match_operand:SF 2 "memory_operand" "=X,m"))]
++	  (match_operand:DF 1 "nonimmediate_operand" "f ,f ,f ,f")))
++   (clobber (match_operand:SF 2 "memory_operand"     "=X,m ,m ,m"))]
+   "TARGET_80387"
+ {
+   switch (which_alternative)
+@@ -4213,14 +4213,12 @@
+     case 0:
+       return output_387_reg_move (insn, operands);
+ 
+-    case 1:
++    default:
+       return "#";
+-    default:
+-      gcc_unreachable ();
+     }
+ }
+-  [(set_attr "type" "fmov,multi")
+-   (set_attr "unit" "*,i387")
++  [(set_attr "type" "fmov,multi,multi,multi")
++   (set_attr "unit" "*,i387,i387,i387")
+    (set_attr "mode" "SF")])
+ 
+ (define_insn "*truncdfsf2_i387_1"
+@@ -4271,31 +4269,31 @@
+ })
+ 
+ (define_insn "*truncxfsf2_mixed"
+-  [(set (match_operand:SF 0 "nonimmediate_operand" "=m,?fx*r")
++  [(set (match_operand:SF 0 "nonimmediate_operand" "=m,?f,?x,?*r")
+ 	(float_truncate:SF
+-	  (match_operand:XF 1 "register_operand" "f,f")))
+-   (clobber (match_operand:SF 2 "memory_operand" "=X,m"))]
++	  (match_operand:XF 1 "register_operand"   "f ,f ,f ,f")))
++   (clobber (match_operand:SF 2 "memory_operand"   "=X,m ,m ,m"))]
+   "TARGET_80387"
+ {
+   gcc_assert (!which_alternative);
+   return output_387_reg_move (insn, operands);
+ }
+-  [(set_attr "type" "fmov,multi")
+-   (set_attr "unit" "*,i387")
++  [(set_attr "type" "fmov,multi,multi,multi")
++   (set_attr "unit" "*,i387,i387,i387")
+    (set_attr "mode" "SF")])
+ 
+ (define_insn "*truncxfdf2_mixed"
+-  [(set (match_operand:DF 0 "nonimmediate_operand" "=m,?fY2*r")
++  [(set (match_operand:DF 0 "nonimmediate_operand" "=m,?f,?Y2,?*r")
+ 	(float_truncate:DF
+-	  (match_operand:XF 1 "register_operand" "f,f")))
+-   (clobber (match_operand:DF 2 "memory_operand" "=X,m"))]
++	  (match_operand:XF 1 "register_operand"   "f ,f ,f  ,f")))
++   (clobber (match_operand:DF 2 "memory_operand"   "=X,m ,m  ,m"))]
+   "TARGET_80387"
+ {
+   gcc_assert (!which_alternative);
+   return output_387_reg_move (insn, operands);
+ }
+-  [(set_attr "type" "fmov,multi")
+-   (set_attr "unit" "*,i387")
++  [(set_attr "type" "fmov,multi,multi,multi")
++   (set_attr "unit" "*,i387,i387,i387")
+    (set_attr "mode" "DF")])
+ 
+ (define_insn "truncxf<mode>2_i387_noop"
+@@ -14877,6 +14875,24 @@
    ""
    [(set_attr "length" "0")])
  
@@ -4944,7 +5633,7 @@ Index: gcc/config/i386/i386.md
  ;; As USE insns aren't meaningful after reload, this is used instead
  ;; to prevent deleting instructions setting registers for PIC code
  (define_insn "prologue_use"
-@@ -15001,7 +15021,7 @@
+@@ -15001,7 +15017,7 @@
  
  (define_insn "set_rip_rex64"
    [(set (match_operand:DI 0 "register_operand" "=r")
@@ -4953,7 +5642,7 @@ Index: gcc/config/i386/i386.md
    "TARGET_64BIT"
    "lea{q}\t{%l1(%%rip), %0|%0, %l1[rip]}"
    [(set_attr "type" "lea")
-@@ -15009,7 +15029,9 @@
+@@ -15009,7 +15025,9 @@
  
  (define_insn "set_got_offset_rex64"
    [(set (match_operand:DI 0 "register_operand" "=r")
@@ -4964,7 +5653,7 @@ Index: gcc/config/i386/i386.md
    "TARGET_64BIT"
    "movabs{q}\t{$_GLOBAL_OFFSET_TABLE_-%l1, %0|%0, OFFSET FLAT:_GLOBAL_OFFSET_TABLE_-%l1}"
    [(set_attr "type" "imov")
-@@ -18472,9 +18494,56 @@
+@@ -18472,9 +18490,56 @@
     (set_attr "unit" "i387")
     (set_attr "mode" "<MODE>")])
  
@@ -5022,7 +5711,7 @@ Index: gcc/config/i386/i386.md
    "TARGET_USE_FANCY_MATH_387
     && TARGET_C99_FUNCTIONS
     && !(SSE_FLOAT_MODE_P (<MODE>mode) && TARGET_SSE_MATH)"
-@@ -18487,7 +18556,18 @@
+@@ -18487,7 +18552,18 @@
    rtx scratch = gen_reg_rtx (HImode);
    rtx res = gen_reg_rtx (QImode);
  
@@ -5042,10 +5731,32 @@ Index: gcc/config/i386/i386.md
    emit_insn (gen_andqi_ext_0 (scratch, scratch, mask));
    emit_insn (gen_cmpqi_ext_3 (scratch, val));
    cond = gen_rtx_fmt_ee (EQ, QImode,
+Index: gcc/config/i386/sse.md
+===================================================================
+--- gcc/config/i386/sse.md	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/i386/sse.md	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -737,7 +737,7 @@
+ 	    (match_operand:V4SF 1 "register_operand" "0")
+ 	    (match_operand:V4SF 2 "nonimmediate_operand" "xm"))
+ 	  (minus:V4SF (match_dup 1) (match_dup 2))
+-	  (const_int 5)))]
++	  (const_int 10)))]
+   "TARGET_SSE3"
+   "addsubps\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseadd")
+@@ -2381,7 +2381,7 @@
+ 	    (match_operand:V2DF 1 "register_operand" "0")
+ 	    (match_operand:V2DF 2 "nonimmediate_operand" "xm"))
+ 	  (minus:V2DF (match_dup 1) (match_dup 2))
+-	  (const_int 1)))]
++	  (const_int 2)))]
+   "TARGET_SSE3"
+   "addsubpd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseadd")
 Index: gcc/config/i386/i386.c
 ===================================================================
---- gcc/config/i386/i386.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/i386/i386.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/i386/i386.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/i386/i386.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -6483,15 +6483,22 @@
          insn = emit_insn (gen_set_got (pic_offset_table_rtx));
      }
@@ -5160,8 +5871,8 @@ Index: gcc/config/i386/i386.c
    /* Adjust properly the offset of src and dest memory for aliasing.  */
 Index: gcc/config/sh/predicates.md
 ===================================================================
---- gcc/config/sh/predicates.md	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/sh/predicates.md	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/sh/predicates.md	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/sh/predicates.md	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,5 +1,5 @@
  ;; Predicate definitions for Renesas / SuperH SH.
 -;; Copyright (C) 2005, 2006, 2007 Free Software Foundation, Inc.
@@ -5182,10 +5893,34 @@ Index: gcc/config/sh/predicates.md
    if (TARGET_SHMEDIA
        && (GET_CODE (op) == PARALLEL || GET_CODE (op) == CONST_VECTOR)
        && sh_rep_vec (op, mode))
+Index: gcc/config/avr/avr.md
+===================================================================
+--- gcc/config/avr/avr.md	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/avr/avr.md	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,8 +1,8 @@
+ ;; -*- Mode: Scheme -*-
+ ;;   Machine description for GNU compiler,
+ ;;   for ATMEL AVR micro controllers.
+-;;   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007, 2008
+-;;   Free Software Foundation, Inc.
++;;   Copyright (C) 1998, 1999, 2000, 2001, 2002, 2004, 2005, 2006, 2007, 2008,
++;;   2009 Free Software Foundation, Inc.
+ ;;   Contributed by Denis Chertykov (denisc@overta.ru)
+ 
+ ;; This file is part of GCC.
+@@ -1180,7 +1180,7 @@
+   return \"bug\";
+ }"
+   [(set_attr "length" "4,4")
+-   (set_attr "cc" "set_n,set_n")])
++   (set_attr "cc" "set_n,clobber")])
+ 
+ ;;|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ ;; ior
 Index: gcc/config/ia64/ia64.c
 ===================================================================
---- gcc/config/ia64/ia64.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/ia64/ia64.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/ia64/ia64.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/ia64/ia64.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -4328,8 +4328,9 @@
      return false;
  
@@ -5198,10 +5933,21 @@ Index: gcc/config/ia64/ia64.c
  }
  
  
+Index: gcc/config/m68k/t-rtems
+===================================================================
+--- gcc/config/m68k/t-rtems	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/m68k/t-rtems	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -4,5 +4,6 @@
+ 		     || MLIB == "5206" \
+ 		     || MLIB == "5208" \
+ 		     || MLIB == "5307" \
++		     || MLIB == "5329" \
+ 		     || MLIB == "5407" \
+ 		     || MLIB == "5475")
 Index: gcc/config/pa/fptr.c
 ===================================================================
---- gcc/config/pa/fptr.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/pa/fptr.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/pa/fptr.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/pa/fptr.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -6,7 +6,7 @@
  
  GCC is free software; you can redistribute it and/or modify it under
@@ -5225,8 +5971,8 @@ Index: gcc/config/pa/fptr.c
     details of the GNU linker and dynamic loader as implemented for parisc
 Index: gcc/config/pa/milli64.S
 ===================================================================
---- gcc/config/pa/milli64.S	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/pa/milli64.S	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/pa/milli64.S	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/pa/milli64.S	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -8,7 +8,7 @@
  
  GCC is free software; you can redistribute it and/or modify it under
@@ -5250,8 +5996,8 @@ Index: gcc/config/pa/milli64.S
          .level  2.0w
 Index: gcc/config/mips/sde.h
 ===================================================================
---- gcc/config/mips/sde.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/mips/sde.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/mips/sde.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/mips/sde.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -56,7 +56,6 @@
  #undef SUBTARGET_ASM_SPEC
  #define SUBTARGET_ASM_SPEC "\
@@ -5262,8 +6008,8 @@ Index: gcc/config/mips/sde.h
  #undef LINK_SPEC
 Index: gcc/config/mips/mips.c
 ===================================================================
---- gcc/config/mips/mips.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/mips/mips.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/mips/mips.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/mips/mips.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -7080,7 +7080,7 @@
      case ABI_N32:
        return "abiN32";
@@ -5275,8 +6021,8 @@ Index: gcc/config/mips/mips.c
      default:
 Index: gcc/config/soft-fp/double.h
 ===================================================================
---- gcc/config/soft-fp/double.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/config/soft-fp/double.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/config/soft-fp/double.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/config/soft-fp/double.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,6 +1,7 @@
  /* Software floating-point emulation.
     Definitions for IEEE Double Precision
@@ -5304,8 +6050,8 @@ Index: gcc/config/soft-fp/double.h
  
 Index: gcc/stmt.c
 ===================================================================
---- gcc/stmt.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/stmt.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/stmt.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/stmt.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,6 +1,6 @@
  /* Expands front end tree to back end RTL for GCC
     Copyright (C) 1987, 1988, 1989, 1992, 1993, 1994, 1995, 1996, 1997,
@@ -5325,8 +6071,8 @@ Index: gcc/stmt.c
  	    op = force_reg (TYPE_MODE (type), op);
 Index: gcc/convert.c
 ===================================================================
---- gcc/convert.c	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ gcc/convert.c	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- gcc/convert.c	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ gcc/convert.c	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -261,18 +261,22 @@
  	     tree arg1 = strip_float_extensions (TREE_OPERAND (expr, 1));
  
@@ -5390,8 +6136,8 @@ Index: gcc/convert.c
  				     fold (convert_to_real (newtype, arg0)),
 Index: libstdc++-v3/scripts/extract_symvers
 ===================================================================
---- libstdc++-v3/scripts/extract_symvers	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/scripts/extract_symvers	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- libstdc++-v3/scripts/extract_symvers	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/scripts/extract_symvers	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,6 +1,6 @@
  #!/bin/sh
  
@@ -5411,10 +6157,40 @@ Index: libstdc++-v3/scripts/extract_symvers
  awk '{ if ($4 == "FUNC" || $4 == "NOTYPE")
           printf "%s:%s\n", $4, $8;
         else if ($4 == "OBJECT")
+Index: libstdc++-v3/include/std/type_traits
+===================================================================
+--- libstdc++-v3/include/std/type_traits	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/include/std/type_traits	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,6 +1,6 @@
+ // <type_traits> -*- C++ -*-
+ 
+-// Copyright (C) 2007, 2008 Free Software Foundation, Inc.
++// Copyright (C) 2007, 2008, 2009 Free Software Foundation, Inc.
+ //
+ // This file is part of the GNU ISO C++ Library.  This library is free
+ // software; you can redistribute it and/or modify it under the
+@@ -107,7 +107,7 @@
+     { typedef _Tp   type; };
+ 
+   template<typename _Tp,
+-	   bool = is_object<_Tp>::value || is_function<_Tp>::value,
++	   bool = !is_reference<_Tp>::value && !is_void<_Tp>::value,
+ 	   bool = is_rvalue_reference<_Tp>::value>
+     struct __add_lvalue_reference_helper
+     { typedef _Tp   type; };
+@@ -127,7 +127,7 @@
+     { };
+ 
+   template<typename _Tp,
+-	   bool = is_object<_Tp>::value || is_function<_Tp>::value>
++	   bool = !is_reference<_Tp>::value && !is_void<_Tp>::value>
+     struct __add_rvalue_reference_helper
+     { typedef _Tp   type; };
+ 
 Index: libstdc++-v3/include/parallel/iterator.h
 ===================================================================
---- libstdc++-v3/include/parallel/iterator.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/include/parallel/iterator.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- libstdc++-v3/include/parallel/iterator.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/include/parallel/iterator.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -131,7 +131,8 @@
      public:
        typedef IteratorCategory iterator_category;
@@ -5427,8 +6203,8 @@ Index: libstdc++-v3/include/parallel/iterator.h
  
 Index: libstdc++-v3/include/parallel/par_loop.h
 ===================================================================
---- libstdc++-v3/include/parallel/par_loop.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/include/parallel/par_loop.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- libstdc++-v3/include/parallel/par_loop.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/include/parallel/par_loop.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -42,6 +42,7 @@
  #include <omp.h>
  #include <parallel/settings.h>
@@ -5503,8 +6279,8 @@ Index: libstdc++-v3/include/parallel/par_loop.h
  
 Index: libstdc++-v3/include/parallel/numeric
 ===================================================================
---- libstdc++-v3/include/parallel/numeric	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/include/parallel/numeric	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- libstdc++-v3/include/parallel/numeric	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/include/parallel/numeric	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -103,13 +103,13 @@
  	  __gnu_parallel::accumulate_selector<_RandomAccessIterator>
  	    my_selector;
@@ -5548,8 +6324,8 @@ Index: libstdc++-v3/include/parallel/numeric
        else
 Index: libstdc++-v3/include/parallel/algorithmfwd.h
 ===================================================================
---- libstdc++-v3/include/parallel/algorithmfwd.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/include/parallel/algorithmfwd.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- libstdc++-v3/include/parallel/algorithmfwd.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/include/parallel/algorithmfwd.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -99,7 +99,8 @@
    template<typename _RAIter, typename _Tp>
      typename iterator_traits<_RAIter>::difference_type
@@ -5642,8 +6418,8 @@ Index: libstdc++-v3/include/parallel/algorithmfwd.h
      void
 Index: libstdc++-v3/include/parallel/numericfwd.h
 ===================================================================
---- libstdc++-v3/include/parallel/numericfwd.h	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/include/parallel/numericfwd.h	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- libstdc++-v3/include/parallel/numericfwd.h	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/include/parallel/numericfwd.h	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -83,7 +83,8 @@
      _Tp
      accumulate_switch(_RAIter, _RAIter, _Tp, _BinaryOper,
@@ -5676,9 +6452,17 @@ Index: libstdc++-v3/include/parallel/numericfwd.h
  	   typename _BinaryFunction1, typename _BinaryFunction2,
 Index: libstdc++-v3/ChangeLog
 ===================================================================
---- libstdc++-v3/ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
-@@ -1,3 +1,28 @@
+--- libstdc++-v3/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,36 @@
++2009-03-14  Paolo Carlini  <paolo.carlini@oracle.com>
++
++	PR libstdc++/39405
++	* include/std/type_traits (__add_lvalue_reference_helper,
++	__add_rvalue_reference_helper): Avoid is_function.
++	* testsuite/20_util/shared_ptr/cons/39405.cc: New.
++	* testsuite/tr1/2_general_utilities/shared_ptr/cons/39405.cc: Likewise.
++
 +2009-02-09  Johannes Singler  <singler@ira.uka.de>
 +
 +        Backport from mainline:
@@ -5707,10 +6491,81 @@ Index: libstdc++-v3/ChangeLog
  2009-01-24  Release Manager
  
  	* GCC 4.3.3 released.
+Index: libstdc++-v3/testsuite/tr1/2_general_utilities/shared_ptr/cons/39405.cc
+===================================================================
+--- libstdc++-v3/testsuite/tr1/2_general_utilities/shared_ptr/cons/39405.cc	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ libstdc++-v3/testsuite/tr1/2_general_utilities/shared_ptr/cons/39405.cc	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,30 @@
++// { dg-do compile }
++
++// Copyright (C) 2009 Free Software Foundation
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++#include <tr1/memory>
++
++// libstdc++/39405
++template<typename T>
++  struct foo
++  {
++    std::tr1::shared_ptr<foo<T> > m_foo;
++  };
++
++std::tr1::shared_ptr<foo<int> > t;
+Index: libstdc++-v3/testsuite/20_util/shared_ptr/cons/39405.cc
+===================================================================
+--- libstdc++-v3/testsuite/20_util/shared_ptr/cons/39405.cc	(.../tags/gcc_4_3_3_release)	(revision 0)
++++ libstdc++-v3/testsuite/20_util/shared_ptr/cons/39405.cc	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -0,0 +1,31 @@
++// { dg-options "-std=gnu++0x" }
++// { dg-do compile }
++
++// Copyright (C) 2009 Free Software Foundation
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 2, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING.  If not, write to the Free
++// Software Foundation, 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
++// USA.
++
++#include <memory>
++
++// libstdc++/39405
++template<typename T>
++  struct foo
++  {
++    std::shared_ptr<foo<T> > m_foo;
++  };
++
++std::shared_ptr<foo<int> > t;
 Index: Makefile.tpl
 ===================================================================
---- Makefile.tpl	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ Makefile.tpl	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- Makefile.tpl	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ Makefile.tpl	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1432,6 +1432,8 @@
  # Provide a GCC build when we're building target libraries.  This does
  # not work as a dependency, just as the minimum necessary to avoid errors.
@@ -5722,8 +6577,8 @@ Index: Makefile.tpl
  # Same as unstage, but not phony and defaulting to stage1-start.  We place
 Index: ChangeLog
 ===================================================================
---- ChangeLog	(.../tags/gcc_4_3_3_release)	(wersja 144693)
-+++ ChangeLog	(.../branches/gcc-4_3-branch)	(wersja 144693)
+--- ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
 @@ -1,3 +1,9 @@
 +2009-02-05  Andreas Schwab  <schwab@suse.de>
 +
@@ -5777,3 +6632,182 @@ Index: ChangeLog
  2007-03-24  Ayal Zaks  <zaks@il.ibm.com>
  
  	* MAINTAINERS (Modulo Scheduler): Add myself.
+Index: libjava/classpath/configure
+===================================================================
+--- libjava/classpath/configure	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libjava/classpath/configure	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -22904,6 +22904,103 @@
+   else
+      PKG_CONFIG_MIN_VERSION=0.9.0
+      if $PKG_CONFIG --atleast-pkgconfig-version $PKG_CONFIG_MIN_VERSION; then
++        echo "$as_me:$LINENO: checking for mozilla-plugin libxul-unstable" >&5
++echo $ECHO_N "checking for mozilla-plugin libxul-unstable... $ECHO_C" >&6
++
++        if $PKG_CONFIG --exists "mozilla-plugin libxul-unstable" ; then
++            echo "$as_me:$LINENO: result: yes" >&5
++echo "${ECHO_T}yes" >&6
++            succeeded=yes
++
++            echo "$as_me:$LINENO: checking MOZILLA_CFLAGS" >&5
++echo $ECHO_N "checking MOZILLA_CFLAGS... $ECHO_C" >&6
++            MOZILLA_CFLAGS=`$PKG_CONFIG --cflags "mozilla-plugin libxul-unstable"`
++            echo "$as_me:$LINENO: result: $MOZILLA_CFLAGS" >&5
++echo "${ECHO_T}$MOZILLA_CFLAGS" >&6
++
++            echo "$as_me:$LINENO: checking MOZILLA_LIBS" >&5
++echo $ECHO_N "checking MOZILLA_LIBS... $ECHO_C" >&6
++            MOZILLA_LIBS=`$PKG_CONFIG --libs "mozilla-plugin libxul-unstable"`
++            echo "$as_me:$LINENO: result: $MOZILLA_LIBS" >&5
++echo "${ECHO_T}$MOZILLA_LIBS" >&6
++        else
++            MOZILLA_CFLAGS=""
++            MOZILLA_LIBS=""
++            ## If we have a custom action on failure, don't print errors, but
++            ## do set a variable so people can do so.
++            MOZILLA_PKG_ERRORS=`$PKG_CONFIG --errors-to-stdout --print-errors "mozilla-plugin libxul-unstable"`
++
++        fi
++
++
++
++     else
++        echo "*** Your version of pkg-config is too old. You need version $PKG_CONFIG_MIN_VERSION or newer."
++        echo "*** See http://www.freedesktop.org/software/pkgconfig"
++     fi
++  fi
++
++  if test $succeeded = yes; then
++     MOZILLA_FOUND=yes
++  else
++     MOZILLA_FOUND=no
++  fi
++
++    if test "x${MOZILLA_FOUND}" = xno; then
++
++  succeeded=no
++
++  if test -z "$PKG_CONFIG"; then
++    # Extract the first word of "pkg-config", so it can be a program name with args.
++set dummy pkg-config; ac_word=$2
++echo "$as_me:$LINENO: checking for $ac_word" >&5
++echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
++if test "${ac_cv_path_PKG_CONFIG+set}" = set; then
++  echo $ECHO_N "(cached) $ECHO_C" >&6
++else
++  case $PKG_CONFIG in
++  [\\/]* | ?:[\\/]*)
++  ac_cv_path_PKG_CONFIG="$PKG_CONFIG" # Let the user override the test with a path.
++  ;;
++  *)
++  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
++for as_dir in $PATH
++do
++  IFS=$as_save_IFS
++  test -z "$as_dir" && as_dir=.
++  for ac_exec_ext in '' $ac_executable_extensions; do
++  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
++    ac_cv_path_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
++    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
++    break 2
++  fi
++done
++done
++
++  test -z "$ac_cv_path_PKG_CONFIG" && ac_cv_path_PKG_CONFIG="no"
++  ;;
++esac
++fi
++PKG_CONFIG=$ac_cv_path_PKG_CONFIG
++
++if test -n "$PKG_CONFIG"; then
++  echo "$as_me:$LINENO: result: $PKG_CONFIG" >&5
++echo "${ECHO_T}$PKG_CONFIG" >&6
++else
++  echo "$as_me:$LINENO: result: no" >&5
++echo "${ECHO_T}no" >&6
++fi
++
++  fi
++
++  if test "$PKG_CONFIG" = "no" ; then
++     echo "*** The pkg-config script could not be found. Make sure it is"
++     echo "*** in your path, or set the PKG_CONFIG environment variable"
++     echo "*** to the full path to pkg-config."
++     echo "*** Or see http://www.freedesktop.org/software/pkgconfig to get pkg-config."
++  else
++     PKG_CONFIG_MIN_VERSION=0.9.0
++     if $PKG_CONFIG --atleast-pkgconfig-version $PKG_CONFIG_MIN_VERSION; then
+         echo "$as_me:$LINENO: checking for mozilla-plugin" >&5
+ echo $ECHO_N "checking for mozilla-plugin... $ECHO_C" >&6
+ 
+@@ -22946,6 +23043,7 @@
+      MOZILLA_FOUND=no
+   fi
+ 
++    fi
+     if test "x${MOZILLA_FOUND}" = xno; then
+ 
+   succeeded=no
+Index: libjava/classpath/configure.ac
+===================================================================
+--- libjava/classpath/configure.ac	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libjava/classpath/configure.ac	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -702,8 +702,11 @@
+ 
+   dnl Check for plugin support headers and libraries.
+   if test "x${COMPILE_PLUGIN}" = xyes; then
+-    PKG_CHECK_MODULES(MOZILLA, mozilla-plugin, [MOZILLA_FOUND=yes], [MOZILLA_FOUND=no])
++    PKG_CHECK_MODULES(MOZILLA, mozilla-plugin libxul-unstable, [MOZILLA_FOUND=yes], [MOZILLA_FOUND=no])
+     if test "x${MOZILLA_FOUND}" = xno; then
++      PKG_CHECK_MODULES(MOZILLA, mozilla-plugin, [MOZILLA_FOUND=yes], [MOZILLA_FOUND=no])
++    fi
++    if test "x${MOZILLA_FOUND}" = xno; then
+       PKG_CHECK_MODULES(MOZILLA, firefox-plugin firefox-xpcom, [MOZILLA_FOUND=yes], [MOZILLA_FOUND=no])
+     fi
+     if test "x${MOZILLA_FOUND}" = xno; then
+Index: libjava/classpath/ChangeLog.gcj
+===================================================================
+--- libjava/classpath/ChangeLog.gcj	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libjava/classpath/ChangeLog.gcj	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,8 @@
++2009-03-16  Matthias Klose  <doko@ubuntu.com>
++
++	* configure.ac: Detect xulrunner-1.9.
++	* configure: Regenerate.
++
+ 2008-09-14  Matthias Klose  <doko@ubuntu.com>
+ 
+ 	Merge from classpath:
+Index: libjava/ChangeLog
+===================================================================
+--- libjava/ChangeLog	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libjava/ChangeLog	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -1,3 +1,8 @@
++2009-03-13  Andrew Haley  <aph@redhat.com>
++
++	* java/lang/natClassLoader.cc (_Jv_RegisterClassHookDefault): Clear
++	INTERPRETED access modifier.
++
+ 2009-01-24  Release Manager
+ 
+ 	* GCC 4.3.3 released.
+Index: libjava/java/lang/natClassLoader.cc
+===================================================================
+--- libjava/java/lang/natClassLoader.cc	(.../tags/gcc_4_3_3_release)	(revision 145364)
++++ libjava/java/lang/natClassLoader.cc	(.../branches/gcc-4_3-branch)	(revision 145364)
+@@ -325,6 +325,15 @@
+   if (! klass->engine)
+     klass->engine = &_Jv_soleCompiledEngine;
+ 
++  /* FIXME:  Way back before the dawn of time, we overloaded the
++     SYNTHETIC class access modifier to mean INTERPRETED.  This was a
++     Bad Thing, but it didn't matter then because classes were never
++     marked synthetic.  However, it is possible to redeem the
++     situation: _Jv_RegisterClassHookDefault is only called from
++     compiled classes, so we clear the INTERPRETED flag.  This is a
++     kludge!  */
++  klass->accflags &= ~java::lang::reflect::Modifier::INTERPRETED;
++
+   if (system_class_list != SYSTEM_LOADER_INITIALIZED)
+     {
+       unsigned long abi = (unsigned long) klass->next_or_version;
