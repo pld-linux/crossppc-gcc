@@ -11,7 +11,7 @@ Epoch:		1
 License:	GPL
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	5dfac5da961ecd5f227c3175859a486d
+# Source0-md5:	cc3c5565fdb9ab87a05ddb106ba0bd1f
 Source1:	gcc-optimize-la.pl
 Patch100:	gcc-branch.diff
 # svn diff svn://gcc.gnu.org/svn/gcc/branches/gcc-4_3-branch@145062 svn://gcc.gnu.org/svn/gcc/branches/ix86/gcc-4_3-branch > gcc-ix86-branch.diff
