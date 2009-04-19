@@ -5,7 +5,7 @@ Summary(pl.UTF-8):	Skrośne narzędzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR.UTF-8):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr.UTF-8):	GNU geliştirme araçları - PPC gcc
 Name:		crossppc-gcc
-Version:	4.3.2
+Version:	4.3.3
 Release:	0.1
 Epoch:		1
 License:	GPL
@@ -13,8 +13,10 @@ Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
 # Source0-md5:	5dfac5da961ecd5f227c3175859a486d
 Source1:	gcc-optimize-la.pl
-Patch100:	gcc-branch.diff.bz2
-Patch101:	gcc-ix86-branch.diff.bz2
+Patch100:	gcc-branch.diff
+# svn diff svn://gcc.gnu.org/svn/gcc/branches/gcc-4_3-branch@145062 svn://gcc.gnu.org/svn/gcc/branches/ix86/gcc-4_3-branch > gcc-ix86-branch.diff
+# The goal of this branch is to add support for newer ix86 processors such as AMD's Barcelona and Intel's Westmere to GCC 4.3.x.
+Patch101:	gcc-ix86-branch.diff
 Patch0:		gcc-info.patch
 Patch1:		gcc-nolocalefiles.patch
 Patch2:		gcc-nodebug.patch
@@ -26,6 +28,7 @@ Patch7:		gcc-libjava-multilib.patch
 Patch8:		gcc-enable-java-awt-qt.patch
 Patch9:		gcc-hash-style-gnu.patch
 Patch10:	gcc-moresparcs.patch
+Patch11:	gcc-build-id.patch
 
 URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
@@ -99,6 +102,7 @@ Ten pakiet dodaje obsługę C++ do kompilatora gcc dla PPC.
 %endif
 %patch9 -p1
 %patch10 -p1
+%patch11 -p0
 
 mv ChangeLog ChangeLog.general
 
