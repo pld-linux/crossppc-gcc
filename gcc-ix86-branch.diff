@@ -1,1421 +1,3689 @@
-Index: gcc/doc/extend.texi
-===================================================================
---- gcc/doc/extend.texi	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/doc/extend.texi	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -7962,6 +7962,27 @@
- Generates the @code{popcntq} machine instruction.
- @end table
- 
-+The following built-in functions are available when @option{-maes} is
-+used.  All of them generate the machine instruction that is part of the
-+name.
-+
-+@smallexample
-+v2di __builtin_ia32_aesenc128 (v2di, v2di)
-+v2di __builtin_ia32_aesenclast128 (v2di, v2di)
-+v2di __builtin_ia32_aesdec128 (v2di, v2di)
-+v2di __builtin_ia32_aesdeclast128 (v2di, v2di)
-+v2di __builtin_ia32_aeskeygenassist128 (v2di, const int)
-+v2di __builtin_ia32_aesimc128 (v2di)
-+@end smallexample
-+
-+The following built-in function is available when @option{-mpclmul} is
-+used.
-+
-+@table @code
-+@item v2di __builtin_ia32_pclmulqdq128 (v2di, v2di, const int)
-+Generates the @code{pclmulqdq} machine instruction.
-+@end table
-+
- The following built-in functions are available when @option{-msse4a} is used.
- All of them generate the machine instruction that is part of the name.
- 
 Index: gcc/doc/invoke.texi
 ===================================================================
---- gcc/doc/invoke.texi	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/doc/invoke.texi	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -551,6 +551,7 @@
- -mno-wide-multiply  -mrtd  -malign-double @gol
- -mpreferred-stack-boundary=@var{num} -mcld -mcx16 -msahf -mrecip @gol
- -mmmx  -msse  -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -msse4 @gol
-+-maes -mpclmul @gol
- -msse4a -m3dnow -mpopcnt -mabm -msse5 @gol
- -mthreads  -mno-align-stringops  -minline-all-stringops @gol
- -mpush-args  -maccumulate-outgoing-args  -m128bit-long-double @gol
-@@ -10733,6 +10734,10 @@
- @itemx -mno-sse4.2
- @item -msse4
- @itemx -mno-sse4
-+@item -maes
-+@itemx -mno-aes
-+@item -mpclmul
-+@itemx -mno-pclmul
- @item -msse4a
- @item -mno-sse4a
- @item -msse5
-@@ -10750,8 +10755,8 @@
- @opindex m3dnow
- @opindex mno-3dnow
- These switches enable or disable the use of instructions in the MMX,
--SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4A, SSE5, ABM or 3DNow!@: extended
--instruction sets.
-+SSE, SSE2, SSE3, SSSE3, SSE4.1, AES, PCLMUL, SSE4A, SSE5, ABM or
-+3DNow!@: extended instruction sets.
- These extensions are also available as built-in functions: see
- @ref{X86 Built-in Functions}, for details of the functions enabled and
- disabled by these switches.
-Index: gcc/testsuite/gcc.target/i386/sse-14.c
-===================================================================
---- gcc/testsuite/gcc.target/i386/sse-14.c	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/testsuite/gcc.target/i386/sse-14.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -1,14 +1,15 @@
- /* { dg-do compile } */
--/* { dg-options "-O0 -march=k8 -m3dnow -msse4 -msse5" } */
-+/* { dg-options "-O0 -march=k8 -m3dnow -msse4 -msse5 -maes -mpclmul" } */
+--- gcc/doc/invoke.texi	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/doc/invoke.texi	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -584,7 +584,7 @@
+ -m96bit-long-double  -mregparm=@var{num}  -msseregparm @gol
+ -mveclibabi=@var{type} -mpc32 -mpc64 -mpc80 -mstackrealign @gol
+ -momit-leaf-frame-pointer  -mno-red-zone -mno-tls-direct-seg-refs @gol
+--mcmodel=@var{code-model} @gol
++-mcmodel=@var{code-model} -mabi=@var{name} @gol
+ -m32  -m64 -mlarge-data-threshold=@var{num} @gol
+ -mfused-madd -mno-fused-madd -msse2avx}
  
- /* Test that the intrinsics compile without optimization.  All of them are
--   defined as inline functions in {,x,e,p,t,s,a,b}mmintrin.h  and mm3dnow.h
-+   defined as inline functions in {,x,e,p,t,s,w,a,b}mmintrin.h  and mm3dnow.h
-    that reference the proper builtin functions.  Defining away "extern" and
-    "__inline" results in all of them being compiled as proper functions.  */
+@@ -10959,6 +10959,9 @@
+ @item core2
+ Intel Core2 CPU with 64-bit extensions, MMX, SSE, SSE2, SSE3 and SSSE3
+ instruction set support.
++@item atom
++Intel Atom CPU with 64-bit extensions, MMX, SSE, SSE2, SSE3 and SSSE3
++instruction set support.
+ @item k6
+ AMD K6 CPU with MMX instruction set support.
+ @item k6-2, k6-3
+@@ -11394,6 +11397,16 @@
+ @option{-funsafe-math-optimizations} have to be enabled. A SVML or ACML ABI
+ compatible library will have to be specified at link time.
  
- #define extern
- #define __inline
- 
-+#include <wmmintrin.h>
- #include <bmmintrin.h>
- #include <smmintrin.h>
- #include <mm3dnow.h>
-@@ -44,6 +45,10 @@
- test_1x (_mm_extracti_si64, __m128i, __m128i, 1, 1)
- test_2x (_mm_inserti_si64, __m128i, __m128i, __m128i, 1, 1)
- 
-+/* wmmintrin.h */
-+test_1 (_mm_aeskeygenassist_si128, __m128i, __m128i, 1)
-+test_2 (_mm_clmulepi64_si128, __m128i, __m128i, __m128i, 1)
++@item -mabi=@var{name}
++@opindex mabi
++Generate code for the specified calling convention.  Permissible values
++are: @samp{sysv} for the ABI used on GNU/Linux and other systems and
++@samp{ms} for the Microsoft ABI.  The default is to use the Microsoft
++ABI when targeting Windows.  On all other systems, the default is the
++SYSV ABI.  You can control this behavior for a specific function by
++using the function attribute @samp{ms_abi}/@samp{sysv_abi}.
++@xref{Function Attributes}.
 +
- /* smmintrin.h */
- test_2 (_mm_blend_epi16, __m128i, __m128i, __m128i, 1)
- test_2 (_mm_blend_ps, __m128, __m128, __m128, 1)
-Index: gcc/testsuite/gcc.target/i386/i386.exp
+ @item -mpush-args
+ @itemx -mno-push-args
+ @opindex mpush-args
+Index: gcc/doc/md.texi
 ===================================================================
---- gcc/testsuite/gcc.target/i386/i386.exp	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/testsuite/gcc.target/i386/i386.exp	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -51,6 +51,34 @@
-     } "-O2 -msse4.1" ]
+--- gcc/doc/md.texi	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/doc/md.texi	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -7506,6 +7506,11 @@
+ recognize complicated bypasses, e.g.@: when the consumer is only an address
+ of insn @samp{store} (not a stored value).
+ 
++If there are more one bypass with the same output and input insns, the
++chosen bypass is the first bypass with a guard in description whose
++guard function returns nonzero.  If there is no such bypass, then
++bypass without the guard function is chosen.
++
+ @findex exclusion_set
+ @findex presence_set
+ @findex final_presence_set
+Index: gcc/genautomata.c
+===================================================================
+--- gcc/genautomata.c	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/genautomata.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -1,5 +1,5 @@
+ /* Pipeline hazard description translator.
+-   Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008
++   Copyright (C) 2000, 2001, 2002, 2003, 2004, 2005, 2007, 2008, 2009
+    Free Software Foundation, Inc.
+ 
+    Written by Vladimir Makarov <vmakarov@redhat.com>
+@@ -22,21 +22,25 @@
+ 
+ /* References:
+ 
+-   1. Detecting pipeline structural hazards quickly. T. Proebsting,
++   1. The finite state automaton based pipeline hazard recognizer and
++      instruction scheduler in GCC.  V. Makarov.  Proceedings of GCC
++      summit, 2003.
++
++   2. Detecting pipeline structural hazards quickly. T. Proebsting,
+       C. Fraser. Proceedings of ACM SIGPLAN-SIGACT Symposium on
+       Principles of Programming Languages, pages 280--286, 1994.
+ 
+       This article is a good start point to understand usage of finite
+       state automata for pipeline hazard recognizers.  But I'd
+-      recommend the 2nd article for more deep understanding.
++      recommend the 1st and 3rd article for more deep understanding.
+ 
+-   2. Efficient Instruction Scheduling Using Finite State Automata:
++   3. Efficient Instruction Scheduling Using Finite State Automata:
+       V. Bala and N. Rubin, Proceedings of MICRO-28.  This is the best
+       article about usage of finite state automata for pipeline hazard
+       recognizers.
+ 
+-   The current implementation is different from the 2nd article in the
+-   following:
++   The current implementation is described in the 1st article and it
++   is different from the 3rd article in the following:
+ 
+    1. New operator `|' (alternative) is permitted in functional unit
+       reservation which can be treated deterministically and
+@@ -463,7 +467,10 @@
+      insn.  */
+   int insn_num;
+   /* The following field value is list of bypasses in which given insn
+-     is output insn.  */
++     is output insn.  Bypasses with the same input insn stay one after
++     another in the list in the same order as their occurrences in the
++     description but the bypass without a guard stays always the last
++     in a row of bypasses with the same input insn.  */
+   struct bypass_decl *bypass_list;
+ 
+   /* The following fields are defined by automaton generator.  */
+@@ -2367,18 +2374,67 @@
  }
  
-+# Return 1 if aes instructions can be compiled.
-+proc check_effective_target_aes { } {
-+    return [check_no_compiler_messages aes object {
-+	typedef long long __m128i __attribute__ ((__vector_size__ (16)));
-+	typedef long long __v2di __attribute__ ((__vector_size__ (16)));
-+
-+	__m128i _mm_aesimc_si128 (__m128i __X)
-+	{
-+	    return (__m128i) __builtin_ia32_aesimc128 ((__v2di)__X);
-+	}
-+    } "-O2 -maes" ]
-+}
-+
-+# Return 1 if pclmul instructions can be compiled.
-+proc check_effective_target_pclmul { } {
-+    return [check_no_compiler_messages pclmul object {
-+	typedef long long __m128i __attribute__ ((__vector_size__ (16)));
-+	typedef long long __v2di __attribute__ ((__vector_size__ (16)));
-+
-+	__m128i pclmulqdq_test (__m128i __X, __m128i __Y)
-+	{
-+	    return (__m128i) __builtin_ia32_pclmulqdq128 ((__v2di)__X,
-+							  (__v2di)__Y,
-+							  1);
-+	}
-+    } "-O2 -mpclmul" ]
-+}
-+
- # Return 1 if sse4a instructions can be compiled.
- proc check_effective_target_sse4a { } {
-     return [check_no_compiler_messages sse4a object {
-Index: gcc/testsuite/gcc.target/i386/aesdeclast.c
+ 
+-/* The function searches for bypass with given IN_INSN_RESERV in given
+-   BYPASS_LIST.  */
+-static struct bypass_decl *
+-find_bypass (struct bypass_decl *bypass_list,
+-	     struct insn_reserv_decl *in_insn_reserv)
++/* The function inserts BYPASS in the list of bypasses of the
++   corresponding output insn.  The order of bypasses in the list is
++   decribed in a comment for member `bypass_list' (see above).  If
++   there is already the same bypass in the list the function reports
++   this and does nothing.  */
++static void
++insert_bypass (struct bypass_decl *bypass)
+ {
+-  struct bypass_decl *bypass;
+-
+-  for (bypass = bypass_list; bypass != NULL; bypass = bypass->next)
+-    if (bypass->in_insn_reserv == in_insn_reserv)
+-      break;
+-  return bypass;
++  struct bypass_decl *curr, *last;
++  struct insn_reserv_decl *out_insn_reserv = bypass->out_insn_reserv;
++  struct insn_reserv_decl *in_insn_reserv = bypass->in_insn_reserv;
++  
++  for (curr = out_insn_reserv->bypass_list, last = NULL;
++       curr != NULL;
++       last = curr, curr = curr->next)
++    if (curr->in_insn_reserv == in_insn_reserv)
++      {
++	if ((bypass->bypass_guard_name != NULL
++	     && curr->bypass_guard_name != NULL
++	     && ! strcmp (bypass->bypass_guard_name, curr->bypass_guard_name))
++	    || bypass->bypass_guard_name == curr->bypass_guard_name)
++	  {
++	    if (bypass->bypass_guard_name == NULL)
++	      {
++		if (!w_flag)
++		  error ("the same bypass `%s - %s' is already defined",
++			 bypass->out_insn_name, bypass->in_insn_name);
++		else
++		  warning (0, "the same bypass `%s - %s' is already defined",
++			   bypass->out_insn_name, bypass->in_insn_name);
++	      }
++	    else if (!w_flag)
++	      error ("the same bypass `%s - %s' (guard %s) is already defined",
++		     bypass->out_insn_name, bypass->in_insn_name,
++		     bypass->bypass_guard_name);
++	    else
++	      warning
++		(0, "the same bypass `%s - %s' (guard %s) is already defined",
++		 bypass->out_insn_name, bypass->in_insn_name,
++		 bypass->bypass_guard_name);
++	    return;
++	  }
++	if (curr->bypass_guard_name == NULL)
++	  break;
++	if (curr->next == NULL || curr->next->in_insn_reserv != in_insn_reserv)
++	  {
++	    last = curr;
++	    break;
++	  }
++	  
++      }
++  if (last == NULL)
++    {
++      bypass->next = out_insn_reserv->bypass_list;
++      out_insn_reserv->bypass_list = bypass;
++    }
++  else
++    {
++      bypass->next = last->next;
++      last->next = bypass;
++    }
+ }
+ 
+ /* The function processes pipeline description declarations, checks
+@@ -2391,7 +2447,6 @@
+   decl_t decl_in_table;
+   decl_t out_insn_reserv;
+   decl_t in_insn_reserv;
+-  struct bypass_decl *bypass;
+   int automaton_presence;
+   int i;
+ 
+@@ -2514,36 +2569,7 @@
+ 		= DECL_INSN_RESERV (out_insn_reserv);
+ 	      DECL_BYPASS (decl)->in_insn_reserv
+ 		= DECL_INSN_RESERV (in_insn_reserv);
+-	      bypass
+-		= find_bypass (DECL_INSN_RESERV (out_insn_reserv)->bypass_list,
+-			       DECL_BYPASS (decl)->in_insn_reserv);
+-	      if (bypass != NULL)
+-		{
+-		  if (DECL_BYPASS (decl)->latency == bypass->latency)
+-		    {
+-		      if (!w_flag)
+-			error
+-			  ("the same bypass `%s - %s' is already defined",
+-			   DECL_BYPASS (decl)->out_insn_name,
+-			   DECL_BYPASS (decl)->in_insn_name);
+-		      else
+-			warning
+-			  (0, "the same bypass `%s - %s' is already defined",
+-			   DECL_BYPASS (decl)->out_insn_name,
+-			   DECL_BYPASS (decl)->in_insn_name);
+-		    }
+-		  else
+-		    error ("bypass `%s - %s' is already defined",
+-			   DECL_BYPASS (decl)->out_insn_name,
+-			   DECL_BYPASS (decl)->in_insn_name);
+-		}
+-	      else
+-		{
+-		  DECL_BYPASS (decl)->next
+-		    = DECL_INSN_RESERV (out_insn_reserv)->bypass_list;
+-		  DECL_INSN_RESERV (out_insn_reserv)->bypass_list
+-		    = DECL_BYPASS (decl);
+-		}
++	      insert_bypass (DECL_BYPASS (decl));
+ 	    }
+ 	}
+     }
+@@ -8159,19 +8185,32 @@
+ 			    (advance_cycle_insn_decl)->insn_num));
+ 	    fprintf (output_file, "        case %d:\n",
+ 		     bypass->in_insn_reserv->insn_num);
+-	    if (bypass->bypass_guard_name == NULL)
+-	      fprintf (output_file, "          return %d;\n",
+-		       bypass->latency);
+-	    else
++	    for (;;)
+ 	      {
+-		fprintf (output_file,
+-			 "          if (%s (%s, %s))\n",
+-			 bypass->bypass_guard_name, INSN_PARAMETER_NAME,
+-			 INSN2_PARAMETER_NAME);
+-		fprintf (output_file,
+-			 "            return %d;\n          break;\n",
+-			 bypass->latency);
++		if (bypass->bypass_guard_name == NULL)
++		  {
++		    gcc_assert (bypass->next == NULL
++				|| (bypass->in_insn_reserv
++				    != bypass->next->in_insn_reserv));
++		    fprintf (output_file, "          return %d;\n",
++			     bypass->latency);
++		  }
++		else
++		  {
++		    fprintf (output_file,
++			     "          if (%s (%s, %s))\n",
++			     bypass->bypass_guard_name, INSN_PARAMETER_NAME,
++			     INSN2_PARAMETER_NAME);
++		    fprintf (output_file, "            return %d;\n",
++			     bypass->latency);
++		  }
++		if (bypass->next == NULL
++		    || bypass->in_insn_reserv != bypass->next->in_insn_reserv)
++		  break;
++		bypass = bypass->next;
+ 	      }
++	    if (bypass->bypass_guard_name != NULL)
++	      fprintf (output_file, "          break;\n");
+ 	  }
+ 	fputs ("        }\n      break;\n", output_file);
+       }
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-4a.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/aesdeclast.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aesdeclast.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,69 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target aes } */
-+/* { dg-options "-O2 -maes" } */
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-4a.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-4a.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,24 @@
++/* Test for cross x86_64<->w64 abi va_list calls.  */
++/* { dg-do run { target i?86-*-linux* x86_64-*-linux* } } */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -fno-builtin" } */
++/* { dg-additional-sources "vaarg-4b.c" } */
 +
-+#include <wmmintrin.h>
-+#include <string.h>
++extern __SIZE_TYPE__ __attribute__ ((sysv_abi)) strlen (const char *);
++extern int __attribute__ ((sysv_abi)) sprintf (char *,const char *, ...);
++extern void __attribute__ ((sysv_abi)) abort (void);
 +
-+#include "aes-check.h"
++extern void do_cpy (char *, ...);
 +
-+extern void abort (void);
-+
-+#define NUM 1024
-+
-+static __m128i src1[NUM];
-+static __m128i src2[NUM];
-+static __m128i edst[NUM];
-+
-+static __m128i resdst[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one set of
-+   input/output vectors).  */
-+
-+static void
-+init_data (__m128i *s1, __m128i *s2, __m128i *d)
-+{
-+  int i;
-+
-+  for (i = 0; i < NUM; i++)
-+    {
-+      s1[i] = _mm_setr_epi32 (0x5d53475d, 0x63746f72,
-+			      0x73745665, 0x7b5b5465);
-+      s2[i] = _mm_setr_epi32 (0x726f6e5d, 0x5b477565,
-+			      0x68617929, 0x48692853);
-+      d[i] = _mm_setr_epi32 (0x72a593d0, 0xd410637b,
-+			     0x6b317f95, 0xc5a391ef);
-+    }
-+}
-+
-+static void
-+aes_test (void)
-+{
-+  int i;
-+
-+  init_data (src1, src2, edst);
-+
-+  for (i = 0; i < NUM; i += 16)
-+    {
-+      resdst[i] = _mm_aesdeclast_si128 (src1[i], src2[i]);
-+      resdst[i + 1] = _mm_aesdeclast_si128 (src1[i + 1], src2[i + 1]);
-+      resdst[i + 2] = _mm_aesdeclast_si128 (src1[i + 2], src2[i + 2]);
-+      resdst[i + 3] = _mm_aesdeclast_si128 (src1[i + 3], src2[i + 3]);
-+      resdst[i + 4] = _mm_aesdeclast_si128 (src1[i + 4], src2[i + 4]);
-+      resdst[i + 5] = _mm_aesdeclast_si128 (src1[i + 5], src2[i + 5]);
-+      resdst[i + 6] = _mm_aesdeclast_si128 (src1[i + 6], src2[i + 6]);
-+      resdst[i + 7] = _mm_aesdeclast_si128 (src1[i + 7], src2[i + 7]);
-+      resdst[i + 8] = _mm_aesdeclast_si128 (src1[i + 8], src2[i + 8]);
-+      resdst[i + 9] = _mm_aesdeclast_si128 (src1[i + 9], src2[i + 9]);
-+      resdst[i + 10] = _mm_aesdeclast_si128 (src1[i + 10], src2[i + 10]);
-+      resdst[i + 11] = _mm_aesdeclast_si128 (src1[i + 11], src2[i + 11]);
-+      resdst[i + 12] = _mm_aesdeclast_si128 (src1[i + 12], src2[i + 12]);
-+      resdst[i + 13] = _mm_aesdeclast_si128 (src1[i + 13], src2[i + 13]);
-+      resdst[i + 14] = _mm_aesdeclast_si128 (src1[i + 14], src2[i + 14]);
-+      resdst[i + 15] = _mm_aesdeclast_si128 (src1[i + 15], src2[i + 15]);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    if (memcmp (edst + i, resdst + i, sizeof (__m128i)))
-+      abort ();
-+}
-Index: gcc/testsuite/gcc.target/i386/pclmulqdq.c
-===================================================================
---- gcc/testsuite/gcc.target/i386/pclmulqdq.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/pclmulqdq.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,87 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target pclmul } */
-+/* { dg-options "-O2 -mpclmul" } */
-+
-+#include <wmmintrin.h>
-+#include <string.h>
-+
-+#include "pclmul-check.h"
-+
-+extern void abort (void);
-+
-+#define NUM 1024
-+
-+static __m128i s1[NUM];
-+static __m128i s2[NUM];
-+/* We need this array to generate mem form of inst */
-+static __m128i s2m[NUM];
-+
-+static __m128i e_00[NUM];
-+static __m128i e_01[NUM];
-+static __m128i e_10[NUM];
-+static __m128i e_11[NUM];
-+
-+static __m128i d_00[NUM];
-+static __m128i d_01[NUM];
-+static __m128i d_10[NUM];
-+static __m128i d_11[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one set
-+   of input/output vectors).  */
-+static void
-+init_data (__m128i *ls1,   __m128i *ls2, __m128i *le_00, __m128i *le_01,
-+	   __m128i *le_10, __m128i *le_11)
-+{
-+  int i;
-+
-+  for (i = 0; i < NUM; i++)
-+    {
-+      ls1[i] = _mm_set_epi32 (0x7B5B5465, 0x73745665,
-+			      0x63746F72, 0x5D53475D);
-+      ls2[i] = _mm_set_epi32 (0x48692853, 0x68617929,
-+			      0x5B477565, 0x726F6E5D);
-+      s2m[i] = _mm_set_epi32 (0x48692853, 0x68617929,
-+			      0x5B477565, 0x726F6E5D);
-+      le_00[i] = _mm_set_epi32 (0x1D4D84C8, 0x5C3440C0,
-+				0x929633D5, 0xD36F0451);
-+      le_01[i] = _mm_set_epi32 (0x1A2BF6DB, 0x3A30862F,
-+				0xBABF262D, 0xF4B7D5C9);
-+      le_10[i] = _mm_set_epi32 (0x1BD17C8D, 0x556AB5A1,
-+				0x7FA540AC, 0x2A281315);
-+      le_11[i] = _mm_set_epi32 (0x1D1E1F2C, 0x592E7C45,
-+				0xD66EE03E, 0x410FD4ED);
-+    }
-+}
-+
-+static void
-+pclmul_test (void)
-+{
-+  int i;
-+
-+  init_data (s1, s2, e_00, e_01, e_10, e_11);
-+
-+  for (i = 0; i < NUM; i += 2)
-+    {
-+      d_00[i] = _mm_clmulepi64_si128 (s1[i], s2m[i], 0x00);
-+      d_01[i] = _mm_clmulepi64_si128 (s1[i], s2[i], 0x01);
-+      d_10[i] = _mm_clmulepi64_si128 (s1[i], s2[i], 0x10);
-+      d_11[i] = _mm_clmulepi64_si128 (s1[i], s2[i], 0x11);
-+
-+      d_11[i + 1] = _mm_clmulepi64_si128 (s1[i + 1], s2[i + 1], 0x11);
-+      d_00[i + 1] = _mm_clmulepi64_si128 (s1[i + 1], s2[i + 1], 0x00);
-+      d_10[i + 1] = _mm_clmulepi64_si128 (s1[i + 1], s2m[i + 1], 0x10);
-+      d_01[i + 1] = _mm_clmulepi64_si128 (s1[i + 1], s2[i + 1], 0x01);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    {
-+      if (memcmp (d_00 + i, e_00 + i, sizeof (__m128i)))
-+	abort ();
-+      if (memcmp (d_01 + i, e_01 + i, sizeof (__m128i)))
-+	abort ();
-+      if (memcmp (d_10 + i, e_10 + i, sizeof (__m128i)))
-+	abort ();
-+      if (memcmp(d_11 + i, e_11 + i, sizeof (__m128i)))
-+	abort ();
-+    }
-+}
-Index: gcc/testsuite/gcc.target/i386/aes-check.h
-===================================================================
---- gcc/testsuite/gcc.target/i386/aes-check.h	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aes-check.h	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,30 @@
-+#include <stdio.h>
-+#include <stdlib.h>
-+
-+#include "cpuid.h"
-+
-+static void aes_test (void);
-+
-+int
++int __attribute__ ((sysv_abi))
 +main ()
 +{
-+  unsigned int eax, ebx, ecx, edx;
-+ 
-+  if (!__get_cpuid (1, &eax, &ebx, &ecx, &edx))
-+    return 0;
++  char s[256];
 +
-+  /* Run AES test only if host has AES support.  */
-+  if (ecx & bit_AES)
-+    {
-+      aes_test ();
-+#ifdef DEBUG
-+    printf ("PASSED\n");
-+#endif
-+    }
-+#ifdef DEBUG
-+  else
-+    printf ("SKIPPED\n");
-+#endif
++  do_cpy (s, "1","2","3","4", "5", "6", "7", "");
++
++  if (s[0] != '1' || s[1] !='2' || s[2] != '3' || s[3] != '4'
++      || s[4] != '5' || s[5] != '6' || s[6] != '7' || s[7] != 0)
++    abort ();
 +
 +  return 0;
 +}
-Index: gcc/testsuite/gcc.target/i386/pclmul-check.h
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-4b.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/pclmul-check.h	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/pclmul-check.h	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,30 @@
-+#include <stdio.h>
-+#include <stdlib.h>
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-4b.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-4b.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,31 @@
++/* Test for cross x86_64<->w64 abi va_list calls.  */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -fno-builtin" } */
 +
-+#include "cpuid.h"
++#include <stdarg.h>
 +
-+static void pclmul_test (void);
++extern __SIZE_TYPE__ __attribute__ ((sysv_abi)) strlen (const char *);
++extern int __attribute__ ((sysv_abi)) sprintf (char *, const char *, ...);
 +
-+int
-+main ()
++static void
++vdo_cpy (char *s, va_list argp)
 +{
-+  unsigned int eax, ebx, ecx, edx;
-+ 
-+  if (!__get_cpuid (1, &eax, &ebx, &ecx, &edx))
-+    return 0;
++  __SIZE_TYPE__ len;
++  char *r = s;
++  char *e;
++  *r = 0;
++  for (;;) {
++    e = va_arg (argp, char *);
++    if (*e == 0) break;
++    sprintf (r,"%s", e);
++    r += strlen (r);
++  }
++}
 +
-+  /* Run PCLMULQDQ test only if host has PCLMULQDQ support.  */
-+  if (ecx & bit_PCLMUL)
-+    {
-+      pclmul_test ();
-+#ifdef DEBUG
-+      printf ("PASSED\n");
-+#endif
-+    }
-+#ifdef DEBUG
-+  else
-+    printf ("SKIPPED\n");
-+#endif
++void
++do_cpy (char *s, ...)
++{
++  va_list argp;
++  va_start (argp, s);
++  vdo_cpy (s, argp);
++  va_end (argp);
++}
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-5a.c
+===================================================================
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-5a.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-5a.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,17 @@
++/* Test for cross x86_64<->w64 abi va_list calls.  */
++/* { dg-do run { target i?86-*-linux* x86_64-*-linux* } } */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -fno-builtin" } */
++/* { dg-additional-sources "vaarg-5b.c" } */
 +
++extern void __attribute__ ((sysv_abi)) abort (void);
++extern int fct2 (int, ...);
++
++#define SZ_ARGS	1ll,2ll,3ll,4ll,5ll,6ll,7ll,0ll
++
++int __attribute__ ((sysv_abi))
++main()
++{
++  if (fct2 (-1, SZ_ARGS) != 0)
++    abort ();
 +  return 0;
 +}
-Index: gcc/testsuite/gcc.target/i386/aeskeygenassist.c
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-5b.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/aeskeygenassist.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aeskeygenassist.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,66 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target aes } */
-+/* { dg-options "-O2 -maes" } */
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-5b.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/vaarg-5b.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,37 @@
++/* Test for cross x86_64<->w64 abi va_list calls.  */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -fno-builtin" } */
 +
-+#include <wmmintrin.h>
-+#include <string.h>
++#include <stdarg.h>
 +
-+#include "aes-check.h"
++#define SZ_ARGS	1ll,2ll,3ll,4ll,5ll,6ll,7ll,0ll
 +
-+extern void abort (void);
-+
-+#define NUM 1024
-+#define IMM8 1
-+
-+static __m128i src1[NUM];
-+static __m128i edst[NUM];
-+
-+static __m128i resdst[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one set
-+   of input/output vectors).  */
-+
-+static void
-+init_data (__m128i *s1, __m128i *d)
++static int __attribute__ ((sysv_abi))
++fct1 (va_list argp, ...)
 +{
-+  int i;
-+  for (i = 0; i < NUM; i++)
-+    {
-+      s1[i] = _mm_setr_epi32 (0x16157e2b, 0xa6d2ae28,
-+			      0x8815f7ab, 0x3c4fcf09);
-+      d[i] = _mm_setr_epi32 (0x24b5e434, 0x3424b5e5,
-+			     0xeb848a01, 0x01eb848b);
-+    }
++  long long p1,p2;
++  int ret = 1;
++  __builtin_sysv_va_list argp_2;
++
++  __builtin_sysv_va_start (argp_2, argp);
++  do {
++    p1 = va_arg (argp_2, long long);
++    p2 = va_arg (argp, long long);
++    if (p1 != p2)
++      ret = 0;
++  } while (ret && p1 != 0);
++  __builtin_sysv_va_end (argp_2);
++
++  return ret;
 +}
 +
-+static void
-+aes_test (void)
++int
++fct2 (int dummy, ...)
 +{
-+  int i;
++  va_list argp;
++  int ret = dummy;
 +
-+  init_data (src1, edst);
-+
-+  for (i = 0; i < NUM; i += 16)
-+    {
-+      resdst[i]  = _mm_aeskeygenassist_si128 (src1[i], IMM8);
-+      resdst[i + 1] = _mm_aeskeygenassist_si128 (src1[i + 1], IMM8);
-+      resdst[i + 2] = _mm_aeskeygenassist_si128 (src1[i + 2], IMM8);
-+      resdst[i + 3] = _mm_aeskeygenassist_si128 (src1[i + 3], IMM8);
-+      resdst[i + 4] = _mm_aeskeygenassist_si128 (src1[i + 4], IMM8);
-+      resdst[i + 5] = _mm_aeskeygenassist_si128 (src1[i + 5], IMM8);
-+      resdst[i + 6] = _mm_aeskeygenassist_si128 (src1[i + 6], IMM8);
-+      resdst[i + 7] = _mm_aeskeygenassist_si128 (src1[i + 7], IMM8);
-+      resdst[i + 8] = _mm_aeskeygenassist_si128 (src1[i + 8], IMM8);
-+      resdst[i + 9] = _mm_aeskeygenassist_si128 (src1[i + 9], IMM8);
-+      resdst[i + 10] = _mm_aeskeygenassist_si128 (src1[i + 10], IMM8);
-+      resdst[i + 11] = _mm_aeskeygenassist_si128 (src1[i + 11], IMM8);
-+      resdst[i + 12] = _mm_aeskeygenassist_si128 (src1[i + 12], IMM8);
-+      resdst[i + 13] = _mm_aeskeygenassist_si128 (src1[i + 13], IMM8);
-+      resdst[i + 14] = _mm_aeskeygenassist_si128 (src1[i + 14], IMM8);
-+      resdst[i + 15] = _mm_aeskeygenassist_si128 (src1[i + 15], IMM8);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    if (memcmp(edst + i, resdst + i, sizeof (__m128i)))
-+      abort ();
++  va_start (argp, dummy);
++  ret += fct1 (argp, SZ_ARGS);
++  va_end (argp);
++  return ret;
 +}
-Index: gcc/testsuite/gcc.target/i386/aesenclast.c
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect-2a.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/aesenclast.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aesenclast.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,68 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target aes } */
-+/* { dg-options "-O2 -maes" } */
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect-2a.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect-2a.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,17 @@
++/* Test for cross x86_64<->w64 abi standard calls via variable.  */
++/* { dg-do run { target i?86-*-linux* x86_64-*-linux* } } */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -ffast-math -fno-builtin" } */
++/* { dg-additional-sources "func-indirect-2b.c" } */
 +
-+#include <wmmintrin.h>
-+#include <string.h>
++extern void __attribute__ ((sysv_abi)) abort (void);
++typedef int (*func)(void *, char *, char *, short, long long);
++extern func get_callback (void);
 +
-+#include "aes-check.h"
-+
-+extern void abort (void);
-+
-+#define NUM 1024
-+
-+static __m128i src1[NUM];
-+static __m128i src2[NUM];
-+static __m128i edst[NUM];
-+
-+static __m128i resdst[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one
-+   set of input/output vectors).  */
-+
-+static void
-+init_data (__m128i *s1, __m128i *s2, __m128i *d)
++int __attribute__ ((sysv_abi))
++main ()
 +{
-+  int i;
-+  for (i = 0; i < NUM; i++)
-+    {
-+      s1[i] = _mm_setr_epi32 (0x5d53475d, 0x63746f72,
-+			      0x73745665, 0x7b5b5465);
-+      s2[i] = _mm_setr_epi32 (0x726f6e5d, 0x5b477565,
-+			      0x68617929, 0x48692853);
-+      d[i] = _mm_setr_epi32 (0x53fdc611, 0x177ec425,
-+			     0x938c5964, 0xc7fb881e);
-+    }
++  func callme = get_callback ();
++  if (callme (0, 0, 0, 0x1234, 0x1234567890abcdefLL))
++    abort ();
++  return 0;
 +}
-+
-+static void
-+aes_test (void)
-+{
-+  int i;
-+
-+  init_data (src1, src2, edst);
-+
-+  for (i = 0; i < NUM; i += 16)
-+    {
-+      resdst[i] = _mm_aesenclast_si128 (src1[i], src2[i]);
-+      resdst[i + 1] = _mm_aesenclast_si128 (src1[i + 1], src2[i + 1]);
-+      resdst[i + 2] = _mm_aesenclast_si128 (src1[i + 2], src2[i + 2]);
-+      resdst[i + 3] = _mm_aesenclast_si128 (src1[i + 3], src2[i + 3]);
-+      resdst[i + 4] = _mm_aesenclast_si128 (src1[i + 4], src2[i + 4]);
-+      resdst[i + 5] = _mm_aesenclast_si128 (src1[i + 5], src2[i + 5]);
-+      resdst[i + 6] = _mm_aesenclast_si128 (src1[i + 6], src2[i + 6]);
-+      resdst[i + 7] = _mm_aesenclast_si128 (src1[i + 7], src2[i + 7]);
-+      resdst[i + 8] = _mm_aesenclast_si128 (src1[i + 8], src2[i + 8]);
-+      resdst[i + 9] = _mm_aesenclast_si128 (src1[i + 9], src2[i + 9]);
-+      resdst[i + 10] = _mm_aesenclast_si128 (src1[i + 10], src2[i + 10]);
-+      resdst[i + 11] = _mm_aesenclast_si128 (src1[i + 11], src2[i + 11]);
-+      resdst[i + 12] = _mm_aesenclast_si128 (src1[i + 12], src2[i + 12]);
-+      resdst[i + 13] = _mm_aesenclast_si128 (src1[i + 13], src2[i + 13]);
-+      resdst[i + 14] = _mm_aesenclast_si128 (src1[i + 14], src2[i + 14]);
-+      resdst[i + 15] = _mm_aesenclast_si128 (src1[i + 15], src2[i + 15]);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    if (memcmp(edst + i, resdst + i, sizeof (__m128i)))
-+      abort ();
-+}
-Index: gcc/testsuite/gcc.target/i386/aesimc.c
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/func-2a.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/aesimc.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aesimc.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,66 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target aes } */
-+/* { dg-options "-O2 -maes" } */
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/func-2a.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/func-2a.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,27 @@
++/* Test for cross x86_64<->w64 abi standard calls.  */
++/* { dg-do run { target i?86-*-linux* x86_64-*-linux* } } */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -ffast-math -fno-builtin" } */
++/* { dg-additional-sources "func-2b.c" } */
 +
-+#include <wmmintrin.h>
-+#include <string.h>
++extern void __attribute__ ((sysv_abi)) abort (void);
++long double func_cross (long double, double, float, long, int, char);
 +
-+#include "aes-check.h"
-+
-+extern void abort (void);
-+
-+#define NUM 1024
-+
-+static __m128i src1[NUM];
-+static __m128i edst[NUM];
-+
-+static __m128i resdst[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one set
-+   of input/output vectors).   */
-+
-+static void
-+init_data (__m128i *s1, __m128i *d)
++long double __attribute__ ((sysv_abi))
++func_native (long double a, double b, float c, long d, int e, char f)
 +{
-+  int i;
-+
-+  for (i = 0; i < NUM; i++)
-+    {
-+      s1[i] = _mm_setr_epi32 (0x5d53475d, 0x63746f72,
-+			      0x73745665, 0x7b5b5465);
-+      d[i] = _mm_setr_epi32 (0x81c3b3e5, 0x2b18330a,
-+			     0x44b109c8, 0x627a6f66);
-+    }
++  long double ret;
++  ret = a + (long double) b + (long double) c;
++  ret *= (long double) (d + (long) e);
++  if (f>0)
++    ret += func_native (a,b,c,d,e,-f);
++  return ret;
 +}
 +
-+static void
-+aes_test (void)
++int __attribute__ ((sysv_abi))
++main ()
 +{
-+  int i;
-+
-+  init_data (src1, edst);
-+
-+  for (i = 0; i < NUM; i += 16)
-+    {
-+      resdst[i] = _mm_aesimc_si128 (src1[i]);
-+      resdst[i + 1] = _mm_aesimc_si128 (src1[i + 1]);
-+      resdst[i + 2] = _mm_aesimc_si128 (src1[i + 2]);
-+      resdst[i + 3] = _mm_aesimc_si128 (src1[i + 3]);
-+      resdst[i + 4] = _mm_aesimc_si128 (src1[i + 4]);
-+      resdst[i + 5] = _mm_aesimc_si128 (src1[i + 5]);
-+      resdst[i + 6] = _mm_aesimc_si128 (src1[i + 6]);
-+      resdst[i + 7] = _mm_aesimc_si128 (src1[i + 7]);
-+      resdst[i + 8] = _mm_aesimc_si128 (src1[i + 8]);
-+      resdst[i + 9] = _mm_aesimc_si128 (src1[i + 9]);
-+      resdst[i + 10] = _mm_aesimc_si128 (src1[i + 10]);
-+      resdst[i + 11] = _mm_aesimc_si128 (src1[i + 11]);
-+      resdst[i + 12] = _mm_aesimc_si128 (src1[i + 12]);
-+      resdst[i + 13] = _mm_aesimc_si128 (src1[i + 13]);
-+      resdst[i + 14] = _mm_aesimc_si128 (src1[i + 14]);
-+      resdst[i + 15] = _mm_aesimc_si128 (src1[i + 15]);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    if (memcmp(edst + i, resdst + i, sizeof (__m128i)))
-+      abort ();
++  if (func_cross (1.0,2.0,3.0,1,2,3)
++      != func_native (1.0,2.0,3.0,1,2,3))
++    abort ();
++  return 0;
 +}
-Index: gcc/testsuite/gcc.target/i386/aesenc.c
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect-2b.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/aesenc.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aesenc.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,68 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target aes } */
-+/* { dg-options "-O2 -maes" } */
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect-2b.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/func-indirect-2b.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,24 @@
++/* Test for cross x86_64<->w64 abi standard calls via variable.  */
++/* { dg-options "-O2 -mabi=ms -std=gnu99 -ffast-math -fno-builtin" } */
 +
-+#include <wmmintrin.h>
-+#include <string.h>
++typedef int (*func)(void *, char *, char *, short, long long);
 +
-+#include "aes-check.h"
-+
-+extern void abort (void);
-+
-+#define NUM 1024
-+
-+static __m128i src1[NUM];
-+static __m128i src2[NUM];
-+static __m128i edst[NUM];
-+
-+static __m128i resdst[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one set
-+   of input/output vectors).  */
-+
-+static void
-+init_data (__m128i *s1, __m128i *s2, __m128i *d)
++static int
++callback (void *ptr, char *string1, char *string2, short number,
++	  long long rand)
 +{
-+  int i;
-+  for (i = 0; i < NUM; i++)
-+    {
-+      s1[i] = _mm_setr_epi32 (0x5d53475d, 0x63746f72,
-+			      0x73745665, 0x7b5b5465);
-+      s2[i] = _mm_setr_epi32 (0x726f6e5d, 0x5b477565,
-+			      0x68617929, 0x48692853);
-+      d[i] = _mm_setr_epi32 (0xded7e595, 0x8b104b58,
-+			     0x9fdba3c5, 0xa8311c2f);
-+    }
++  if (ptr != 0
++      || string1 != 0
++      || string2 != 0
++      || number != 0x1234
++      || rand != 0x1234567890abcdefLL)
++    return 1;
++  else
++    return 0;
 +}
 +
-+static void
-+aes_test (void)
++func
++get_callback (void)
 +{
-+  int i;
-+
-+  init_data (src1, src2, edst);
-+
-+  for (i = 0; i < NUM; i += 16)
-+    {
-+      resdst[i] = _mm_aesenc_si128 (src1[i], src2[i]);
-+      resdst[i + 1] = _mm_aesenc_si128 (src1[i + 1], src2[i + 1]);
-+      resdst[i + 2] = _mm_aesenc_si128 (src1[i + 2], src2[i + 2]);
-+      resdst[i + 3] = _mm_aesenc_si128 (src1[i + 3], src2[i + 3]);
-+      resdst[i + 4] = _mm_aesenc_si128 (src1[i + 4], src2[i + 4]);
-+      resdst[i + 5] = _mm_aesenc_si128 (src1[i + 5], src2[i + 5]);
-+      resdst[i + 6] = _mm_aesenc_si128 (src1[i + 6], src2[i + 6]);
-+      resdst[i + 7] = _mm_aesenc_si128 (src1[i + 7], src2[i + 7]);
-+      resdst[i + 8] = _mm_aesenc_si128 (src1[i + 8], src2[i + 8]);
-+      resdst[i + 9] = _mm_aesenc_si128 (src1[i + 9], src2[i + 9]);
-+      resdst[i + 10] = _mm_aesenc_si128 (src1[i + 10], src2[i + 10]);
-+      resdst[i + 11] = _mm_aesenc_si128 (src1[i + 11], src2[i + 11]);
-+      resdst[i + 12] = _mm_aesenc_si128 (src1[i + 12], src2[i + 12]);
-+      resdst[i + 13] = _mm_aesenc_si128 (src1[i + 13], src2[i + 13]);
-+      resdst[i + 14] = _mm_aesenc_si128 (src1[i + 14], src2[i + 14]);
-+      resdst[i + 15] = _mm_aesenc_si128 (src1[i + 15], src2[i + 15]);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    if (memcmp (edst + i, resdst + i, sizeof (__m128i)))
-+      abort ();
++  return callback;
 +}
-Index: gcc/testsuite/gcc.target/i386/sse-13.c
+Index: gcc/testsuite/gcc.target/x86_64/abi/callabi/func-2b.c
 ===================================================================
---- gcc/testsuite/gcc.target/i386/sse-13.c	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/testsuite/gcc.target/i386/sse-13.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -1,8 +1,8 @@
- /* { dg-do compile } */
--/* { dg-options "-O2 -march=k8 -m3dnow -msse4 -msse5" } */
-+/* { dg-options "-O2 -march=k8 -m3dnow -msse4 -msse5 -maes -mpclmul" } */
- 
- /* Test that the intrinsics compile with optimization.  All of them are
--   defined as inline functions in {,x,e,p,t,s,a,b}mmintrin.h and mm3dnow.h
-+   defined as inline functions in {,x,e,p,t,s,w,a,b}mmintrin.h and mm3dnow.h
-    that reference the proper builtin functions.  Defining away "extern" and
-    "__inline" results in all of them being compiled as proper functions.  */
- 
-@@ -15,6 +15,10 @@
- #define __builtin_ia32_extrqi(X, I, L)  __builtin_ia32_extrqi(X, 1, 1)
- #define __builtin_ia32_insertqi(X, Y, I, L) __builtin_ia32_insertqi(X, Y, 1, 1)
- 
-+/* wmmintrin.h */
-+#define __builtin_ia32_aeskeygenassist128(X, C) __builtin_ia32_aeskeygenassist128(X, 1)
-+#define __builtin_ia32_pclmulqdq128(X, Y, I) __builtin_ia32_pclmulqdq128(X, Y, 1)
+--- gcc/testsuite/gcc.target/x86_64/abi/callabi/func-2b.c	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/gcc.target/x86_64/abi/callabi/func-2b.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,13 @@
++/* Test for cross x86_64<->w64 abi standard calls.  */
++/* { dg-options "-mabi=ms -std=gnu99 -ffast-math -fno-builtin" } */
 +
- /* smmintrin.h */
- #define __builtin_ia32_pblendw128(X, Y, M) __builtin_ia32_pblendw128 (X, Y, 1)
- #define __builtin_ia32_blendps(X, Y, M) __builtin_ia32_blendps(X, Y, 1)
-@@ -92,6 +96,7 @@
- #define __builtin_ia32_protdi(A, B) __builtin_ia32_protdi(A,1)
- #define __builtin_ia32_protqi(A, B) __builtin_ia32_protqi(A,1)
- 
-+#include <wmmintrin.h>
- #include <bmmintrin.h>
- #include <smmintrin.h>
- #include <mm3dnow.h>
-Index: gcc/testsuite/gcc.target/i386/aesdec.c
-===================================================================
---- gcc/testsuite/gcc.target/i386/aesdec.c	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/gcc.target/i386/aesdec.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,67 @@
-+/* { dg-do run } */
-+/* { dg-require-effective-target aes } */
-+/* { dg-options "-O2 -maes" } */
-+
-+#include <wmmintrin.h>
-+#include <string.h>
-+
-+#include "aes-check.h"
-+
-+extern void abort (void);
-+
-+#define NUM 1024
-+
-+static __m128i src1[NUM];
-+static __m128i src2[NUM];
-+static __m128i edst[NUM];
-+
-+static __m128i resdst[NUM];
-+
-+/* Initialize input/output vectors.  (Currently, there is only one set
-+   of input/output vectors).  */
-+static void
-+init_data (__m128i *s1, __m128i *s2, __m128i *d)
++long double func_cross (long double a, double b, float c, long d, int e,
++			char f)
 +{
-+  int i;
-+  for (i = 0; i < NUM; i++)
-+    {
-+      s1[i] = _mm_setr_epi32 (0x5d53475d, 0x63746f72,
-+			      0x73745665, 0x7b5b5465);
-+      s2[i] = _mm_setr_epi32 (0x726f6e5d, 0x5b477565,
-+			      0x68617929, 0x48692853);
-+      d[i]  = _mm_setr_epi32 (0xb730392a, 0xb58eb95e,
-+			      0xfaea2787, 0x138ac342);
-+    }
++  long double ret;
++  ret = a + (long double) b + (long double) c;
++  ret *= (long double) (d + (long) e);
++  if (f>0)
++    ret += func_cross (a,b,c,d,e,-f);
++  return ret;
 +}
-+
-+static void
-+aes_test (void)
-+{
-+  int i;
-+
-+  init_data (src1, src2, edst);
-+
-+  for (i = 0; i < NUM; i += 16)
-+    {
-+      resdst[i] = _mm_aesdec_si128 (src1[i], src2[i]);
-+      resdst[i + 1] = _mm_aesdec_si128 (src1[i + 1], src2[i + 1]);
-+      resdst[i + 2] = _mm_aesdec_si128 (src1[i + 2], src2[i + 2]);
-+      resdst[i + 3] = _mm_aesdec_si128 (src1[i + 3], src2[i + 3]);
-+      resdst[i + 4] = _mm_aesdec_si128 (src1[i + 4], src2[i + 4]);
-+      resdst[i + 5] = _mm_aesdec_si128 (src1[i + 5], src2[i + 5]);
-+      resdst[i + 6] = _mm_aesdec_si128 (src1[i + 6], src2[i + 6]);
-+      resdst[i + 7] = _mm_aesdec_si128 (src1[i + 7], src2[i + 7]);
-+      resdst[i + 8] = _mm_aesdec_si128 (src1[i + 8], src2[i + 8]);
-+      resdst[i + 9] = _mm_aesdec_si128 (src1[i + 9], src2[i + 9]);
-+      resdst[i + 10] = _mm_aesdec_si128 (src1[i + 10], src2[i + 10]);
-+      resdst[i + 11] = _mm_aesdec_si128 (src1[i + 11], src2[i + 11]);
-+      resdst[i + 12] = _mm_aesdec_si128 (src1[i + 12], src2[i + 12]);
-+      resdst[i + 13] = _mm_aesdec_si128 (src1[i + 13], src2[i + 13]);
-+      resdst[i + 14] = _mm_aesdec_si128 (src1[i + 14], src2[i + 14]);
-+      resdst[i + 15] = _mm_aesdec_si128 (src1[i + 15], src2[i + 15]);
-+    }
-+
-+  for (i = 0; i < NUM; i++)
-+    if (memcmp (edst + i, resdst + i, sizeof (__m128i)))
-+      abort ();
-+}
+
+Property changes on: gcc/testsuite/gcc.target/x86_64/abi/callabi
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
 Index: gcc/testsuite/ChangeLog.ix86
 ===================================================================
---- gcc/testsuite/ChangeLog.ix86	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/testsuite/ChangeLog.ix86	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,22 @@
-+2008-04-08  H.J. Lu  <hongjiu.lu@intel.com>
+--- gcc/testsuite/ChangeLog.ix86	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/testsuite/ChangeLog.ix86	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,14 @@
++2009-03-27  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from mainline:
-+	2008-04-04  H.J. Lu  <hongjiu.lu@intel.com>
++	2009-03-27  H.J. Lu  <hongjiu.lu@intel.com>
 +
-+	* g++.dg/other/i386-2.C: Include <wmmintrin.h>.
-+	* g++.dg/other/i386-3.C: Likewise.
-+	* gcc.target/i386/sse-13.c: Likewise.
-+	* gcc.target/i386/sse-14.c: Likewise.
-+
-+	* gcc.target/i386/aes-check.h: New.
-+	* gcc.target/i386/aesdec.c: Likewise.
-+	* gcc.target/i386/aesdeclast.c: Likewise.
-+	* gcc.target/i386/aesenc.c: Likewise.
-+	* gcc.target/i386/aesenclast.c: Likewise.
-+	* gcc.target/i386/aesimc.c: Likewise.
-+	* gcc.target/i386/aeskeygenassist.c: Likewise.
-+	* gcc.target/i386/pclmulqdq.c: Likewise.
-+	* gcc.target/i386/pclmul-check.h: Likewise.
-+
-+	* gcc.target/i386/i386.exp (check_effective_target_aes): New.
-+	(check_effective_target_pclmul): Likewise.
-Index: gcc/testsuite/g++.dg/other/i386-2.C
++	PR target/39472
++	* gcc.target/x86_64/abi/callabi/func-2a.c: New.
++	* gcc.target/x86_64/abi/callabi/func-2b.c: Likewise.
++	* gcc.target/x86_64/abi/callabi/func-indirect-2a.c: Likewise.
++	* gcc.target/x86_64/abi/callabi/func-indirect-2b.c: Likewise.
++	* gcc.target/x86_64/abi/callabi/vaarg-4a.c: Likewise.
++	* gcc.target/x86_64/abi/callabi/vaarg-4b.c: Likewise.
++	* gcc.target/x86_64/abi/callabi/vaarg-5a.c: Likewise.
++	* gcc.target/x86_64/abi/callabi/vaarg-5b.c: Likewise.
+
+Property changes on: gcc/testsuite/gcc.dg/torture/pr36227.c
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: gcc/testsuite/g++.dg/cpp0x/decltype-38655.C
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: gcc/testsuite/ChangeLog-2008
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: gcc/cp/ChangeLog-2007
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: gcc/cp/ChangeLog-2008
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+Index: gcc/rtl.def
 ===================================================================
---- gcc/testsuite/g++.dg/other/i386-2.C	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/testsuite/g++.dg/other/i386-2.C	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -1,8 +1,9 @@
--/* Test that {,x,e,p,t,s,a,b}mmintrin.h, mm3dnow.h and mm_malloc.h are
-+/* Test that {,x,e,p,t,s,w,a,b}mmintrin.h, mm3dnow.h and mm_malloc.h are
-    usable with -O -pedantic-errors.  */
- /* { dg-do compile { target i?86-*-* x86_64-*-* } } */
--/* { dg-options "-O -pedantic-errors -march=k8 -m3dnow -msse4 -msse5" } */
-+/* { dg-options "-O -pedantic-errors -march=k8 -m3dnow -msse4 -msse5 -maes -mpclmul" } */
+--- gcc/rtl.def	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/rtl.def	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -1088,7 +1088,11 @@
+    guard for the bypass.  The function will get the two insns as
+    parameters.  If the function returns zero the bypass will be
+    ignored for this case.  Additional guard is necessary to recognize
+-   complicated bypasses, e.g. when consumer is load address.  */
++   complicated bypasses, e.g. when consumer is load address.  If there
++   are more one bypass with the same output and input insns, the
++   chosen bypass is the first bypass with a guard in description whose
++   guard function returns nonzero.  If there is no such bypass, then
++   bypass without the guard function is chosen.  */
+ DEF_RTL_EXPR(DEFINE_BYPASS, "define_bypass", "issS", RTX_EXTRA)
  
-+#include <wmmintrin.h>
- #include <bmmintrin.h>
- #include <smmintrin.h>
- #include <mm3dnow.h>
-Index: gcc/testsuite/g++.dg/other/i386-3.C
-===================================================================
---- gcc/testsuite/g++.dg/other/i386-3.C	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/testsuite/g++.dg/other/i386-3.C	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -1,8 +1,9 @@
--/* Test that {,x,e,p,t,s,a,b}mmintrin.h, mm3dnow.h and mm_malloc.h are
-+/* Test that {,x,e,p,t,s,w,a,b}mmintrin.h, mm3dnow.h and mm_malloc.h are
-    usable with -O -fkeep-inline-functions.  */
- /* { dg-do compile { target i?86-*-* x86_64-*-* } } */
--/* { dg-options "-O -fkeep-inline-functions -march=k8 -m3dnow -msse4 -msse5" } */
-+/* { dg-options "-O -fkeep-inline-functions -march=k8 -m3dnow -maes -mpclmul -msse4 -msse5" } */
- 
-+#include <wmmintrin.h>
- #include <bmmintrin.h>
- #include <smmintrin.h>
- #include <mm3dnow.h>
+ /* (define_automaton string) describes names of automata generated and
+
+Property changes on: gcc/ChangeLog-2008
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
 Index: gcc/ChangeLog.ix86
 ===================================================================
---- gcc/ChangeLog.ix86	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/ChangeLog.ix86	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,59 @@
-+2008-04-08  H.J. Lu  <hongjiu.lu@intel.com>
+--- gcc/ChangeLog.ix86	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/ChangeLog.ix86	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,171 @@
++2009-04-20  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from mainline:
-+	2008-04-04  H.J. Lu  <hongjiu.lu@intel.com>
++	2009-04-20  Joey Ye  <joey.ye@intel.com>
++		    Xuepeng Guo <xuepeng.guo@intel.com>
++		    H.J. Lu  <hongjiu.lu@intel.com>
 +
-+	* config.gcc (extra_headers): Add wmmintrin.h for x86 and x86-64.
++	* config/i386/atom.md: Add bypasses with ix86_dep_by_shift_count.
 +
-+	* config/i386/cpuid.h (bit_AES): New.
-+	(bit_PCLMUL): Likewise.
++	* config/i386/i386.c (LEA_SEARCH_THRESHOLD): New macro.
++	(IX86_LEA_PRIORITY): Likewise.
++	(distance_non_agu_define): New function.
++	(distance_agu_use): Likewise.
++	(ix86_lea_for_add_ok): Likewise.
++	(ix86_dep_by_shift_count): Likewise.
 +
-+	* config/i386/i386.c (pta_flags): Add PTA_AES and PTA_PCLMUL.
-+	(override_options): Handle PTA_AES and PTA_PCLMUL.  Enable
-+	SSE2 if AES or PCLMUL is enabled.
-+	(ix86_builtins): Add IX86_BUILTIN_AESENC128,
-+	IX86_BUILTIN_AESENCLAST128, IX86_BUILTIN_AESDEC128,
-+	IX86_BUILTIN_AESDECLAST128, IX86_BUILTIN_AESIMC128,
-+	IX86_BUILTIN_AESKEYGENASSIST128 and IX86_BUILTIN_PCLMULQDQ128.
-+	(bdesc_sse_3arg): Add IX86_BUILTIN_PCLMULQDQ128.
-+	(bdesc_2arg): Add IX86_BUILTIN_AESENC128,
-+	IX86_BUILTIN_AESENCLAST128, IX86_BUILTIN_AESDEC128,
-+	IX86_BUILTIN_AESDECLAST128 and IX86_BUILTIN_AESKEYGENASSIST128.
-+	(bdesc_1arg): Add IX86_BUILTIN_AESIMC128.
-+	(ix86_init_mmx_sse_builtins): Define __builtin_ia32_aesenc128,
-+	__builtin_ia32_aesenclast128, __builtin_ia32_aesdec128,
-+	__builtin_ia32_aesdeclast128,__builtin_ia32_aesimc128,
-+	__builtin_ia32_aeskeygenassist128 and
-+	__builtin_ia32_pclmulqdq128.
-+	* config/i386/i386.c (ix86_expand_binop_imm_builtin): New.
-+	(ix86_expand_builtin): Use it for IX86_BUILTIN_PSLLDQI128 and
-+	IX86_BUILTIN_PSRLDQI128.  Handle IX86_BUILTIN_AESKEYGENASSIST128.
++	* config/i386/i386.md: Call ix86_lea_for_add_ok to decide we
++	should split for LEA.
 +
-+	* config/i386/i386.h (TARGET_AES): New.
-+	(TARGET_PCLMUL): Likewise.
-+	(TARGET_CPU_CPP_BUILTINS): Handle TARGET_AES and TARGET_PCLMUL.
++	* config/i386/i386-protos.h (ix86_lea_for_add_ok): Declare new
++	function.
++	(ix86_dep_by_shift_count): Likewise.
 +
-+	* config/i386/i386.md (UNSPEC_AESENC): New.
-+	(UNSPEC_AESENCLAST): Likewise.
-+	(UNSPEC_AESDEC): Likewise.
-+	(UNSPEC_AESDECLAST): Likewise.
-+	(UNSPEC_AESIMC): Likewise.
-+	(UNSPEC_AESKEYGENASSIST): Likewise.
-+	(UNSPEC_PCLMULQDQ): Likewise.
++2009-04-07  H.J. Lu  <hongjiu.lu@intel.com>
 +
-+	* config/i386/i386.opt (maes): New.
-+	(mpclmul): Likewise.
++	Backport from mainline:
++	2009-04-07  H.J. Lu  <hongjiu.lu@intel.com>
 +
-+	* config/i386/sse.md (aesenc): New pattern.
-+	(aesenclast): Likewise.
-+	(aesdec): Likewise.
-+	(aesdeclast): Likewise.
-+	(aesimc): Likewise.
-+	(aeskeygenassist): Likewise.
-+	(pclmulqdq): Likewise.
++	* doc/invoke.texi: Document Atom support.
 +
-+	* config/i386/wmmintrin.h: New.
++2009-04-06  H.J. Lu  <hongjiu.lu@intel.com>
 +
-+	* doc/extend.texi: Document AES and PCLMUL built-in function.
++	* config/i386/i386.md: Revert 2 accidental checkins.
 +
-+	* doc/invoke.texi: Document -maes and -mpclmul.
++2009-04-06  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-04-06  Joey Ye  <joey.ye@intel.com>
++		    Xuepeng Guo <xuepeng.guo@intel.com>
++		    H.J. Lu  <hongjiu.lu@intel.com>
++
++	Atom pipeline model, tuning and insn selection.
++	* config.gcc (atom): Add atom config options and target.
++
++	* config/i386/atom.md: New.
++
++	* config/i386/i386.c (atom_cost): New cost.
++	(m_ATOM): New macro flag.
++	(initial_ix86_tune_features): Set m_ATOM.
++	(x86_accumulate_outgoing_args): Likewise.
++	(x86_arch_always_fancy_math_387): Likewise.
++	(processor_target): Add Atom cost.
++	(cpu_names): Add Atom cpu name.
++	(override_options): Set Atom ISA.
++	(ix86_issue_rate): New case PROCESSOR_ATOM.
++	(ix86_adjust_cost): Likewise.
++
++	* config/i386/i386.h (TARGET_ATOM): New target macro.
++	(ix86_tune_indices): Add X86_TUNE_OPT_AGU.
++	(TARGET_OPT_AGU): New target option.
++	(target_cpu_default): Add TARGET_CPU_DEFAULT_atom.
++	(processor_type): Add PROCESSOR_ATOM.
++
++	* config/i386/i386.md (cpu): Add new value "atom".
++	(use_carry, movu): New attr.
++	(atom.md): Include atom.md.
++	(adddi3_carry_rex64): Set attr "use_carry".
++	(addqi3_carry): Likewise.
++	(addhi3_carry): Likewise.
++	(addsi3_carry): Likewise.
++	(*addsi3_carry_zext): Likewise.
++	(subdi3_carry_rex64): Likewise.
++	(subqi3_carry): Likewise.
++	(subhi3_carry): Likewise.
++	(subsi3_carry): Likewise.
++	(x86_movdicc_0_m1_rex64): Likewise.
++	(*x86_movdicc_0_m1_se): Likewise.
++	(x86_movsicc_0_m1): Likewise.
++	(*x86_movsicc_0_m1_se): Likewise.
++	(*adddi_1_rex64): Emit add insn as much as possible.
++	(*addsi_1): Likewise.
++	(return_internal): Set atom_unit.
++	(return_internal_long): Likewise.
++	(return_pop_internal): Likewise.
++	(*rcpsf2_sse): Set atom_sse_attr attr.
++	(*qrt<mode>2_sse): Likewise.
++
++2009-04-02  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-04-02  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* config/i386/i386.c (ix86_abi): Move initialization to ...
++	(override_options): Here.
++
++2009-03-29  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-29  H.J. Lu  <hongjiu.lu@intel.com>
++
++	* config/i386/i386-protos.h (ix86_agi_dependent): New.
++
++	* config/i386/i386.c (ix86_agi_dependent): Rewrite.
++	(ix86_adjust_cost): Updated.
++
++2009-03-27  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-27  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/39472
++	* config/i386/i386.c (ix86_abi): New.
++	(override_options): Handle -mabi=.
++	(ix86_function_arg_regno_p): Replace DEFAULT_ABI with
++	ix86_abi.
++	(ix86_call_abi_override): Likewise.
++	(init_cumulative_args): Likewise.
++	(function_arg_advance): Likewise.
++	(function_arg_64): Likewise.
++	(function_arg): Likewise.
++	(ix86_pass_by_reference): Likewise.
++	(ix86_function_value_regno_p): Likewise.
++	(ix86_build_builtin_va_list_abi): Likewise.
++	(setup_incoming_varargs_64): Likewise.
++	(is_va_list_char_pointer): Likewise.
++	(ix86_init_machine_status): Likewise.
++	(ix86_reg_parm_stack_space): Use enum calling_abi on
++	call_abi.
++	(ix86_function_type_abi): Return enum calling_abi.  Rewrite
++	for 64bit.  Replace DEFAULT_ABI with ix86_abi.
++	(ix86_function_abi): Make it static and return enum
++	calling_abi.
++	(ix86_cfun_abi): Return enum calling_abi.  Replace DEFAULT_ABI
++	with ix86_abi.
++	(ix86_fn_abi_va_list): Updated.
++
++	* config/i386/i386.h (ix86_abi): New.
++	(STACK_BOUNDARY): Replace DEFAULT_ABI with ix86_abi.
++	(CONDITIONAL_REGISTER_USAGE): Likewise.
++	(CUMULATIVE_ARGS): Change call_abi type to enum calling_abi.
++	(machine_function): Likewise.
++
++	* config/i386/i386.md (untyped_call): Replace DEFAULT_ABI
++	with ix86_abi.
++	* config/i386/cygming.h (TARGET_64BIT_MS_ABI): Likewise.
++	(STACK_BOUNDARY): Likewise.
++	* config/i386/mingw32.h (EXTRA_OS_CPP_BUILTINS): Likewise.
++
++	* config/i386/i386.opt (mabi=): New.
++
++	* config/i386/i386-protos.h (ix86_cfun_abi): Changed to
++	return enum calling_abi.
++	(ix86_function_type_abi): Likewise.
++	(ix86_function_abi): Removed.
++
++2009-03-27  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from mainline:
++	2009-03-27  Vladimir Makarov  <vmakarov@redhat.com>
++
++	* genautomata.c: Add a new year to the copyright.  Add a new
++	reference.
++	(struct insn_reserv_decl): Add comments for member bypass_list.
++	(find_bypass): Remove.
++	(insert_bypass): New.
++	(process_decls): Use insert_bypass.
++	(output_internal_insn_latency_func): Output all bypasses with the
++	same input insn in one switch case.
++
++	* rtl.def (define_bypass): Describe bypass choice.
++	* doc/md.texi (define_bypass): Ditto.
 Index: gcc/config.gcc
 ===================================================================
---- gcc/config.gcc	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config.gcc	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -308,13 +308,15 @@
- 	cpu_type=i386
- 	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
- 		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
--		       nmmintrin.h bmmintrin.h mmintrin-common.h"
-+		       nmmintrin.h bmmintrin.h mmintrin-common.h
-+		       wmmintrin.h"
- 	;;
- x86_64-*-*)
- 	cpu_type=i386
- 	extra_headers="cpuid.h mmintrin.h mm3dnow.h xmmintrin.h emmintrin.h
- 		       pmmintrin.h tmmintrin.h ammintrin.h smmintrin.h
--		       nmmintrin.h bmmintrin.h mmintrin-common.h"
-+		       nmmintrin.h bmmintrin.h mmintrin-common.h
-+		       wmmintrin.h"
- 	need_64bit_hwint=yes
- 	;;
- ia64-*-*)
+--- gcc/config.gcc	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config.gcc	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -1088,7 +1088,7 @@
+ 			tmake_file="${tmake_file} i386/t-linux64"
+ 			need_64bit_hwint=yes
+ 			case X"${with_cpu}" in
+-			Xgeneric|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx)
++			Xgeneric|Xatom|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx)
+ 				;;
+ 			X)
+ 				if test x$with_cpu_64 = x; then
+@@ -1097,7 +1097,7 @@
+ 				;;
+ 			*)
+ 				echo "Unsupported CPU used in --with-cpu=$with_cpu, supported values:" 1>&2
+-				echo "generic core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx" 1>&2
++				echo "generic atom core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx" 1>&2
+ 				exit 1
+ 				;;
+ 			esac
+@@ -1202,7 +1202,7 @@
+ 		# libgcc/configure.ac instead.
+ 		need_64bit_hwint=yes
+ 		case X"${with_cpu}" in
+-		Xgeneric|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx)
++		Xgeneric|Xatom|Xcore2|Xnocona|Xx86-64|Xamdfam10|Xbarcelona|Xk8|Xopteron|Xathlon64|Xathlon-fx)
+ 			;;
+ 		X)
+ 			if test x$with_cpu_64 = x; then
+@@ -1211,7 +1211,7 @@
+ 			;;
+ 		*)
+ 			echo "Unsupported CPU used in --with-cpu=$with_cpu, supported values:" 1>&2
+-			echo "generic core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx" 1>&2
++			echo "generic atom core2 nocona x86-64 amdfam10 barcelona k8 opteron athlon64 athlon-fx" 1>&2
+ 			exit 1
+ 			;;
+ 		esac
+@@ -2805,7 +2805,7 @@
+ 				esac
+ 				# OK
+ 				;;
+-			"" | amdfam10 | barcelona | k8 | opteron | athlon64 | athlon-fx | nocona | core2 | generic)
++			"" | amdfam10 | barcelona | k8 | opteron | athlon64 | athlon-fx | nocona | core2 | atom | generic)
+ 				# OK
+ 				;;
+ 			*)
 Index: gcc/config/i386/i386.h
 ===================================================================
---- gcc/config/i386/i386.h	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config/i386/i386.h	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -395,6 +395,8 @@
- #define TARGET_SAHF		x86_sahf
- #define TARGET_RECIP		x86_recip
- #define TARGET_FUSED_MADD	x86_fused_muladd
-+#define TARGET_AES		(TARGET_SSE2 && x86_aes)
-+#define TARGET_PCLMUL		(TARGET_SSE2 && x86_pclmul)
+--- gcc/config/i386/i386.h	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/i386.h	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -236,6 +236,7 @@
+ #define TARGET_GENERIC64 (ix86_tune == PROCESSOR_GENERIC64)
+ #define TARGET_GENERIC (TARGET_GENERIC32 || TARGET_GENERIC64)
+ #define TARGET_AMDFAM10 (ix86_tune == PROCESSOR_AMDFAM10)
++#define TARGET_ATOM (ix86_tune == PROCESSOR_ATOM)
  
- #define ASSEMBLER_DIALECT	(ix86_asm_dialect)
+ /* Feature tests against the various tunings.  */
+ enum ix86_tune_indices {
+@@ -300,6 +301,7 @@
+   X86_TUNE_USE_VECTOR_FP_CONVERTS,
+   X86_TUNE_USE_VECTOR_CONVERTS,
+   X86_TUNE_FUSE_CMP_AND_BRANCH,
++  X86_TUNE_OPT_AGU,
  
-@@ -683,6 +685,10 @@
- 	builtin_define ("__SSE4_1__");				\
-       if (TARGET_SSE4_2)					\
- 	builtin_define ("__SSE4_2__");				\
-+      if (TARGET_AES)						\
-+	builtin_define ("__AES__");				\
-+      if (TARGET_PCLMUL)					\
-+	builtin_define ("__PCLMUL__");				\
-       if (TARGET_SSE4A)						\
-  	builtin_define ("__SSE4A__");		                \
-       if (TARGET_SSE5)						\
+   X86_TUNE_LAST
+ };
+@@ -387,6 +389,7 @@
+ 	ix86_tune_features[X86_TUNE_USE_VECTOR_CONVERTS]
+ #define TARGET_FUSE_CMP_AND_BRANCH \
+ 	ix86_tune_features[X86_TUNE_FUSE_CMP_AND_BRANCH]
++#define TARGET_OPT_AGU ix86_tune_features[X86_TUNE_OPT_AGU]
+ 
+ /* Feature tests against the various architecture variations.  */
+ enum ix86_arch_indices {
+@@ -470,7 +473,10 @@
+   MS_ABI = 1
+ };
+ 
+-/* The default abi form used by target.  */
++/* The abi used by target.  */
++extern enum calling_abi ix86_abi;
++
++/* The default abi used by target.  */
+ #define DEFAULT_ABI SYSV_ABI
+ 
+ /* Subtargets may reset this to 1 in order to enable 96-bit long double
+@@ -569,6 +575,7 @@
+   TARGET_CPU_DEFAULT_prescott,
+   TARGET_CPU_DEFAULT_nocona,
+   TARGET_CPU_DEFAULT_core2,
++  TARGET_CPU_DEFAULT_atom,
+ 
+   TARGET_CPU_DEFAULT_geode,
+   TARGET_CPU_DEFAULT_k6,
+@@ -658,7 +665,7 @@
+ 
+ /* Boundary (in *bits*) on which stack pointer should be aligned.  */
+ #define STACK_BOUNDARY \
+- (TARGET_64BIT && DEFAULT_ABI == MS_ABI ? 128 : BITS_PER_WORD)
++ (TARGET_64BIT && ix86_abi == MS_ABI ? 128 : BITS_PER_WORD)
+ 
+ /* Stack boundary of the main function guaranteed by OS.  */
+ #define MAIN_STACK_BOUNDARY (TARGET_64BIT ? 128 : 32)
+@@ -954,7 +961,7 @@
+       fixed_regs[j] = call_used_regs[j] = 1;				\
+     if (TARGET_64BIT							\
+ 	&& ((cfun && cfun->machine->call_abi == MS_ABI)			\
+-	    || (!cfun && DEFAULT_ABI == MS_ABI)))			\
++	    || (!cfun && ix86_abi == MS_ABI)))				\
+       {									\
+ 	call_used_regs[SI_REG] = 0;					\
+ 	call_used_regs[DI_REG] = 0;					\
+@@ -1614,7 +1621,7 @@
+   int maybe_vaarg;		/* true for calls to possibly vardic fncts.  */
+   int float_in_sse;		/* 1 if in 32-bit mode SFmode (2 for DFmode) should
+ 				   be passed in SSE registers.  Otherwise 0.  */
+-  int call_abi;			/* Set to SYSV_ABI for sysv abi. Otherwise
++  enum calling_abi call_abi;	/* Set to SYSV_ABI for sysv abi. Otherwise
+  				   MS_ABI for ms abi.  */
+ } CUMULATIVE_ARGS;
+ 
+@@ -2260,6 +2267,7 @@
+   PROCESSOR_GENERIC32,
+   PROCESSOR_GENERIC64,
+   PROCESSOR_AMDFAM10,
++  PROCESSOR_ATOM,
+   PROCESSOR_max
+ };
+ 
+@@ -2433,7 +2441,7 @@
+   int tls_descriptor_call_expanded_p;
+   /* This value is used for amd64 targets and specifies the current abi
+      to be used. MS_ABI means ms abi. Otherwise SYSV_ABI means sysv abi.  */
+-  int call_abi;
++   enum calling_abi call_abi;
+ };
+ 
+ #define ix86_stack_locals (cfun->machine->stack_locals)
+Index: gcc/config/i386/cygming.h
+===================================================================
+--- gcc/config/i386/cygming.h	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/cygming.h	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -34,7 +34,7 @@
+ #endif
+ 
+ #undef TARGET_64BIT_MS_ABI
+-#define TARGET_64BIT_MS_ABI (!cfun ? DEFAULT_ABI == MS_ABI : TARGET_64BIT && cfun->machine->call_abi == MS_ABI)
++#define TARGET_64BIT_MS_ABI (!cfun ? ix86_abi == MS_ABI : TARGET_64BIT && cfun->machine->call_abi == MS_ABI)
+ 
+ #undef DEFAULT_ABI
+ #define DEFAULT_ABI (TARGET_64BIT ? MS_ABI : SYSV_ABI)
+@@ -202,7 +202,7 @@
+ #define CHECK_STACK_LIMIT 4000
+ 
+ #undef STACK_BOUNDARY
+-#define STACK_BOUNDARY	(DEFAULT_ABI == MS_ABI ? 128 : BITS_PER_WORD)
++#define STACK_BOUNDARY	(ix86_abi == MS_ABI ? 128 : BITS_PER_WORD)
+ 
+ /* By default, target has a 80387, uses IEEE compatible arithmetic,
+    returns float values in the 387 and needs stack probes.
 Index: gcc/config/i386/i386.md
 ===================================================================
---- gcc/config/i386/i386.md	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config/i386/i386.md	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -189,6 +189,17 @@
-    (UNSPEC_FRCZ			156)
-    (UNSPEC_CVTPH2PS		157)
-    (UNSPEC_CVTPS2PH		158)
-+
-+   ; For AES support
-+   (UNSPEC_AESENC		159)
-+   (UNSPEC_AESENCLAST		160)
-+   (UNSPEC_AESDEC		161)
-+   (UNSPEC_AESDECLAST		162)
-+   (UNSPEC_AESIMC		163)
-+   (UNSPEC_AESKEYGENASSIST	164)
-+
-+   ; For PCLMUL support
-+   (UNSPEC_PCLMUL		165)
-   ])
+--- gcc/config/i386/i386.md	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/i386.md	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -316,7 +316,7 @@
  
- (define_constants
-Index: gcc/config/i386/wmmintrin.h
+ 
+ ;; Processor type.
+-(define_attr "cpu" "none,pentium,pentiumpro,geode,k6,athlon,k8,core2,
++(define_attr "cpu" "none,pentium,pentiumpro,geode,k6,athlon,k8,core2,atom,
+ 		    generic64,amdfam10"
+   (const (symbol_ref "ix86_schedule")))
+ 
+@@ -612,6 +612,12 @@
+ (define_attr "i387_cw" "trunc,floor,ceil,mask_pm,uninitialized,any"
+   (const_string "any"))
+ 
++;; Define attribute to classify add/sub insns that consumes carry flag (CF)
++(define_attr "use_carry" "0,1" (const_string "0"))
++
++;; Define attribute to indicate unaligned ssemov insns
++(define_attr "movu" "0,1" (const_string "0"))
++
+ ;; Describe a user's asm statement.
+ (define_asm_attributes
+   [(set_attr "length" "128")
+@@ -727,6 +733,7 @@
+ (include "k6.md")
+ (include "athlon.md")
+ (include "geode.md")
++(include "atom.md")
+ 
+ 
+ ;; Operand and operator predicates and constraints
+@@ -5790,6 +5797,7 @@
+   "TARGET_64BIT && ix86_binary_operator_ok (PLUS, DImode, operands)"
+   "adc{q}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "DI")])
+ 
+@@ -5864,6 +5872,7 @@
+   "ix86_binary_operator_ok (PLUS, QImode, operands)"
+   "adc{b}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "QI")])
+ 
+@@ -5876,6 +5885,7 @@
+   "ix86_binary_operator_ok (PLUS, HImode, operands)"
+   "adc{w}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "HI")])
+ 
+@@ -5888,6 +5898,7 @@
+   "ix86_binary_operator_ok (PLUS, SImode, operands)"
+   "adc{l}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "SI")])
+ 
+@@ -5901,6 +5912,7 @@
+   "TARGET_64BIT && ix86_binary_operator_ok (PLUS, SImode, operands)"
+   "adc{l}\t{%2, %k0|%k0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "SI")])
+ 
+@@ -6130,9 +6142,9 @@
+    (set_attr "mode" "SI")])
+ 
+ (define_insn "*adddi_1_rex64"
+-  [(set (match_operand:DI 0 "nonimmediate_operand" "=r,rm,r")
+-	(plus:DI (match_operand:DI 1 "nonimmediate_operand" "%0,0,r")
+-		 (match_operand:DI 2 "x86_64_general_operand" "rme,re,le")))
++  [(set (match_operand:DI 0 "nonimmediate_operand" "=r,rm,r,r")
++	(plus:DI (match_operand:DI 1 "nonimmediate_operand" "%0,0,r,r")
++		 (match_operand:DI 2 "x86_64_general_operand" "rme,re,0,le")))
+    (clobber (reg:CC FLAGS_REG))]
+   "TARGET_64BIT && ix86_binary_operator_ok (PLUS, DImode, operands)"
+ {
+@@ -6153,6 +6165,10 @@
+ 	}
+ 
+     default:
++      /* Use add as much as possible to replace lea for AGU optimization. */
++      if (which_alternative == 2 && TARGET_OPT_AGU)
++        return "add{q}\t{%1, %0|%0, %1}";
++        
+       gcc_assert (rtx_equal_p (operands[0], operands[1]));
+ 
+       /* Make things pretty and `subl $4,%eax' rather than `addl $-4, %eax'.
+@@ -6171,8 +6187,11 @@
+     }
+ }
+   [(set (attr "type")
+-     (cond [(eq_attr "alternative" "2")
++     (cond [(and (eq_attr "alternative" "2") 
++                 (eq (symbol_ref "TARGET_OPT_AGU") (const_int 0)))
+ 	      (const_string "lea")
++            (eq_attr "alternative" "3")
++              (const_string "lea")
+ 	    ; Current assemblers are broken and do not allow @GOTOFF in
+ 	    ; ought but a memory context.
+ 	    (match_operand:DI 2 "pic_symbolic_operand" "")
+@@ -6189,8 +6208,8 @@
+ 	(plus:DI (match_operand:DI 1 "register_operand" "")
+ 		 (match_operand:DI 2 "x86_64_nonmemory_operand" "")))
+    (clobber (reg:CC FLAGS_REG))]
+-  "TARGET_64BIT && reload_completed
+-   && true_regnum (operands[0]) != true_regnum (operands[1])"
++  "TARGET_64BIT && reload_completed 
++   && ix86_lea_for_add_ok (PLUS, insn, operands)"
+   [(set (match_dup 0)
+ 	(plus:DI (match_dup 1)
+ 		 (match_dup 2)))]
+@@ -6394,9 +6413,9 @@
+ 
+ 
+ (define_insn "*addsi_1"
+-  [(set (match_operand:SI 0 "nonimmediate_operand" "=r,rm,r")
+-	(plus:SI (match_operand:SI 1 "nonimmediate_operand" "%0,0,r")
+-		 (match_operand:SI 2 "general_operand" "g,ri,li")))
++  [(set (match_operand:SI 0 "nonimmediate_operand" "=r,rm,r,r")
++	(plus:SI (match_operand:SI 1 "nonimmediate_operand" "%0,0,r,r")
++		 (match_operand:SI 2 "general_operand" "g,ri,0,li")))
+    (clobber (reg:CC FLAGS_REG))]
+   "ix86_binary_operator_ok (PLUS, SImode, operands)"
+ {
+@@ -6417,6 +6436,10 @@
+ 	}
+ 
+     default:
++      /* Use add as much as possible to replace lea for AGU optimization. */
++      if (which_alternative == 2 && TARGET_OPT_AGU)
++        return "add{l}\t{%1, %0|%0, %1}";
++
+       gcc_assert (rtx_equal_p (operands[0], operands[1]));
+ 
+       /* Make things pretty and `subl $4,%eax' rather than `addl $-4, %eax'.
+@@ -6433,7 +6456,10 @@
+     }
+ }
+   [(set (attr "type")
+-     (cond [(eq_attr "alternative" "2")
++     (cond [(and (eq_attr "alternative" "2") 
++                 (eq (symbol_ref "TARGET_OPT_AGU") (const_int 0)))
++               (const_string "lea")
++            (eq_attr "alternative" "3")
+ 	      (const_string "lea")
+ 	    ; Current assemblers are broken and do not allow @GOTOFF in
+ 	    ; ought but a memory context.
+@@ -6451,8 +6477,7 @@
+ 	(plus (match_operand 1 "register_operand" "")
+               (match_operand 2 "nonmemory_operand" "")))
+    (clobber (reg:CC FLAGS_REG))]
+-  "reload_completed
+-   && true_regnum (operands[0]) != true_regnum (operands[1])"
++  "reload_completed && ix86_lea_for_add_ok (PLUS, insn, operands)" 
+   [(const_int 0)]
+ {
+   rtx pat;
+@@ -7553,6 +7578,7 @@
+   "TARGET_64BIT && ix86_binary_operator_ok (MINUS, DImode, operands)"
+   "sbb{q}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "DI")])
+ 
+@@ -7601,6 +7627,7 @@
+   "ix86_binary_operator_ok (MINUS, QImode, operands)"
+   "sbb{b}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "QI")])
+ 
+@@ -7613,6 +7640,7 @@
+   "ix86_binary_operator_ok (MINUS, HImode, operands)"
+   "sbb{w}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "HI")])
+ 
+@@ -7625,6 +7653,7 @@
+   "ix86_binary_operator_ok (MINUS, SImode, operands)"
+   "sbb{l}\t{%2, %0|%0, %2}"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "mode" "SI")])
+ 
+@@ -15164,7 +15193,7 @@
+ 		     ? gen_rtx_REG (XCmode, FIRST_FLOAT_REG) : NULL),
+ 		    operands[0], const0_rtx,
+ 		    GEN_INT ((TARGET_64BIT
+-			      ? (DEFAULT_ABI == SYSV_ABI
++			      ? (ix86_abi == SYSV_ABI
+ 				 ? X86_64_SSE_REGPARM_MAX
+ 				 : X64_SSE_REGPARM_MAX)
+ 			      : X86_32_SSE_REGPARM_MAX)
+@@ -15244,6 +15273,7 @@
+   "reload_completed"
+   "ret"
+   [(set_attr "length" "1")
++   (set_attr "atom_unit" "jeu")
+    (set_attr "length_immediate" "0")
+    (set_attr "modrm" "0")])
+ 
+@@ -15256,6 +15286,7 @@
+   "reload_completed"
+   "rep\;ret"
+   [(set_attr "length" "1")
++   (set_attr "atom_unit" "jeu")
+    (set_attr "length_immediate" "0")
+    (set_attr "prefix_rep" "1")
+    (set_attr "modrm" "0")])
+@@ -15266,6 +15297,7 @@
+   "reload_completed"
+   "ret\t%0"
+   [(set_attr "length" "3")
++   (set_attr "atom_unit" "jeu")
+    (set_attr "length_immediate" "2")
+    (set_attr "modrm" "0")])
+ 
+@@ -16387,6 +16419,7 @@
+   "TARGET_SSE_MATH"
+   "%vrcpss\t{%1, %d0|%d0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "rcp")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "SF")])
+ 
+@@ -16738,6 +16771,7 @@
+   "TARGET_SSE_MATH"
+   "%vrsqrtss\t{%1, %d0|%d0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "rcp")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "SF")])
+ 
+@@ -16758,6 +16792,7 @@
+   "SSE_FLOAT_MODE_P (<MODE>mode) && TARGET_SSE_MATH"
+   "%vsqrts<ssemodefsuffix>\t{%1, %d0|%d0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "sqrt")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "<MODE>")
+    (set_attr "athlon_decode" "*")
+@@ -19811,6 +19846,7 @@
+   ; Since we don't have the proper number of operands for an alu insn,
+   ; fill in all the blanks.
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "memory" "none")
+    (set_attr "imm_disp" "false")
+@@ -19826,6 +19862,7 @@
+   ""
+   "sbb{q}\t%0, %0"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "memory" "none")
+    (set_attr "imm_disp" "false")
+@@ -19869,6 +19906,7 @@
+   ; Since we don't have the proper number of operands for an alu insn,
+   ; fill in all the blanks.
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "memory" "none")
+    (set_attr "imm_disp" "false")
+@@ -19884,6 +19922,7 @@
+   ""
+   "sbb{l}\t%0, %0"
+   [(set_attr "type" "alu")
++   (set_attr "use_carry" "1")
+    (set_attr "pent_pair" "pu")
+    (set_attr "memory" "none")
+    (set_attr "imm_disp" "false")
+@@ -20216,7 +20255,8 @@
+     }
+ }
+   [(set (attr "type")
+-	(cond [(eq_attr "alternative" "0")
++	(cond [(and (eq_attr "alternative" "0") 
++	            (eq (symbol_ref "TARGET_OPT_AGU") (const_int 0)))
+ 		 (const_string "alu")
+ 	       (match_operand:SI 2 "const0_operand" "")
+ 		 (const_string "imov")
+@@ -20259,7 +20299,8 @@
+     }
+ }
+   [(set (attr "type")
+-	(cond [(eq_attr "alternative" "0")
++	(cond [(and (eq_attr "alternative" "0")
++	            (eq (symbol_ref "TARGET_OPT_AGU") (const_int 0)))
+ 		 (const_string "alu")
+ 	       (match_operand:DI 2 "const0_operand" "")
+ 		 (const_string "imov")
+@@ -21751,6 +21792,7 @@
+   return patterns[locality];
+ }
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "prefetch")
+    (set_attr "memory" "none")])
+ 
+ (define_insn "*prefetch_sse_rex"
+@@ -21769,6 +21811,7 @@
+   return patterns[locality];
+ }
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "prefetch")
+    (set_attr "memory" "none")])
+ 
+ (define_insn "*prefetch_3dnow"
+Index: gcc/config/i386/atom.md
 ===================================================================
---- gcc/config/i386/wmmintrin.h	(.../gcc-4_3-branch)	(revision 0)
-+++ gcc/config/i386/wmmintrin.h	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -0,0 +1,123 @@
-+/* Copyright (C) 2008 Free Software Foundation, Inc.
+--- gcc/config/i386/atom.md	(.../tags/gcc_4_4_0_release)	(revision 0)
++++ gcc/config/i386/atom.md	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -0,0 +1,795 @@
++;; Atom Scheduling
++;; Copyright (C) 2009 Free Software Foundation, Inc.
++;;
++;; This file is part of GCC.
++;;
++;; GCC is free software; you can redistribute it and/or modify
++;; it under the terms of the GNU General Public License as published by
++;; the Free Software Foundation; either version 3, or (at your option)
++;; any later version.
++;;
++;; GCC is distributed in the hope that it will be useful,
++;; but WITHOUT ANY WARRANTY; without even the implied warranty of
++;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++;; GNU General Public License for more details.
++;;
++;; You should have received a copy of the GNU General Public License
++;; along with GCC; see the file COPYING3.  If not see
++;; <http://www.gnu.org/licenses/>.
++;;
++;; Atom is an in-order core with two integer pipelines.
 +
-+   This file is part of GCC.
 +
-+   GCC is free software; you can redistribute it and/or modify
-+   it under the terms of the GNU General Public License as published by
-+   the Free Software Foundation; either version 2, or (at your option)
-+   any later version.
++(define_attr "atom_unit" "sishuf,simul,jeu,complex,other" 
++  (const_string "other"))
 +
-+   GCC is distributed in the hope that it will be useful,
-+   but WITHOUT ANY WARRANTY; without even the implied warranty of
-+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+   GNU General Public License for more details.
++(define_attr "atom_sse_attr" "rcp,movdup,lfence,fence,prefetch,sqrt,mxcsr,other"
++  (const_string "other"))
 +
-+   You should have received a copy of the GNU General Public License
-+   along with GCC; see the file COPYING.  If not, write to
-+   the Free Software Foundation, 59 Temple Place - Suite 330,
-+   Boston, MA 02111-1307, USA.  */
++(define_automaton "atom")
 +
-+/* As a special exception, if you include this header file into source
-+   files compiled by GCC, this header file does not by itself cause
-+   the resulting executable to be covered by the GNU General Public
-+   License.  This exception does not however invalidate any other
-+   reasons why the executable file might be covered by the GNU General
-+   Public License.  */
++;;  Atom has two ports: port 0 and port 1 connecting to all execution units
++(define_cpu_unit "atom-port-0,atom-port-1" "atom")
 +
-+/* Implemented from the specification included in the Intel C++ Compiler
-+   User Guide and Reference, version 10.1.  */
++;;  EU: Execution Unit
++;;  Atom EUs are connected by port 0 or port 1. 
 +
-+#ifndef _WMMINTRIN_H_INCLUDED
-+#define _WMMINTRIN_H_INCLUDED
++(define_cpu_unit "atom-eu-0, atom-eu-1,
++                  atom-imul-1, atom-imul-2, atom-imul-3, atom-imul-4"
++                  "atom")
 +
-+/* We need definitions from the SSE2 header file.  */
-+#include <emmintrin.h>
++;; Some EUs have duplicated copied and can be accessed via either
++;; port 0 or port 1
++;; (define_reservation "atom-port-either" "(atom-port-0 | atom-port-1)")
 +
-+#if !defined (__AES__) && !defined (__PCLMUL__)
-+# error "AES/PCLMUL instructions not enabled"
-+#else
++;;; Some instructions is dual-pipe execution, need both ports
++;;; Complex multi-op macro-instructoins need both ports and all EUs
++(define_reservation "atom-port-dual" "(atom-port-0 + atom-port-1)")
++(define_reservation "atom-all-eu" "(atom-eu-0 + atom-eu-1 + 
++                                    atom-imul-1 + atom-imul-2 + atom-imul-3 +
++                                    atom-imul-4)")
 +
-+/* AES */
++;;; Most of simple instructions have 1 cycle latency. Some of them
++;;; issue in port 0, some in port 0 and some in either port.
++(define_reservation "atom-simple-0" "(atom-port-0 + atom-eu-0)")
++(define_reservation "atom-simple-1" "(atom-port-1 + atom-eu-1)")
++(define_reservation "atom-simple-either" "(atom-simple-0 | atom-simple-1)")
 +
-+#ifdef __AES__
-+/* Performs 1 round of AES decryption of the first m128i using 
-+   the second m128i as a round key.  */
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_aesdec_si128 (__m128i __X, __m128i __Y)
-+{
-+  return (__m128i) __builtin_ia32_aesdec128 ((__v2di)__X, (__v2di)__Y);
-+}
++;;; Some insn issues in port 0 with 3 cycle latency and 1 cycle tput
++(define_reservation "atom-eu-0-3-1" "(atom-port-0 + atom-eu-0, nothing*2)")
 +
-+/* Performs the last round of AES decryption of the first m128i 
-+   using the second m128i as a round key.  */
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_aesdeclast_si128 (__m128i __X, __m128i __Y)
-+{
-+  return (__m128i) __builtin_ia32_aesdeclast128 ((__v2di)__X,
-+						 (__v2di)__Y);
-+}
++;;; fmul insn can have 4 or 5 cycles latency
++(define_reservation "atom-fmul-5c" "(atom-port-0 + atom-eu-0), nothing*4")
++(define_reservation "atom-fmul-4c" "(atom-port-0 + atom-eu-0), nothing*3")
 +
-+/* Performs 1 round of AES encryption of the first m128i using 
-+   the second m128i as a round key.  */
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_aesenc_si128 (__m128i __X, __m128i __Y)
-+{
-+  return (__m128i) __builtin_ia32_aesenc128 ((__v2di)__X, (__v2di)__Y);
-+}
++;;; fadd can has 5 cycles latency depends on instruction forms
++(define_reservation "atom-fadd-5c" "(atom-port-1 + atom-eu-1), nothing*5")
 +
-+/* Performs the last round of AES encryption of the first m128i
-+   using the second m128i as a round key.  */
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_aesenclast_si128 (__m128i __X, __m128i __Y)
-+{
-+  return (__m128i) __builtin_ia32_aesenclast128 ((__v2di)__X, (__v2di)__Y);
-+}
++;;; imul insn has 5 cycles latency
++(define_reservation "atom-imul-32" 
++                    "atom-imul-1, atom-imul-2, atom-imul-3, atom-imul-4, 
++                     atom-port-0")
++;;; imul instruction excludes other non-FP instructions.
++(exclusion_set "atom-eu-0, atom-eu-1" 
++               "atom-imul-1, atom-imul-2, atom-imul-3, atom-imul-4")
 +
-+/* Performs the InverseMixColumn operation on the source m128i 
-+   and stores the result into m128i destination.  */
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_aesimc_si128 (__m128i __X)
-+{
-+  return (__m128i) __builtin_ia32_aesimc128 ((__v2di)__X);
-+}
++;;; dual-execution instructions can have 1,2,4,5 cycles latency depends on 
++;;; instruction forms
++(define_reservation "atom-dual-1c" "(atom-port-dual + atom-eu-0 + atom-eu-1)")
++(define_reservation "atom-dual-2c"
++                    "(atom-port-dual + atom-eu-0 + atom-eu-1, nothing)")
++(define_reservation "atom-dual-5c"
++                    "(atom-port-dual + atom-eu-0 + atom-eu-1, nothing*4)")
 +
-+/* Generates a m128i round key for the input m128i AES cipher key and
-+   byte round constant.  The second parameter must be a compile time
-+   constant.  */
-+#ifdef __OPTIMIZE__
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_aeskeygenassist_si128 (__m128i __X, const int __C)
-+{
-+  return (__m128i) __builtin_ia32_aeskeygenassist128 ((__v2di)__X, __C);
-+}
-+#else
-+#define _mm_aeskeygenassist_si128(X, C)					\
-+  ((__m128i) __builtin_ia32_aeskeygenassist128 ((__v2di)(__m128i)(X),	\
-+						(int)(C)))
-+#endif
-+#endif  /* __AES__ */
++;;; Complex macro-instruction has variants of latency, and uses both ports.
++(define_reservation "atom-complex" "(atom-port-dual + atom-all-eu)")
 +
-+/* PCLMUL */
++(define_insn_reservation  "atom_other" 9
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "other")
++            (eq_attr "atom_unit" "!jeu")))
++  "atom-complex, atom-all-eu*8")
 +
-+#ifdef __PCLMUL__
-+/* Performs carry-less integer multiplication of 64-bit halves of
-+   128-bit input operands.  The third parameter inducates which 64-bit
-+   haves of the input parameters v1 and v2 should be used. It must be
-+   a compile time constant.  */
-+#ifdef __OPTIMIZE__
-+extern __inline __m128i __attribute__((__gnu_inline__, __always_inline__, __artificial__))
-+_mm_clmulepi64_si128 (__m128i __X, __m128i __Y, const int __I)
-+{
-+  return (__m128i) __builtin_ia32_pclmulqdq128 ((__v2di)__X,
-+						(__v2di)__Y, __I);
-+}
-+#else
-+#define _mm_clmulepi64_si128(X, Y, I)					\
-+  ((__m128i) __builtin_ia32_pclmulqdq128 ((__v2di)(__m128i)(X),		\
-+					  (__v2di)(__m128i)(Y), (int)(I)))
-+#endif
-+#endif  /* __PCLMUL__  */
++;; return has type "other" with atom_unit "jeu"
++(define_insn_reservation  "atom_other_2" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "other")
++            (eq_attr "atom_unit" "jeu")))
++  "atom-dual-1c")
 +
-+#endif /* __AES__/__PCLMUL__ */
++(define_insn_reservation  "atom_multi" 9
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "multi"))
++  "atom-complex, atom-all-eu*8")
 +
-+#endif /* _WMMINTRIN_H_INCLUDED */
-Index: gcc/config/i386/cpuid.h
-===================================================================
---- gcc/config/i386/cpuid.h	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config/i386/cpuid.h	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -33,11 +33,13 @@
- 
- /* %ecx */
- #define bit_SSE3	(1 << 0)
-+#define bit_PCLMUL	(1 << 1)
- #define bit_SSSE3	(1 << 9)
- #define bit_CMPXCHG16B	(1 << 13)
- #define bit_SSE4_1	(1 << 19)
- #define bit_SSE4_2	(1 << 20)
- #define bit_POPCNT	(1 << 23)
-+#define bit_AES		(1 << 25)
- 
- /* %edx */
- #define bit_CMPXCHG8B	(1 << 8)
++;; Normal alu insns without carry
++(define_insn_reservation  "atom_alu" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "alu")
++            (and (eq_attr "memory" "none")
++                 (eq_attr "use_carry" "0"))))
++  "atom-simple-either")
++
++;; Normal alu insns without carry
++(define_insn_reservation  "atom_alu_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "alu")
++            (and (eq_attr "memory" "!none")
++                 (eq_attr "use_carry" "0"))))
++  "atom-simple-either")
++
++;; Alu insn consuming CF, such as add/sbb
++(define_insn_reservation  "atom_alu_carry" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "alu")
++            (and (eq_attr "memory" "none")
++                 (eq_attr "use_carry" "1"))))
++  "atom-simple-either")
++
++;; Alu insn consuming CF, such as add/sbb
++(define_insn_reservation  "atom_alu_carry_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "alu")
++            (and (eq_attr "memory" "!none")
++                (eq_attr "use_carry" "1"))))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_alu1" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "alu1")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_alu1_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "alu1")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_negnot" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "negnot")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_negnot_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "negnot")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_imov" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imov")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_imov_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imov")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++;; 16<-16, 32<-32
++(define_insn_reservation  "atom_imovx" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imovx")
++            (and (eq_attr "memory" "none")
++                 (ior (and (match_operand:HI 0 "register_operand")
++                           (match_operand:HI 1 "general_operand"))
++                      (and (match_operand:SI 0 "register_operand")
++                           (match_operand:SI 1 "general_operand"))))))
++  "atom-simple-either")
++
++;; 16<-16, 32<-32, mem
++(define_insn_reservation  "atom_imovx_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imovx")
++            (and (eq_attr "memory" "!none")
++                 (ior (and (match_operand:HI 0 "register_operand")
++                           (match_operand:HI 1 "general_operand"))
++                      (and (match_operand:SI 0 "register_operand")
++                           (match_operand:SI 1 "general_operand"))))))
++  "atom-simple-either")
++
++;; 32<-16, 32<-8, 64<-16, 64<-8, 64<-32, 8<-8
++(define_insn_reservation  "atom_imovx_2" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imovx")
++            (and (eq_attr "memory" "none")
++                 (ior (match_operand:QI 0 "register_operand")
++                      (ior (and (match_operand:SI 0 "register_operand")
++                                (not (match_operand:SI 1 "general_operand")))
++                           (match_operand:DI 0 "register_operand"))))))
++  "atom-simple-0")
++
++;; 32<-16, 32<-8, 64<-16, 64<-8, 64<-32, 8<-8, mem
++(define_insn_reservation  "atom_imovx_2_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imovx")
++            (and (eq_attr "memory" "!none")
++                 (ior (match_operand:QI 0 "register_operand")
++                      (ior (and (match_operand:SI 0 "register_operand")
++                                (not (match_operand:SI 1 "general_operand")))
++                           (match_operand:DI 0 "register_operand"))))))
++  "atom-simple-0")
++
++;; 16<-8
++(define_insn_reservation  "atom_imovx_3" 3
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imovx")
++            (and (match_operand:HI 0 "register_operand")
++                 (match_operand:QI 1 "general_operand"))))
++  "atom-complex, atom-all-eu*2")
++
++(define_insn_reservation  "atom_lea" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "lea")
++            (eq_attr "mode" "!HI")))
++  "atom-simple-either")
++
++;; lea 16bit address is complex insn
++(define_insn_reservation  "atom_lea_2" 2
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "lea")
++            (eq_attr "mode" "HI")))
++  "atom-complex, atom-all-eu")
++
++(define_insn_reservation  "atom_incdec" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "incdec")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_incdec_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "incdec")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++;; simple shift instruction use SHIFT eu, none memory
++(define_insn_reservation  "atom_ishift" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ishift")
++            (and (eq_attr "memory" "none") (eq_attr "prefix_0f" "0"))))
++  "atom-simple-0")
++
++;; simple shift instruction use SHIFT eu, memory
++(define_insn_reservation  "atom_ishift_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ishift")
++            (and (eq_attr "memory" "!none") (eq_attr "prefix_0f" "0"))))
++  "atom-simple-0")
++
++;; DF shift (prefixed with 0f) is complex insn with latency of 7 cycles
++(define_insn_reservation  "atom_ishift_3" 7
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ishift")
++            (eq_attr "prefix_0f" "1")))
++  "atom-complex, atom-all-eu*6")
++
++(define_insn_reservation  "atom_ishift1" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ishift1")
++            (eq_attr "memory" "none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_ishift1_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ishift1")
++            (eq_attr "memory" "!none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_rotate" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "rotate")
++            (eq_attr "memory" "none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_rotate_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "rotate")
++            (eq_attr "memory" "!none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_rotate1" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "rotate1")
++            (eq_attr "memory" "none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_rotate1_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "rotate1")
++            (eq_attr "memory" "!none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_imul" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imul")
++            (and (eq_attr "memory" "none") (eq_attr "mode" "SI"))))
++  "atom-imul-32")
++
++(define_insn_reservation  "atom_imul_mem" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imul")
++            (and (eq_attr "memory" "!none") (eq_attr "mode" "SI"))))
++  "atom-imul-32")
++
++;; latency set to 10 as common 64x64 imul
++(define_insn_reservation  "atom_imul_3" 10
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "imul")
++            (eq_attr "mode" "!SI")))
++  "atom-complex, atom-all-eu*9")
++
++(define_insn_reservation  "atom_idiv" 65
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "idiv"))
++  "atom-complex, atom-all-eu*32, nothing*32")
++
++(define_insn_reservation  "atom_icmp" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "icmp")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_icmp_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "icmp")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_test" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "test")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_test_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "test")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_ibr" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ibr")
++            (eq_attr "memory" "!load")))
++  "atom-simple-1")
++
++;; complex if jump target is from address
++(define_insn_reservation  "atom_ibr_2" 2
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ibr")
++            (eq_attr "memory" "load")))
++  "atom-complex, atom-all-eu")
++
++(define_insn_reservation  "atom_setcc" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "setcc")
++            (eq_attr "memory" "!store")))
++  "atom-simple-either")
++
++;; 2 cycles complex if target is in memory
++(define_insn_reservation  "atom_setcc_2" 2
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "setcc")
++            (eq_attr "memory" "store")))
++  "atom-complex, atom-all-eu")
++
++(define_insn_reservation  "atom_icmov" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "icmov")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_icmov_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "icmov")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++;; UCODE if segreg, ignored
++(define_insn_reservation  "atom_push" 2
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "push"))
++  "atom-dual-2c")
++
++;; pop r64 is 1 cycle. UCODE if segreg, ignored
++(define_insn_reservation  "atom_pop" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "pop")
++            (eq_attr "mode" "DI")))
++  "atom-dual-1c")
++
++;; pop non-r64 is 2 cycles. UCODE if segreg, ignored
++(define_insn_reservation  "atom_pop_2" 2
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "pop")
++            (eq_attr "mode" "!DI")))
++  "atom-dual-2c")
++
++;; UCODE if segreg, ignored
++(define_insn_reservation  "atom_call" 1
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "call"))
++  "atom-dual-1c")
++
++(define_insn_reservation  "atom_callv" 1
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "callv"))
++  "atom-dual-1c")
++
++(define_insn_reservation  "atom_leave" 3
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "leave"))
++  "atom-complex, atom-all-eu*2")
++
++(define_insn_reservation  "atom_str" 3
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "str"))
++  "atom-complex, atom-all-eu*2")
++
++(define_insn_reservation  "atom_sselog" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sselog")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_sselog_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sselog")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_sselog1" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sselog1")
++            (eq_attr "memory" "none")))
++  "atom-simple-0")
++
++(define_insn_reservation  "atom_sselog1_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sselog1")
++            (eq_attr "memory" "!none")))
++  "atom-simple-0")
++
++;; not pmad, not psad
++(define_insn_reservation  "atom_sseiadd" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseiadd")
++            (and (not (match_operand:V2DI 0 "register_operand"))
++                 (and (eq_attr "atom_unit" "!simul")
++                      (eq_attr "atom_unit" "!complex")))))
++  "atom-simple-either")
++
++;; pmad, psad and 64
++(define_insn_reservation  "atom_sseiadd_2" 4
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseiadd")
++            (and (not (match_operand:V2DI 0 "register_operand"))
++                 (and (eq_attr "atom_unit" "simul" )
++                      (eq_attr "mode" "DI")))))
++  "atom-fmul-4c")
++
++;; pmad, psad and 128
++(define_insn_reservation  "atom_sseiadd_3" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseiadd")
++            (and (not (match_operand:V2DI 0 "register_operand"))
++                 (and (eq_attr "atom_unit" "simul" )
++                      (eq_attr "mode" "TI")))))
++  "atom-fmul-5c")
++
++;; if paddq(64 bit op), phadd/phsub
++(define_insn_reservation  "atom_sseiadd_4" 6
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseiadd")
++            (ior (match_operand:V2DI 0 "register_operand")
++                 (eq_attr "atom_unit" "complex"))))
++  "atom-complex, atom-all-eu*5")
++
++;; if immediate op. 
++(define_insn_reservation  "atom_sseishft" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseishft")
++            (and (eq_attr "atom_unit" "!sishuf")
++                 (match_operand 2 "immediate_operand"))))
++  "atom-simple-either")
++
++;; if palignr or psrldq
++(define_insn_reservation  "atom_sseishft_2" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseishft")
++            (and (eq_attr "atom_unit" "sishuf")
++                 (match_operand 2 "immediate_operand"))))
++  "atom-simple-0")
++
++;; if reg/mem op
++(define_insn_reservation  "atom_sseishft_3" 2
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseishft")
++            (not (match_operand 2 "immediate_operand"))))
++  "atom-complex, atom-all-eu")
++
++(define_insn_reservation  "atom_sseimul" 1
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "sseimul"))
++  "atom-simple-0")
++
++;; rcpss or rsqrtss
++(define_insn_reservation  "atom_sse" 4
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sse")
++            (and (eq_attr "atom_sse_attr" "rcp") (eq_attr "mode" "SF"))))
++  "atom-fmul-4c")
++
++;; movshdup, movsldup. Suggest to type sseishft
++(define_insn_reservation  "atom_sse_2" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sse")
++            (eq_attr "atom_sse_attr" "movdup")))
++  "atom-simple-0")
++
++;; lfence
++(define_insn_reservation  "atom_sse_3" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sse")
++            (eq_attr "atom_sse_attr" "lfence")))
++  "atom-simple-either")
++
++;; sfence,clflush,mfence, prefetch
++(define_insn_reservation  "atom_sse_4" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sse")
++            (ior (eq_attr "atom_sse_attr" "fence")
++                 (eq_attr "atom_sse_attr" "prefetch"))))
++  "atom-simple-0")
++
++;; rcpps, rsqrtss, sqrt, ldmxcsr
++(define_insn_reservation  "atom_sse_5" 7
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sse")
++            (ior (ior (eq_attr "atom_sse_attr" "sqrt")
++                      (eq_attr "atom_sse_attr" "mxcsr"))
++                 (and (eq_attr "atom_sse_attr" "rcp")
++                      (eq_attr "mode" "V4SF")))))
++  "atom-complex, atom-all-eu*6")
++
++;; xmm->xmm
++(define_insn_reservation  "atom_ssemov" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemov")
++            (and (match_operand 0 "register_operand" "xy") (match_operand 1 "register_operand" "xy"))))
++  "atom-simple-either")
++
++;; reg->xmm
++(define_insn_reservation  "atom_ssemov_2" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemov")
++            (and (match_operand 0 "register_operand" "xy") (match_operand 1 "register_operand" "r"))))
++  "atom-simple-0")
++
++;; xmm->reg
++(define_insn_reservation  "atom_ssemov_3" 3
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemov")
++            (and (match_operand 0 "register_operand" "r") (match_operand 1 "register_operand" "xy"))))
++  "atom-eu-0-3-1")
++
++;; mov mem
++(define_insn_reservation  "atom_ssemov_4" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemov")
++            (and (eq_attr "movu" "0") (eq_attr "memory" "!none"))))
++  "atom-simple-0")
++
++;; movu mem
++(define_insn_reservation  "atom_ssemov_5" 2
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemov")
++            (ior (eq_attr "movu" "1") (eq_attr "memory" "!none"))))
++  "atom-complex, atom-all-eu")
++
++;; no memory simple
++(define_insn_reservation  "atom_sseadd" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseadd")
++            (and (eq_attr "memory" "none")
++                 (and (eq_attr "mode" "!V2DF")
++                      (eq_attr "atom_unit" "!complex")))))
++  "atom-fadd-5c")
++
++;; memory simple
++(define_insn_reservation  "atom_sseadd_mem" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseadd")
++            (and (eq_attr "memory" "!none")
++                 (and (eq_attr "mode" "!V2DF")
++                      (eq_attr "atom_unit" "!complex")))))
++  "atom-dual-5c")
++
++;; maxps, minps, *pd, hadd, hsub
++(define_insn_reservation  "atom_sseadd_3" 8
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseadd")
++            (ior (eq_attr "mode" "V2DF") (eq_attr "atom_unit" "complex"))))
++  "atom-complex, atom-all-eu*7")
++
++;; Except dppd/dpps
++(define_insn_reservation  "atom_ssemul" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemul")
++            (eq_attr "mode" "!SF")))
++  "atom-fmul-5c")
++
++;; Except dppd/dpps, 4 cycle if mulss
++(define_insn_reservation  "atom_ssemul_2" 4
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssemul")
++            (eq_attr "mode" "SF")))
++  "atom-fmul-4c")
++
++(define_insn_reservation  "atom_ssecmp" 1
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "ssecmp"))
++  "atom-simple-either")
++
++(define_insn_reservation  "atom_ssecomi" 10
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "ssecomi"))
++  "atom-complex, atom-all-eu*9")
++
++;; no memory and cvtpi2ps, cvtps2pi, cvttps2pi
++(define_insn_reservation  "atom_ssecvt" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssecvt")
++            (ior (and (match_operand:V2SI 0 "register_operand")
++                      (match_operand:V4SF 1 "register_operand"))
++                 (and (match_operand:V4SF 0 "register_operand")
++                      (match_operand:V2SI 1 "register_operand")))))
++  "atom-fadd-5c")
++
++;; memory and cvtpi2ps, cvtps2pi, cvttps2pi
++(define_insn_reservation  "atom_ssecvt_2" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssecvt")
++            (ior (and (match_operand:V2SI 0 "register_operand")
++                      (match_operand:V4SF 1 "memory_operand"))
++                 (and (match_operand:V4SF 0 "register_operand")
++                      (match_operand:V2SI 1 "memory_operand")))))
++  "atom-dual-5c")
++
++;; otherwise. 7 cycles average for cvtss2sd
++(define_insn_reservation  "atom_ssecvt_3" 7
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "ssecvt")
++            (not (ior (and (match_operand:V2SI 0 "register_operand")
++                           (match_operand:V4SF 1 "nonimmediate_operand"))
++                      (and (match_operand:V4SF 0 "register_operand")
++                           (match_operand:V2SI 1 "nonimmediate_operand"))))))
++  "atom-complex, atom-all-eu*6")
++
++;; memory and cvtsi2sd
++(define_insn_reservation  "atom_sseicvt" 5
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseicvt")
++            (and (match_operand:V2DF 0 "register_operand")
++                 (match_operand:SI 1 "memory_operand"))))
++  "atom-dual-5c")
++
++;; otherwise. 8 cycles average for cvtsd2si
++(define_insn_reservation  "atom_sseicvt_2" 8
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "sseicvt")
++            (not (and (match_operand:V2DF 0 "register_operand")
++                      (match_operand:SI 1 "memory_operand")))))
++  "atom-complex, atom-all-eu*7")
++
++(define_insn_reservation  "atom_ssediv" 62
++  (and (eq_attr "cpu" "atom")
++       (eq_attr "type" "ssediv"))
++  "atom-complex, atom-all-eu*12, nothing*49")
++
++;; simple for fmov
++(define_insn_reservation  "atom_fmov" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "fmov")
++            (eq_attr "memory" "none")))
++  "atom-simple-either")
++
++;; simple for fmov
++(define_insn_reservation  "atom_fmov_mem" 1
++  (and (eq_attr "cpu" "atom")
++       (and (eq_attr "type" "fmov")
++            (eq_attr "memory" "!none")))
++  "atom-simple-either")
++
++;; Define bypass here
++
++;; There will be no stall from lea to non-mem EX insns
++(define_bypass 0 "atom_lea"
++                 "atom_alu_carry,
++                  atom_alu,atom_alu1,atom_negnot,atom_imov,atom_imovx,
++                  atom_incdec, atom_setcc, atom_icmov, atom_pop")
++
++(define_bypass 0 "atom_lea"
++                 "atom_alu_mem, atom_alu_carry_mem, atom_alu1_mem,
++                  atom_imovx_mem, atom_imovx_2_mem,
++                  atom_imov_mem, atom_icmov_mem, atom_fmov_mem"
++                 "!ix86_agi_dependent")
++
++;; There will be 3 cycles stall from EX insns to AGAN insns LEA
++(define_bypass 4 "atom_alu_carry,
++                  atom_alu,atom_alu1,atom_negnot,atom_imov,atom_imovx,
++                  atom_incdec,atom_ishift,atom_ishift1,atom_rotate,
++                  atom_rotate1, atom_setcc, atom_icmov, atom_pop,
++                  atom_alu_mem, atom_alu_carry_mem, atom_alu1_mem,
++                  atom_imovx_mem, atom_imovx_2_mem,
++                  atom_imov_mem, atom_icmov_mem, atom_fmov_mem"
++                 "atom_lea")
++
++;; There will be 3 cycles stall from EX insns to insns need addr calculation
++(define_bypass 4 "atom_alu_carry,
++                  atom_alu,atom_alu1,atom_negnot,atom_imov,atom_imovx,
++                  atom_incdec,atom_ishift,atom_ishift1,atom_rotate,
++                  atom_rotate1, atom_setcc, atom_icmov, atom_pop,
++                  atom_imovx_mem, atom_imovx_2_mem,
++                  atom_alu_mem, atom_alu_carry_mem, atom_alu1_mem,
++                  atom_imov_mem, atom_icmov_mem, atom_fmov_mem"
++                 "atom_alu_mem, atom_alu_carry_mem, atom_alu1_mem,
++                  atom_negnot_mem, atom_imov_mem, atom_incdec_mem,
++                  atom_imovx_mem, atom_imovx_2_mem,
++                  atom_imul_mem, atom_icmp_mem,
++                  atom_test_mem, atom_icmov_mem, atom_sselog_mem,
++                  atom_sselog1_mem, atom_fmov_mem, atom_sseadd_mem,
++                  atom_ishift_mem, atom_ishift1_mem, 
++                  atom_rotate_mem, atom_rotate1_mem"
++                  "ix86_agi_dependent")
++
++;; Stall from imul to lea is 8 cycles.
++(define_bypass 9 "atom_imul, atom_imul_mem" "atom_lea")
++
++;; Stall from imul to memory address is 8 cycles.
++(define_bypass 9 "atom_imul, atom_imul_mem" 
++                 "atom_alu_mem, atom_alu_carry_mem, atom_alu1_mem,
++                  atom_negnot_mem, atom_imov_mem, atom_incdec_mem,
++                  atom_ishift_mem, atom_ishift1_mem, atom_rotate_mem,
++                  atom_rotate1_mem, atom_imul_mem, atom_icmp_mem,
++                  atom_test_mem, atom_icmov_mem, atom_sselog_mem,
++                  atom_sselog1_mem, atom_fmov_mem, atom_sseadd_mem"
++                  "ix86_agi_dependent")
++
++;; There will be 0 cycle stall from cmp/test to jcc
++
++;; There will be 1 cycle stall from flag producer to cmov and adc/sbb
++(define_bypass 2 "atom_icmp, atom_test, atom_alu, atom_alu_carry,
++                  atom_alu1, atom_negnot, atom_incdec, atom_ishift,
++                  atom_ishift1, atom_rotate, atom_rotate1"
++                 "atom_icmov, atom_alu_carry")
++
++;; lea to shift count stall is 2 cycles
++(define_bypass 3 "atom_lea"
++                 "atom_ishift, atom_ishift1, atom_rotate, atom_rotate1,
++                  atom_ishift_mem, atom_ishift1_mem, 
++                  atom_rotate_mem, atom_rotate1_mem"
++                 "ix86_dep_by_shift_count")
++
++;; lea to shift source stall is 1 cycle
++(define_bypass 2 "atom_lea"
++                 "atom_ishift, atom_ishift1, atom_rotate, atom_rotate1"
++                 "!ix86_dep_by_shift_count")
++
++;; non-lea to shift count stall is 1 cycle
++(define_bypass 2 "atom_alu_carry,
++                  atom_alu,atom_alu1,atom_negnot,atom_imov,atom_imovx,
++                  atom_incdec,atom_ishift,atom_ishift1,atom_rotate,
++                  atom_rotate1, atom_setcc, atom_icmov, atom_pop,
++                  atom_alu_mem, atom_alu_carry_mem, atom_alu1_mem,
++                  atom_imovx_mem, atom_imovx_2_mem,
++                  atom_imov_mem, atom_icmov_mem, atom_fmov_mem"
++                 "atom_ishift, atom_ishift1, atom_rotate, atom_rotate1,
++                  atom_ishift_mem, atom_ishift1_mem, 
++                  atom_rotate_mem, atom_rotate1_mem"
++                 "ix86_dep_by_shift_count")
 Index: gcc/config/i386/sse.md
 ===================================================================
---- gcc/config/i386/sse.md	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config/i386/sse.md	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -8700,3 +8700,80 @@
- }
-   [(set_attr "type" "ssecmp")
+--- gcc/config/i386/sse.md	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/sse.md	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -338,6 +338,7 @@
+    && !(MEM_P (operands[0]) && MEM_P (operands[1]))"
+   "vmovup<avxmodesuffixf2c>\t{%1, %0|%0, %1}"
+   [(set_attr "type" "ssemov")
++   (set_attr "movu" "1")
+    (set_attr "prefix" "vex")
+    (set_attr "mode" "<MODE>")])
+ 
+@@ -363,6 +364,7 @@
+    && !(MEM_P (operands[0]) && MEM_P (operands[1]))"
+   "movup<ssemodesuffixf2c>\t{%1, %0|%0, %1}"
+   [(set_attr "type" "ssemov")
++   (set_attr "movu" "1")
+    (set_attr "mode" "<MODE>")])
+ 
+ (define_insn "avx_movdqu<avxmodesuffix>"
+@@ -373,6 +375,7 @@
+   "TARGET_AVX && !(MEM_P (operands[0]) && MEM_P (operands[1]))"
+   "vmovdqu\t{%1, %0|%0, %1}"
+   [(set_attr "type" "ssemov")
++   (set_attr "movu" "1")
+    (set_attr "prefix" "vex")
+    (set_attr "mode" "<avxvecmode>")])
+ 
+@@ -383,6 +386,7 @@
+   "TARGET_SSE2 && !(MEM_P (operands[0]) && MEM_P (operands[1]))"
+   "movdqu\t{%1, %0|%0, %1}"
+   [(set_attr "type" "ssemov")
++   (set_attr "movu" "1")
+    (set_attr "prefix_data16" "1")
     (set_attr "mode" "TI")])
-+
-+(define_insn "aesenc"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
-+		       (match_operand:V2DI 2 "nonimmediate_operand" "xm")]
-+		      UNSPEC_AESENC))]
-+  "TARGET_AES"
-+  "aesenc\t{%2, %0|%0, %2}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
-+
-+(define_insn "aesenclast"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
-+		       (match_operand:V2DI 2 "nonimmediate_operand" "xm")]
-+		      UNSPEC_AESENCLAST))]
-+  "TARGET_AES"
-+  "aesenclast\t{%2, %0|%0, %2}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
-+
-+(define_insn "aesdec"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
-+		       (match_operand:V2DI 2 "nonimmediate_operand" "xm")]
-+		      UNSPEC_AESDEC))]
-+  "TARGET_AES"
-+  "aesdec\t{%2, %0|%0, %2}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
-+
-+(define_insn "aesdeclast"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
-+		       (match_operand:V2DI 2 "nonimmediate_operand" "xm")]
-+		      UNSPEC_AESDECLAST))]
-+  "TARGET_AES"
-+  "aesdeclast\t{%2, %0|%0, %2}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
-+
-+(define_insn "aesimc"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "nonimmediate_operand" "xm")]
-+		      UNSPEC_AESIMC))]
-+  "TARGET_AES"
-+  "aesimc\t{%1, %0|%0, %1}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
-+
-+(define_insn "aeskeygenassist"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "nonimmediate_operand" "xm")
-+		      (match_operand:SI 2 "const_0_to_255_operand" "n")]
-+		     UNSPEC_AESKEYGENASSIST))]
-+  "TARGET_AES"
-+  "aeskeygenassist\t{%2, %1, %0|%0, %1, %2}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
-+
-+(define_insn "pclmulqdq"
-+  [(set (match_operand:V2DI 0 "register_operand" "=x")
-+	(unspec:V2DI [(match_operand:V2DI 1 "register_operand" "0")
-+		      (match_operand:V2DI 2 "nonimmediate_operand" "xm")
-+		      (match_operand:SI 3 "const_0_to_255_operand" "n")]
-+		     UNSPEC_PCLMUL))]
-+  "TARGET_PCLMUL"
-+  "pclmulqdq\t{%3, %2, %0|%0, %2, %3}"
-+  [(set_attr "type" "sselog1")
-+   (set_attr "prefix_extra" "1")
-+   (set_attr "mode" "TI")])
+ 
+@@ -424,7 +428,7 @@
+ 		     UNSPEC_MOVNT))]
+   "TARGET_SSE2"
+   "movntdq\t{%1, %0|%0, %1}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "prefix_data16" "1")
+    (set_attr "mode" "TI")])
+ 
+@@ -434,7 +438,7 @@
+ 		   UNSPEC_MOVNT))]
+   "TARGET_SSE2"
+   "movnti\t{%1, %0|%0, %1}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "mode" "V2DF")])
+ 
+ (define_insn "avx_lddqu<avxmodesuffix>"
+@@ -445,6 +449,7 @@
+   "TARGET_AVX"
+   "vlddqu\t{%1, %0|%0, %1}"
+   [(set_attr "type" "ssecvt")
++   (set_attr "movu" "1")
+    (set_attr "prefix" "vex")
+    (set_attr "mode" "<avxvecmode>")])
+ 
+@@ -454,7 +459,8 @@
+ 		      UNSPEC_LDDQU))]
+   "TARGET_SSE3"
+   "lddqu\t{%1, %0|%0, %1}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
++   (set_attr "movu" "1")
+    (set_attr "prefix_rep" "1")
+    (set_attr "mode" "TI")])
+ 
+@@ -761,6 +767,7 @@
+   "TARGET_SSE"
+   "%vrcpps\t{%1, %0|%0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "rcp")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "V4SF")])
+ 
+@@ -787,6 +794,7 @@
+   "TARGET_SSE"
+   "rcpss\t{%1, %0|%0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "rcp")
+    (set_attr "mode" "SF")])
+ 
+ (define_expand "sqrtv8sf2"
+@@ -832,6 +840,7 @@
+   "TARGET_SSE"
+   "%vsqrtps\t{%1, %0|%0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "sqrt")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "V4SF")])
+ 
+@@ -876,6 +885,7 @@
+   "SSE_VEC_FLOAT_MODE_P (<MODE>mode)"
+   "sqrts<ssemodesuffixf2c>\t{%1, %0|%0, %1}"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "sqrt")
+    (set_attr "mode" "<ssescalarmode>")])
+ 
+ (define_expand "rsqrtv8sf2"
+@@ -1039,7 +1049,7 @@
+ 	 (const_int 1)))]
+   "SSE_VEC_FLOAT_MODE_P (<MODE>mode)"
+   "<maxminfprefix>s<ssemodesuffixf2c>\t{%2, %0|%0, %2}"
+-  [(set_attr "type" "sse")
++  [(set_attr "type" "sseadd")
+    (set_attr "mode" "<ssescalarmode>")])
+ 
+ ;; These versions of the min/max patterns implement exactly the operations
+@@ -1175,6 +1185,7 @@
+   "TARGET_SSE3"
+   "addsubpd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "mode" "V2DF")])
+ 
+ (define_insn "avx_h<plusminus_insn>v4df3"
+@@ -1298,6 +1309,7 @@
+   "TARGET_SSE3"
+   "h<plusminus_mnemonic>ps\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_rep" "1")
+    (set_attr "mode" "V4SF")])
+ 
+@@ -5066,6 +5078,7 @@
+   "TARGET_SSE2 && ix86_binary_operator_ok (MULT, V8HImode, operands)"
+   "pmaddwd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "simul")
+    (set_attr "prefix_data16" "1")
+    (set_attr "mode" "TI")])
+ 
+@@ -7025,6 +7038,7 @@
+    movq\t{%H1, %0|%0, %H1}
+    mov{q}\t{%H1, %0|%0, %H1}"
+   [(set_attr "type" "ssemov,sseishft,ssemov,imov")
++   (set_attr "atom_unit" "*,sishuf,*,*")
+    (set_attr "memory" "*,none,*,*")
+    (set_attr "mode" "V2SF,TI,TI,DI")])
+ 
+@@ -7057,6 +7071,7 @@
+    psrldq\t{$8, %0|%0, 8}
+    movq\t{%H1, %0|%0, %H1}"
+   [(set_attr "type" "ssemov,sseishft,ssemov")
++   (set_attr "atom_unit" "*,sishuf,*")
+    (set_attr "memory" "*,none,*")
+    (set_attr "mode" "V2SF,TI,TI")])
+ 
+@@ -7614,6 +7629,7 @@
+   "TARGET_SSE2"
+   "psadbw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "simul")
+    (set_attr "prefix_data16" "1")
+    (set_attr "mode" "TI")])
+ 
+@@ -7635,7 +7651,7 @@
+ 	  UNSPEC_MOVMSK))]
+   "SSE_VEC_FLOAT_MODE_P (<MODE>mode)"
+   "%vmovmskp<ssemodesuffixf2c>\t{%1, %0|%0, %1}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "<MODE>")])
+ 
+@@ -7645,7 +7661,7 @@
+ 		   UNSPEC_MOVMSK))]
+   "TARGET_SSE2"
+   "%vpmovmskb\t{%1, %0|%0, %1}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "SI")])
+@@ -7668,7 +7684,7 @@
+   "TARGET_SSE2 && !TARGET_64BIT"
+   ;; @@@ check ordering of operands in intel/nonintel syntax
+   "%vmaskmovdqu\t{%2, %1|%1, %2}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "TI")])
+@@ -7682,7 +7698,7 @@
+   "TARGET_SSE2 && TARGET_64BIT"
+   ;; @@@ check ordering of operands in intel/nonintel syntax
+   "%vmaskmovdqu\t{%2, %1|%1, %2}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "TI")])
+@@ -7693,6 +7709,7 @@
+   "TARGET_SSE"
+   "%vldmxcsr\t%0"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "mxcsr")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "memory" "load")])
+ 
+@@ -7702,6 +7719,7 @@
+   "TARGET_SSE"
+   "%vstmxcsr\t%0"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "mxcsr")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "memory" "store")])
+ 
+@@ -7720,6 +7738,7 @@
+   "TARGET_SSE || TARGET_3DNOW_A"
+   "sfence"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "fence")
+    (set_attr "memory" "unknown")])
+ 
+ (define_insn "sse2_clflush"
+@@ -7728,6 +7747,7 @@
+   "TARGET_SSE2"
+   "clflush\t%a0"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "fence")
+    (set_attr "memory" "unknown")])
+ 
+ (define_expand "sse2_mfence"
+@@ -7745,6 +7765,7 @@
+   "TARGET_64BIT || TARGET_SSE2"
+   "mfence"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "fence")
+    (set_attr "memory" "unknown")])
+ 
+ (define_expand "sse2_lfence"
+@@ -7762,6 +7783,7 @@
+   "TARGET_SSE2"
+   "lfence"
+   [(set_attr "type" "sse")
++   (set_attr "atom_sse_attr" "lfence")
+    (set_attr "memory" "unknown")])
+ 
+ (define_insn "sse3_mwait"
+@@ -7885,6 +7907,7 @@
+   "TARGET_SSSE3"
+   "phaddw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -7913,6 +7936,7 @@
+   "TARGET_SSSE3"
+   "phaddw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -7967,6 +7991,7 @@
+   "TARGET_SSSE3"
+   "phaddd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -7987,6 +8012,7 @@
+   "TARGET_SSSE3"
+   "phaddd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8073,6 +8099,7 @@
+   "TARGET_SSSE3"
+   "phaddsw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -8101,6 +8128,7 @@
+   "TARGET_SSSE3"
+   "phaddsw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8187,6 +8215,7 @@
+   "TARGET_SSSE3"
+   "phsubw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -8215,6 +8244,7 @@
+   "TARGET_SSSE3"
+   "phsubw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8269,6 +8299,7 @@
+   "TARGET_SSSE3"
+   "phsubd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -8289,6 +8320,7 @@
+   "TARGET_SSSE3"
+   "phsubd\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8375,6 +8407,7 @@
+   "TARGET_SSSE3"
+   "phsubsw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -8403,6 +8436,7 @@
+   "TARGET_SSSE3"
+   "phsubsw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "complex")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8509,6 +8543,7 @@
+   "TARGET_SSSE3"
+   "pmaddubsw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "simul")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -8547,6 +8582,7 @@
+   "TARGET_SSSE3"
+   "pmaddubsw\t{%2, %0|%0, %2}"
+   [(set_attr "type" "sseiadd")
++   (set_attr "atom_unit" "simul")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8754,6 +8790,7 @@
+   return "palignr\t{%3, %2, %0|%0, %2, %3}";
+ }
+   [(set_attr "type" "sseishft")
++   (set_attr "atom_unit" "sishuf")
+    (set_attr "prefix_data16" "1")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "TI")])
+@@ -8770,6 +8807,7 @@
+   return "palignr\t{%3, %2, %0|%0, %2, %3}";
+ }
+   [(set_attr "type" "sseishft")
++   (set_attr "atom_unit" "sishuf")
+    (set_attr "prefix_extra" "1")
+    (set_attr "mode" "DI")])
+ 
+@@ -8956,7 +8994,7 @@
+ 		     UNSPEC_MOVNTDQA))]
+   "TARGET_SSE4_1"
+   "%vmovntdqa\t{%1, %0|%0, %1}"
+-  [(set_attr "type" "ssecvt")
++  [(set_attr "type" "ssemov")
+    (set_attr "prefix_extra" "1")
+    (set_attr "prefix" "maybe_vex")
+    (set_attr "mode" "TI")])
 Index: gcc/config/i386/i386.opt
 ===================================================================
---- gcc/config/i386/i386.opt	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config/i386/i386.opt	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -279,3 +279,11 @@
- Enable automatic generation of fused floating point multiply-add instructions
- if the ISA supports such instructions.  The -mfused-madd option is on by
- default.
+--- gcc/config/i386/i386.opt	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/i386.opt	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -228,6 +228,10 @@
+ Target RejectNegative Joined Var(ix86_tune_string)
+ Schedule code for given CPU
+ 
++mabi=
++Target RejectNegative Joined Var(ix86_abi_string)
++Generate code that conforms to the given ABI
 +
-+maes
-+Target Report RejectNegative Var(x86_aes)
-+Support AES built-in functions and code generation
-+
-+mpclmul
-+Target Report RejectNegative Var(x86_pclmul)
-+Support PCLMUL built-in functions and code generation
+ mveclibabi=
+ Target RejectNegative Joined Var(ix86_veclibabi_string)
+ Vector library ABI to use
+Index: gcc/config/i386/i386-c.c
+===================================================================
+--- gcc/config/i386/i386-c.c	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/i386-c.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -119,6 +119,10 @@
+       def_or_undef (parse_in, "__core2");
+       def_or_undef (parse_in, "__core2__");
+       break;
++    case PROCESSOR_ATOM:
++      def_or_undef (parse_in, "__atom");
++      def_or_undef (parse_in, "__atom__");
++      break;
+     /* use PROCESSOR_max to not set/unset the arch macro.  */
+     case PROCESSOR_max:
+       break;
+@@ -187,6 +191,9 @@
+     case PROCESSOR_CORE2:
+       def_or_undef (parse_in, "__tune_core2__");
+       break;
++    case PROCESSOR_ATOM:
++      def_or_undef (parse_in, "__tune_atom__");
++      break;
+     case PROCESSOR_GENERIC32:
+     case PROCESSOR_GENERIC64:
+       break;
+Index: gcc/config/i386/mingw32.h
+===================================================================
+--- gcc/config/i386/mingw32.h	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/mingw32.h	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -38,7 +38,7 @@
+       builtin_define_std ("WINNT");				\
+       builtin_define_with_int_value ("_INTEGRAL_MAX_BITS",	\
+ 				     TYPE_PRECISION (intmax_type_node));\
+-      if (TARGET_64BIT && DEFAULT_ABI == MS_ABI)			\
++      if (TARGET_64BIT && ix86_abi == MS_ABI)			\
+ 	{							\
+ 	  builtin_define ("__MINGW64__");			\
+ 	  builtin_define_std ("WIN64");				\
+Index: gcc/config/i386/i386-protos.h
+===================================================================
+--- gcc/config/i386/i386-protos.h	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/i386-protos.h	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -85,6 +85,9 @@
+ extern void ix86_expand_binary_operator (enum rtx_code,
+ 					 enum machine_mode, rtx[]);
+ extern int ix86_binary_operator_ok (enum rtx_code, enum machine_mode, rtx[]);
++extern bool ix86_lea_for_add_ok (enum rtx_code, rtx, rtx[]);
++extern bool ix86_dep_by_shift_count (const_rtx set_insn, const_rtx use_insn);
++extern bool ix86_agi_dependent (rtx set_insn, rtx use_insn);
+ extern void ix86_expand_unary_operator (enum rtx_code, enum machine_mode,
+ 					rtx[]);
+ extern rtx ix86_build_const_vector (enum machine_mode, bool, rtx);
+@@ -139,9 +142,8 @@
+ extern bool ix86_sol10_return_in_memory (const_tree,const_tree);
+ extern rtx ix86_force_to_memory (enum machine_mode, rtx);
+ extern void ix86_free_from_memory (enum machine_mode);
+-extern int ix86_cfun_abi (void);
+-extern int ix86_function_abi (const_tree);
+-extern int ix86_function_type_abi (const_tree);
++extern enum calling_abi ix86_cfun_abi (void);
++extern enum calling_abi ix86_function_type_abi (const_tree);
+ extern void ix86_call_abi_override (const_tree);
+ extern tree ix86_fn_abi_va_list (tree);
+ extern tree ix86_canonical_va_list_type (tree);
 Index: gcc/config/i386/i386.c
 ===================================================================
---- gcc/config/i386/i386.c	(.../gcc-4_3-branch)	(revision 145062)
-+++ gcc/config/i386/i386.c	(.../ix86/gcc-4_3-branch)	(revision 145364)
-@@ -2077,7 +2077,9 @@
-       PTA_NO_SAHF = 1 << 13,
-       PTA_SSE4_1 = 1 << 14,
-       PTA_SSE4_2 = 1 << 15,
--      PTA_SSE5 = 1 << 16
-+      PTA_SSE5 = 1 << 16,
-+      PTA_AES = 1 << 17,
-+      PTA_PCLMUL = 1 << 18
-     };
- 
-   static struct pta
-@@ -2384,6 +2386,10 @@
- 	  x86_prefetch_sse = true;
- 	if (!(TARGET_64BIT && (processor_alias_table[i].flags & PTA_NO_SAHF)))
- 	  x86_sahf = true;
-+	if (processor_alias_table[i].flags & PTA_AES)
-+	  x86_aes = true;
-+	if (processor_alias_table[i].flags & PTA_PCLMUL)
-+	  x86_pclmul = true;
- 
- 	break;
-       }
-@@ -2427,6 +2433,14 @@
-   if (i == pta_size)
-     error ("bad value (%s) for -mtune= switch", ix86_tune_string);
- 
-+  /* Enable SSE2 if AES or PCLMUL is enabled.  */
-+  if ((x86_aes || x86_pclmul)
-+      && !(ix86_isa_flags_explicit & OPTION_MASK_ISA_SSE2))
-+    {
-+      ix86_isa_flags |= OPTION_MASK_ISA_SSE2_SET;
-+      ix86_isa_flags_explicit |= OPTION_MASK_ISA_SSE2_SET;
-+    }
-+
-   ix86_tune_mask = 1u << ix86_tune;
-   for (i = 0; i < X86_TUNE_LAST; ++i)
-     ix86_tune_features[i] &= ix86_tune_mask;
-@@ -17582,6 +17596,17 @@
- 
-   IX86_BUILTIN_PCMPGTQ,
- 
-+  /* AES instructions */
-+  IX86_BUILTIN_AESENC128,
-+  IX86_BUILTIN_AESENCLAST128,
-+  IX86_BUILTIN_AESDEC128,
-+  IX86_BUILTIN_AESDECLAST128,
-+  IX86_BUILTIN_AESIMC128,
-+  IX86_BUILTIN_AESKEYGENASSIST128,
-+
-+  /* PCLMUL instruction */
-+  IX86_BUILTIN_PCLMULQDQ128,
-+
-   /* TFmode support builtins.  */
-   IX86_BUILTIN_INFQ,
-   IX86_BUILTIN_FABSQ,
-@@ -17937,6 +17962,9 @@
-   { OPTION_MASK_ISA_SSE4_1, CODE_FOR_sse4_1_pblendw, "__builtin_ia32_pblendw128", IX86_BUILTIN_PBLENDW128, UNKNOWN, 0 },
-   { OPTION_MASK_ISA_ROUND, CODE_FOR_sse4_1_roundsd, 0, IX86_BUILTIN_ROUNDSD, UNKNOWN, 0 },
-   { OPTION_MASK_ISA_ROUND, CODE_FOR_sse4_1_roundss, 0, IX86_BUILTIN_ROUNDSS, UNKNOWN, 0 },
-+
-+  /* PCLMUL */
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_pclmulqdq, 0, IX86_BUILTIN_PCLMULQDQ128, UNKNOWN, 0 },
+--- gcc/config/i386/i386.c	(.../tags/gcc_4_4_0_release)	(revision 146537)
++++ gcc/config/i386/i386.c	(.../branches/ix86/gcc-4_4-branch)	(revision 146537)
+@@ -1036,6 +1036,79 @@
+   1,                                    /* cond_not_taken_branch_cost.  */
  };
  
- static const struct builtin_description bdesc_2arg[] =
-@@ -18247,6 +18275,13 @@
- 
-   /* SSE4.2 */
-   { OPTION_MASK_ISA_SSE4_2, CODE_FOR_sse4_2_gtv2di3, "__builtin_ia32_pcmpgtq", IX86_BUILTIN_PCMPGTQ, UNKNOWN, 0 },
++static const
++struct processor_costs atom_cost = {
++  COSTS_N_INSNS (1),			/* cost of an add instruction */
++  COSTS_N_INSNS (1) + 1,		/* cost of a lea instruction */
++  COSTS_N_INSNS (1),			/* variable shift costs */
++  COSTS_N_INSNS (1),			/* constant shift costs */
++  {COSTS_N_INSNS (3),			/* cost of starting multiply for QI */
++   COSTS_N_INSNS (4),			/*                               HI */
++   COSTS_N_INSNS (3),			/*                               SI */
++   COSTS_N_INSNS (4),			/*                               DI */
++   COSTS_N_INSNS (2)},			/*                               other */
++  0,					/* cost of multiply per each bit set */
++  {COSTS_N_INSNS (18),			/* cost of a divide/mod for QI */
++   COSTS_N_INSNS (26),			/*                          HI */
++   COSTS_N_INSNS (42),			/*                          SI */
++   COSTS_N_INSNS (74),			/*                          DI */
++   COSTS_N_INSNS (74)},			/*                          other */
++  COSTS_N_INSNS (1),			/* cost of movsx */
++  COSTS_N_INSNS (1),			/* cost of movzx */
++  8,					/* "large" insn */
++  17,					/* MOVE_RATIO */
++  2,					/* cost for loading QImode using movzbl */
++  {4, 4, 4},				/* cost of loading integer registers
++					   in QImode, HImode and SImode.
++					   Relative to reg-reg move (2).  */
++  {4, 4, 4},				/* cost of storing integer registers */
++  4,					/* cost of reg,reg fld/fst */
++  {12, 12, 12},				/* cost of loading fp registers
++					   in SFmode, DFmode and XFmode */
++  {6, 6, 8},				/* cost of storing fp registers
++					   in SFmode, DFmode and XFmode */
++  2,					/* cost of moving MMX register */
++  {8, 8},				/* cost of loading MMX registers
++					   in SImode and DImode */
++  {8, 8},				/* cost of storing MMX registers
++					   in SImode and DImode */
++  2,					/* cost of moving SSE register */
++  {8, 8, 8},				/* cost of loading SSE registers
++					   in SImode, DImode and TImode */
++  {8, 8, 8},				/* cost of storing SSE registers
++					   in SImode, DImode and TImode */
++  5,					/* MMX or SSE register to integer */
++  32,					/* size of l1 cache.  */
++  256,					/* size of l2 cache.  */
++  64,					/* size of prefetch block */
++  6,					/* number of parallel prefetches */
++  3,					/* Branch cost */
++  COSTS_N_INSNS (8),			/* cost of FADD and FSUB insns.  */
++  COSTS_N_INSNS (8),			/* cost of FMUL instruction.  */
++  COSTS_N_INSNS (20),			/* cost of FDIV instruction.  */
++  COSTS_N_INSNS (8),			/* cost of FABS instruction.  */
++  COSTS_N_INSNS (8),			/* cost of FCHS instruction.  */
++  COSTS_N_INSNS (40),			/* cost of FSQRT instruction.  */
++  {{libcall, {{11, loop}, {-1, rep_prefix_4_byte}}},
++   {libcall, {{32, loop}, {64, rep_prefix_4_byte},
++          {8192, rep_prefix_8_byte}, {-1, libcall}}}},
++  {{libcall, {{8, loop}, {15, unrolled_loop},
++          {2048, rep_prefix_4_byte}, {-1, libcall}}},
++   {libcall, {{24, loop}, {32, unrolled_loop},
++          {8192, rep_prefix_8_byte}, {-1, libcall}}}},
++  1,                                    /* scalar_stmt_cost.  */
++  1,                                    /* scalar load_cost.  */
++  1,                                    /* scalar_store_cost.  */
++  1,                                    /* vec_stmt_cost.  */
++  1,                                    /* vec_to_scalar_cost.  */
++  1,                                    /* scalar_to_vec_cost.  */
++  1,                                    /* vec_align_load_cost.  */
++  2,                                    /* vec_unalign_load_cost.  */
++  1,                                    /* vec_store_cost.  */
++  3,                                    /* cond_taken_branch_cost.  */
++  1,                                    /* cond_not_taken_branch_cost.  */
++};
 +
-+  /* AES */
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_aesenc, 0, IX86_BUILTIN_AESENC128, UNKNOWN, 0 },
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_aesenclast, 0, IX86_BUILTIN_AESENCLAST128, UNKNOWN, 0 },
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_aesdec, 0, IX86_BUILTIN_AESDEC128, UNKNOWN, 0 },
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_aesdeclast, 0, IX86_BUILTIN_AESDECLAST128, UNKNOWN, 0 },
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_aeskeygenassist, 0, IX86_BUILTIN_AESKEYGENASSIST128, UNKNOWN, 0 },
+ /* Generic64 should produce code tuned for Nocona and K8.  */
+ static const
+ struct processor_costs generic64_cost = {
+@@ -1194,6 +1267,7 @@
+ #define m_PENT4  (1<<PROCESSOR_PENTIUM4)
+ #define m_NOCONA  (1<<PROCESSOR_NOCONA)
+ #define m_CORE2  (1<<PROCESSOR_CORE2)
++#define m_ATOM  (1<<PROCESSOR_ATOM)
+ 
+ #define m_GEODE  (1<<PROCESSOR_GEODE)
+ #define m_K6  (1<<PROCESSOR_K6)
+@@ -1231,10 +1305,11 @@
+   m_486 | m_PENT,
+ 
+   /* X86_TUNE_UNROLL_STRLEN */
+-  m_486 | m_PENT | m_PPRO | m_AMD_MULTIPLE | m_K6 | m_CORE2 | m_GENERIC,
++  m_486 | m_PENT | m_ATOM | m_PPRO | m_AMD_MULTIPLE | m_K6
++  | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_DEEP_BRANCH_PREDICTION */
+-  m_PPRO | m_K6_GEODE | m_AMD_MULTIPLE | m_PENT4 | m_GENERIC,
++  m_ATOM | m_PPRO | m_K6_GEODE | m_AMD_MULTIPLE | m_PENT4 | m_GENERIC,
+ 
+   /* X86_TUNE_BRANCH_PREDICTION_HINTS: Branch hints were put in P4 based
+      on simulation result. But after P4 was made, no performance benefit
+@@ -1246,12 +1321,12 @@
+   ~m_386,
+ 
+   /* X86_TUNE_USE_SAHF */
+-  m_PPRO | m_K6_GEODE | m_K8 | m_AMDFAM10 | m_PENT4
++  m_ATOM | m_PPRO | m_K6_GEODE | m_K8 | m_AMDFAM10 | m_PENT4
+   | m_NOCONA | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_MOVX: Enable to zero extend integer registers to avoid
+      partial dependencies.  */
+-  m_AMD_MULTIPLE | m_PPRO | m_PENT4 | m_NOCONA
++  m_AMD_MULTIPLE | m_ATOM | m_PPRO | m_PENT4 | m_NOCONA
+   | m_CORE2 | m_GENERIC | m_GEODE /* m_386 | m_K6 */,
+ 
+   /* X86_TUNE_PARTIAL_REG_STALL: We probably ought to watch for partial
+@@ -1271,13 +1346,13 @@
+   m_386 | m_486 | m_K6_GEODE,
+ 
+   /* X86_TUNE_USE_SIMODE_FIOP */
+-  ~(m_PPRO | m_AMD_MULTIPLE | m_PENT | m_CORE2 | m_GENERIC),
++  ~(m_PPRO | m_AMD_MULTIPLE | m_PENT | m_ATOM | m_CORE2 | m_GENERIC),
+ 
+   /* X86_TUNE_USE_MOV0 */
+   m_K6,
+ 
+   /* X86_TUNE_USE_CLTD */
+-  ~(m_PENT | m_K6 | m_CORE2 | m_GENERIC),
++  ~(m_PENT | m_ATOM | m_K6 | m_CORE2 | m_GENERIC),
+ 
+   /* X86_TUNE_USE_XCHGB: Use xchgb %rh,%rl instead of rolw/rorw $8,rx.  */
+   m_PENT4,
+@@ -1292,8 +1367,8 @@
+   ~(m_PENT | m_PPRO),
+ 
+   /* X86_TUNE_PROMOTE_QIMODE */
+-  m_K6_GEODE | m_PENT | m_386 | m_486 | m_AMD_MULTIPLE | m_CORE2
+-  | m_GENERIC /* | m_PENT4 ? */,
++  m_K6_GEODE | m_PENT | m_ATOM | m_386 | m_486 | m_AMD_MULTIPLE
++  | m_CORE2 | m_GENERIC /* | m_PENT4 ? */,
+ 
+   /* X86_TUNE_FAST_PREFIX */
+   ~(m_PENT | m_486 | m_386),
+@@ -1317,26 +1392,28 @@
+   m_PPRO,
+ 
+   /* X86_TUNE_ADD_ESP_4: Enable if add/sub is preferred over 1/2 push/pop.  */
+-  m_AMD_MULTIPLE | m_K6_GEODE | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
++  m_ATOM | m_AMD_MULTIPLE | m_K6_GEODE | m_PENT4 | m_NOCONA
++  | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_ADD_ESP_8 */
+-  m_AMD_MULTIPLE | m_PPRO | m_K6_GEODE | m_386
++  m_AMD_MULTIPLE | m_ATOM | m_PPRO | m_K6_GEODE | m_386
+   | m_486 | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_SUB_ESP_4 */
+-  m_AMD_MULTIPLE | m_PPRO | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
++  m_AMD_MULTIPLE | m_ATOM | m_PPRO | m_PENT4 | m_NOCONA | m_CORE2
++  | m_GENERIC,
+ 
+   /* X86_TUNE_SUB_ESP_8 */
+-  m_AMD_MULTIPLE | m_PPRO | m_386 | m_486
++  m_AMD_MULTIPLE | m_ATOM | m_PPRO | m_386 | m_486
+   | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_INTEGER_DFMODE_MOVES: Enable if integer moves are preferred
+      for DFmode copies */
+-  ~(m_AMD_MULTIPLE | m_PENT4 | m_NOCONA | m_PPRO | m_CORE2
++  ~(m_AMD_MULTIPLE | m_ATOM | m_PENT4 | m_NOCONA | m_PPRO | m_CORE2
+     | m_GENERIC | m_GEODE),
+ 
+   /* X86_TUNE_PARTIAL_REG_DEPENDENCY */
+-  m_AMD_MULTIPLE | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
++  m_AMD_MULTIPLE | m_ATOM | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_SSE_PARTIAL_REG_DEPENDENCY: In the Generic model we have a
+      conflict here in between PPro/Pentium4 based chips that thread 128bit
+@@ -1347,7 +1424,8 @@
+      shows that disabling this option on P4 brings over 20% SPECfp regression,
+      while enabling it on K8 brings roughly 2.4% regression that can be partly
+      masked by careful scheduling of moves.  */
+-  m_PENT4 | m_NOCONA | m_PPRO | m_CORE2 | m_GENERIC | m_AMDFAM10,
++  m_ATOM | m_PENT4 | m_NOCONA | m_PPRO | m_CORE2 | m_GENERIC
++  | m_AMDFAM10,
+ 
+   /* X86_TUNE_SSE_UNALIGNED_MOVE_OPTIMAL */
+   m_AMDFAM10,
+@@ -1365,13 +1443,13 @@
+   m_PPRO | m_PENT4 | m_NOCONA,
+ 
+   /* X86_TUNE_MEMORY_MISMATCH_STALL */
+-  m_AMD_MULTIPLE | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
++  m_AMD_MULTIPLE | m_ATOM | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_PROLOGUE_USING_MOVE */
+-  m_ATHLON_K8 | m_PPRO | m_CORE2 | m_GENERIC,
++  m_ATHLON_K8 | m_ATOM | m_PPRO | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_EPILOGUE_USING_MOVE */
+-  m_ATHLON_K8 | m_PPRO | m_CORE2 | m_GENERIC,
++  m_ATHLON_K8 | m_ATOM | m_PPRO | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_SHIFT1 */
+   ~m_486,
+@@ -1380,29 +1458,32 @@
+   m_AMD_MULTIPLE,
+ 
+   /* X86_TUNE_INTER_UNIT_MOVES */
+-  ~(m_AMD_MULTIPLE | m_GENERIC),
++  ~(m_AMD_MULTIPLE | m_ATOM | m_GENERIC),
+ 
+   /* X86_TUNE_INTER_UNIT_CONVERSIONS */
+   ~(m_AMDFAM10),
+ 
+   /* X86_TUNE_FOUR_JUMP_LIMIT: Some CPU cores are not able to predict more
+      than 4 branch instructions in the 16 byte window.  */
+-  m_PPRO | m_AMD_MULTIPLE | m_PENT4 | m_NOCONA | m_CORE2 | m_GENERIC,
++  m_ATOM | m_PPRO | m_AMD_MULTIPLE | m_PENT4 | m_NOCONA | m_CORE2
++  | m_GENERIC,
+ 
+   /* X86_TUNE_SCHEDULE */
+-  m_PPRO | m_AMD_MULTIPLE | m_K6_GEODE | m_PENT | m_CORE2 | m_GENERIC,
++  m_PPRO | m_AMD_MULTIPLE | m_K6_GEODE | m_PENT | m_ATOM | m_CORE2
++  | m_GENERIC,
+ 
+   /* X86_TUNE_USE_BT */
+-  m_AMD_MULTIPLE | m_CORE2 | m_GENERIC,
++  m_AMD_MULTIPLE | m_ATOM | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_USE_INCDEC */
+-  ~(m_PENT4 | m_NOCONA | m_GENERIC),
++  ~(m_PENT4 | m_NOCONA | m_GENERIC | m_ATOM),
+ 
+   /* X86_TUNE_PAD_RETURNS */
+   m_AMD_MULTIPLE | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_EXT_80387_CONSTANTS */
+-  m_K6_GEODE | m_ATHLON_K8 | m_PENT4 | m_NOCONA | m_PPRO | m_CORE2 | m_GENERIC,
++  m_K6_GEODE | m_ATHLON_K8 | m_ATOM | m_PENT4 | m_NOCONA | m_PPRO
++  | m_CORE2 | m_GENERIC,
+ 
+   /* X86_TUNE_SHORTEN_X87_SSE */
+   ~m_K8,
+@@ -1447,6 +1528,10 @@
+      with a subsequent conditional jump instruction into a single
+      compare-and-branch uop.  */
+   m_CORE2,
++
++  /* X86_TUNE_OPT_AGU: Optimize for Address Generation Unit. This flag
++     will impact LEA instruction selection. */
++  m_ATOM,
  };
  
- static const struct builtin_description bdesc_1arg[] =
-@@ -18322,6 +18357,9 @@
-   /* Fake 1 arg builtins with a constant smaller than 8 bits as the 2nd arg.  */
-   { OPTION_MASK_ISA_SSE4_1, CODE_FOR_sse4_1_roundpd, 0, IX86_BUILTIN_ROUNDPD, UNKNOWN, 0 },
-   { OPTION_MASK_ISA_SSE4_1, CODE_FOR_sse4_1_roundps, 0, IX86_BUILTIN_ROUNDPS, UNKNOWN, 0 },
-+
-+  /* AES */
-+  { OPTION_MASK_ISA_SSE2, CODE_FOR_aesimc, 0, IX86_BUILTIN_AESIMC128, UNKNOWN, 0 },
+ /* Feature tests against the various architecture variations.  */
+@@ -1472,10 +1557,11 @@
  };
  
- /* SSE5 */
-@@ -19555,6 +19593,25 @@
- 				    NULL_TREE);
-   def_builtin_const (OPTION_MASK_ISA_SSE4_2 | OPTION_MASK_ISA_64BIT, "__builtin_ia32_crc32di", ftype, IX86_BUILTIN_CRC32DI);
+ static const unsigned int x86_accumulate_outgoing_args
+-  = m_AMD_MULTIPLE | m_PENT4 | m_NOCONA | m_PPRO | m_CORE2 | m_GENERIC;
++  = m_AMD_MULTIPLE | m_ATOM | m_PENT4 | m_NOCONA | m_PPRO | m_CORE2
++    | m_GENERIC;
  
-+  /* AES */
-+  if (TARGET_AES)
-+    {
-+      /* Define AES built-in functions only if AES is enabled.  */
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_aesenc128", v2di_ftype_v2di_v2di, IX86_BUILTIN_AESENC128);
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_aesenclast128", v2di_ftype_v2di_v2di, IX86_BUILTIN_AESENCLAST128);
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_aesdec128", v2di_ftype_v2di_v2di, IX86_BUILTIN_AESDEC128);
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_aesdeclast128", v2di_ftype_v2di_v2di, IX86_BUILTIN_AESDECLAST128);
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_aesimc128", v2di_ftype_v2di, IX86_BUILTIN_AESIMC128);
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_aeskeygenassist128", v2di_ftype_v2di_int, IX86_BUILTIN_AESKEYGENASSIST128);
-+    }
+ static const unsigned int x86_arch_always_fancy_math_387
+-  = m_PENT | m_PPRO | m_AMD_MULTIPLE | m_PENT4
++  = m_PENT | m_ATOM | m_PPRO | m_AMD_MULTIPLE | m_PENT4
+     | m_NOCONA | m_CORE2 | m_GENERIC;
+ 
+ static enum stringop_alg stringop_alg = no_stringop;
+@@ -1743,6 +1829,9 @@
+ /* Alignment for incoming stack boundary in bits.  */
+ unsigned int ix86_incoming_stack_boundary;
+ 
++/* The abi used by target.  */
++enum calling_abi ix86_abi;
 +
-+  /* PCLMUL */
-+  if (TARGET_PCLMUL)
-+    {
-+      /* Define PCLMUL built-in function only if PCLMUL is enabled.  */
-+      def_builtin_const (OPTION_MASK_ISA_SSE2, "__builtin_ia32_pclmulqdq128", v2di_ftype_v2di_v2di_int, IX86_BUILTIN_PCLMULQDQ128);
-+    }
+ /* Values 1-5: see jump.c */
+ int ix86_branch_cost;
+ 
+@@ -1819,6 +1908,8 @@
+ static bool ix86_can_inline_p (tree, tree);
+ static void ix86_set_current_function (tree);
+ 
++static enum calling_abi ix86_function_abi (const_tree);
 +
-   /* AMDFAM10 SSE4A New built-ins  */
-   def_builtin (OPTION_MASK_ISA_SSE4A, "__builtin_ia32_movntsd", void_ftype_pdouble_v2df, IX86_BUILTIN_MOVNTSD);
-   def_builtin (OPTION_MASK_ISA_SSE4A, "__builtin_ia32_movntss", void_ftype_pfloat_v4sf, IX86_BUILTIN_MOVNTSS);
-@@ -19830,6 +19887,44 @@
-   return target;
+ 
+ /* The svr4 ABI for the i386 says that records and unions are returned
+    in memory.  */
+@@ -1953,7 +2044,8 @@
+   {&core2_cost, 16, 10, 16, 10, 16},
+   {&generic32_cost, 16, 7, 16, 7, 16},
+   {&generic64_cost, 16, 10, 16, 10, 16},
+-  {&amdfam10_cost, 32, 24, 32, 7, 32}
++  {&amdfam10_cost, 32, 24, 32, 7, 32},
++  {&atom_cost, 16, 7, 16, 7, 16}
+ };
+ 
+ static const char *const cpu_names[TARGET_CPU_DEFAULT_max] =
+@@ -1971,6 +2063,7 @@
+   "prescott",
+   "nocona",
+   "core2",
++  "atom",
+   "geode",
+   "k6",
+   "k6-2",
+@@ -2529,6 +2622,9 @@
+       {"core2", PROCESSOR_CORE2, CPU_CORE2,
+ 	PTA_64BIT | PTA_MMX | PTA_SSE | PTA_SSE2 | PTA_SSE3
+ 	| PTA_SSSE3 | PTA_CX16},
++      {"atom", PROCESSOR_ATOM, CPU_ATOM,
++	PTA_64BIT | PTA_MMX | PTA_SSE | PTA_SSE2 | PTA_SSE3
++	| PTA_SSSE3 | PTA_CX16},
+       {"geode", PROCESSOR_GEODE, CPU_GEODE,
+ 	PTA_MMX | PTA_3DNOW | PTA_3DNOW_A |PTA_PREFETCH_SSE},
+       {"k6", PROCESSOR_K6, CPU_K6, PTA_MMX},
+@@ -2716,6 +2812,20 @@
+     error ("bad value (%s) for %sarch=%s %s",
+ 	   ix86_arch_string, prefix, suffix, sw);
+ 
++  /* Validate -mabi= value.  */
++  if (ix86_abi_string)
++    {
++      if (strcmp (ix86_abi_string, "sysv") == 0)
++	ix86_abi = SYSV_ABI;
++      else if (strcmp (ix86_abi_string, "ms") == 0)
++	ix86_abi = MS_ABI;
++      else
++	error ("unknown ABI (%s) for %sabi=%s %s",
++	       ix86_abi_string, prefix, suffix, sw);
++    }
++  else
++    ix86_abi = DEFAULT_ABI;
++
+   if (ix86_cmodel_string != 0)
+     {
+       if (!strcmp (ix86_cmodel_string, "small"))
+@@ -4515,14 +4625,14 @@
+      default ABI.  */
+ 
+   /* RAX is used as hidden argument to va_arg functions.  */
+-  if (DEFAULT_ABI == SYSV_ABI && regno == AX_REG)
++  if (ix86_abi == SYSV_ABI && regno == AX_REG)
+     return true;
+ 
+-  if (DEFAULT_ABI == MS_ABI)
++  if (ix86_abi == MS_ABI)
+     parm_regs = x86_64_ms_abi_int_parameter_registers;
+   else
+     parm_regs = x86_64_int_parameter_registers;
+-  for (i = 0; i < (DEFAULT_ABI == MS_ABI ? X64_REGPARM_MAX
++  for (i = 0; i < (ix86_abi == MS_ABI ? X64_REGPARM_MAX
+   					 : X86_64_REGPARM_MAX); i++)
+     if (regno == parm_regs[i])
+       return true;
+@@ -4550,7 +4660,7 @@
+ int
+ ix86_reg_parm_stack_space (const_tree fndecl)
+ {
+-  int call_abi = SYSV_ABI;
++  enum calling_abi call_abi = SYSV_ABI;
+   if (fndecl != NULL_TREE && TREE_CODE (fndecl) == FUNCTION_DECL)
+     call_abi = ix86_function_abi (fndecl);
+   else
+@@ -4562,37 +4672,39 @@
+ 
+ /* Returns value SYSV_ABI, MS_ABI dependent on fntype, specifying the
+    call abi used.  */
+-int
++enum calling_abi
+ ix86_function_type_abi (const_tree fntype)
+ {
+   if (TARGET_64BIT && fntype != NULL)
+     {
+-      int abi;
+-      if (DEFAULT_ABI == SYSV_ABI)
+-        abi = lookup_attribute ("ms_abi", TYPE_ATTRIBUTES (fntype)) ? MS_ABI : SYSV_ABI;
+-      else
+-        abi = lookup_attribute ("sysv_abi", TYPE_ATTRIBUTES (fntype)) ? SYSV_ABI : MS_ABI;
+-
++      enum calling_abi abi = ix86_abi;
++      if (abi == SYSV_ABI)
++	{
++	  if (lookup_attribute ("ms_abi", TYPE_ATTRIBUTES (fntype)))
++	    abi = MS_ABI;
++	}
++      else if (lookup_attribute ("sysv_abi", TYPE_ATTRIBUTES (fntype)))
++	abi = SYSV_ABI;
+       return abi;
+     }
+-  return DEFAULT_ABI;
++  return ix86_abi;
  }
  
-+/* Subroutine of ix86_expand_builtin to take care of binop insns
-+   with an immediate.  */
+-int
++static enum calling_abi
+ ix86_function_abi (const_tree fndecl)
+ {
+   if (! fndecl)
+-    return DEFAULT_ABI;
++    return ix86_abi;
+   return ix86_function_type_abi (TREE_TYPE (fndecl));
+ }
+ 
+ /* Returns value SYSV_ABI, MS_ABI dependent on cfun, specifying the
+    call abi used.  */
+-int
++enum calling_abi
+ ix86_cfun_abi (void)
+ {
+   if (! cfun || ! TARGET_64BIT)
+-    return DEFAULT_ABI;
++    return ix86_abi;
+   return cfun->machine->call_abi;
+ }
+ 
+@@ -4606,7 +4718,7 @@
+ ix86_call_abi_override (const_tree fndecl)
+ {
+   if (fndecl == NULL_TREE)
+-    cfun->machine->call_abi = DEFAULT_ABI;
++    cfun->machine->call_abi = ix86_abi;
+   else
+     cfun->machine->call_abi = ix86_function_type_abi (TREE_TYPE (fndecl));
+ }
+@@ -4646,8 +4758,8 @@
+   cum->nregs = ix86_regparm;
+   if (TARGET_64BIT)
+     {
+-      if (cum->call_abi != DEFAULT_ABI)
+-        cum->nregs = DEFAULT_ABI != SYSV_ABI ? X86_64_REGPARM_MAX
++      if (cum->call_abi != ix86_abi)
++        cum->nregs = ix86_abi != SYSV_ABI ? X86_64_REGPARM_MAX
+         				     : X64_REGPARM_MAX;
+     }
+   if (TARGET_SSE)
+@@ -4655,8 +4767,8 @@
+       cum->sse_nregs = SSE_REGPARM_MAX;
+       if (TARGET_64BIT)
+         {
+-          if (cum->call_abi != DEFAULT_ABI)
+-            cum->sse_nregs = DEFAULT_ABI != SYSV_ABI ? X86_64_SSE_REGPARM_MAX
++          if (cum->call_abi != ix86_abi)
++            cum->sse_nregs = ix86_abi != SYSV_ABI ? X86_64_SSE_REGPARM_MAX
+             					     : X64_SSE_REGPARM_MAX;
+         }
+     }
+@@ -5619,7 +5731,7 @@
+   if (type)
+     mode = type_natural_mode (type, NULL);
+ 
+-  if (TARGET_64BIT && (cum ? cum->call_abi : DEFAULT_ABI) == MS_ABI)
++  if (TARGET_64BIT && (cum ? cum->call_abi : ix86_abi) == MS_ABI)
+     function_arg_advance_ms_64 (cum, bytes, words);
+   else if (TARGET_64BIT)
+     function_arg_advance_64 (cum, mode, type, words, named);
+@@ -5765,9 +5877,9 @@
+   if (mode == VOIDmode)
+     return GEN_INT (cum->maybe_vaarg
+ 		    ? (cum->sse_nregs < 0
+-		       ? (cum->call_abi == DEFAULT_ABI
++		       ? (cum->call_abi == ix86_abi
+ 		          ? SSE_REGPARM_MAX
+-		          : (DEFAULT_ABI != SYSV_ABI ? X86_64_SSE_REGPARM_MAX
++		          : (ix86_abi != SYSV_ABI ? X86_64_SSE_REGPARM_MAX
+ 		          			     : X64_SSE_REGPARM_MAX))
+  	       : cum->sse_regno)
+ 		    : -1);
+@@ -5861,7 +5973,7 @@
+   if (type && TREE_CODE (type) == VECTOR_TYPE)
+     mode = type_natural_mode (type, cum);
+ 
+-  if (TARGET_64BIT && (cum ? cum->call_abi : DEFAULT_ABI) == MS_ABI)
++  if (TARGET_64BIT && (cum ? cum->call_abi : ix86_abi) == MS_ABI)
+     return function_arg_ms_64 (cum, mode, omode, named, bytes);
+   else if (TARGET_64BIT)
+     return function_arg_64 (cum, mode, omode, type, named);
+@@ -5881,7 +5993,7 @@
+ 			const_tree type, bool named ATTRIBUTE_UNUSED)
+ {
+   /* See Windows x64 Software Convention.  */
+-  if (TARGET_64BIT && (cum ? cum->call_abi : DEFAULT_ABI) == MS_ABI)
++  if (TARGET_64BIT && (cum ? cum->call_abi : ix86_abi) == MS_ABI)
+     {
+       int msize = (int) GET_MODE_SIZE (mode);
+       if (type)
+@@ -6021,7 +6133,7 @@
+       /* TODO: The function should depend on current function ABI but
+        builtins.c would need updating then. Therefore we use the
+        default ABI.  */
+-      if (TARGET_64BIT && DEFAULT_ABI == MS_ABI)
++      if (TARGET_64BIT && ix86_abi == MS_ABI)
+ 	return false;
+       return TARGET_FLOAT_RETURNS_IN_80387;
+ 
+@@ -6417,13 +6529,13 @@
+ static tree
+ ix86_build_builtin_va_list (void)
+ {
+-  tree ret = ix86_build_builtin_va_list_abi (DEFAULT_ABI);
++  tree ret = ix86_build_builtin_va_list_abi (ix86_abi);
+ 
+   /* Initialize abi specific va_list builtin types.  */
+   if (TARGET_64BIT)
+     {
+       tree t;
+-      if (DEFAULT_ABI == MS_ABI)
++      if (ix86_abi == MS_ABI)
+         {
+           t = ix86_build_builtin_va_list_abi (SYSV_ABI);
+           if (TREE_CODE (t) != RECORD_TYPE)
+@@ -6437,7 +6549,7 @@
+             t = build_variant_type_copy (t);
+           sysv_va_list_type_node = t;
+         }
+-      if (DEFAULT_ABI != MS_ABI)
++      if (ix86_abi != MS_ABI)
+         {
+           t = ix86_build_builtin_va_list_abi (MS_ABI);
+           if (TREE_CODE (t) != RECORD_TYPE)
+@@ -6470,8 +6582,8 @@
+   int i;
+   int regparm = ix86_regparm;
+ 
+-  if (cum->call_abi != DEFAULT_ABI)
+-    regparm = DEFAULT_ABI != SYSV_ABI ? X86_64_REGPARM_MAX : X64_REGPARM_MAX;
++  if (cum->call_abi != ix86_abi)
++    regparm = ix86_abi != SYSV_ABI ? X86_64_REGPARM_MAX : X64_REGPARM_MAX;
+ 
+   /* GPR size of varargs save area.  */
+   if (cfun->va_list_gpr_size)
+@@ -6624,7 +6736,7 @@
+     return true;
+   canonic = ix86_canonical_va_list_type (type);
+   return (canonic == ms_va_list_type_node
+-          || (DEFAULT_ABI == MS_ABI && canonic == va_list_type_node));
++          || (ix86_abi == MS_ABI && canonic == va_list_type_node));
+ }
+ 
+ /* Implement va_start.  */
+@@ -12903,6 +13015,316 @@
+     emit_move_insn (operands[0], dst);
+ }
+ 
++#define LEA_SEARCH_THRESHOLD 12
 +
-+static rtx
-+ix86_expand_binop_imm_builtin (enum insn_code icode, tree exp,
-+				rtx target)
++/* Search backward for non-agu definition of register number REGNO1
++   or register number REGNO2 in INSN's basic block until 
++   1. Pass LEA_SEARCH_THRESHOLD instructions, or
++   2. Reach BB boundary, or
++   3. Reach agu definition.
++   Returns the distance between the non-agu definition point and INSN.
++   If no definition point, returns -1.  */
++
++static int
++distance_non_agu_define (unsigned int regno1, unsigned int regno2,
++			 rtx insn)
 +{
-+  rtx pat;
-+  tree arg0 = CALL_EXPR_ARG (exp, 0);
-+  tree arg1 = CALL_EXPR_ARG (exp, 1);
-+  rtx op0 = expand_normal (arg0);
-+  rtx op1 = expand_normal (arg1);
-+  enum machine_mode tmode = insn_data[icode].operand[0].mode;
-+  enum machine_mode mode0 = insn_data[icode].operand[1].mode;
-+  enum machine_mode mode1 = insn_data[icode].operand[2].mode;
++  basic_block bb = BLOCK_FOR_INSN (insn);
++  int distance = 0;
++  df_ref *def_rec;
++  enum attr_type insn_type;
 +
-+  if (! (*insn_data[icode].operand[1].predicate) (op0, mode1))
++  if (insn != BB_HEAD (bb))
 +    {
-+      op0 = copy_to_reg (op0);
-+      op0 = simplify_gen_subreg (mode0, op0, GET_MODE (op0), 0);
++      rtx prev = PREV_INSN (insn);
++      while (prev && distance < LEA_SEARCH_THRESHOLD)
++	{
++	  if (INSN_P (prev))
++	    {
++	      distance++;
++              for (def_rec = DF_INSN_DEFS (prev); *def_rec; def_rec++)
++                if (DF_REF_TYPE (*def_rec) == DF_REF_REG_DEF
++                    && !DF_REF_IS_ARTIFICIAL (*def_rec)
++                    && (regno1 == DF_REF_REGNO (*def_rec)
++			|| regno2 == DF_REF_REGNO (*def_rec)))
++		  {
++		    insn_type = get_attr_type (prev);
++		    if (insn_type != TYPE_LEA)
++		      goto done;
++		  }
++	    }
++	  if (prev == BB_HEAD (bb))
++	    break;
++	  prev = PREV_INSN (prev);
++	}
++    }
++  
++  if (distance < LEA_SEARCH_THRESHOLD)
++    {
++      edge e;
++      edge_iterator ei;
++      bool simple_loop = false;
++  
++      FOR_EACH_EDGE (e, ei, bb->preds)
++	if (e->src == bb)
++	  {
++	    simple_loop = true;
++	    break;
++	  }
++  
++      if (simple_loop)
++	{
++	  rtx prev = BB_END (bb);
++	  while (prev
++		 && prev != insn
++		 && distance < LEA_SEARCH_THRESHOLD)
++	    {
++	      if (INSN_P (prev))
++		{
++		  distance++;
++		  for (def_rec = DF_INSN_DEFS (prev); *def_rec; def_rec++)
++		    if (DF_REF_TYPE (*def_rec) == DF_REF_REG_DEF
++			&& !DF_REF_IS_ARTIFICIAL (*def_rec)
++			&& (regno1 == DF_REF_REGNO (*def_rec)
++			    || regno2 == DF_REF_REGNO (*def_rec)))
++		      {
++			insn_type = get_attr_type (prev);
++			if (insn_type != TYPE_LEA)
++			  goto done;
++		      }
++		}
++	      prev = PREV_INSN (prev);
++	    }
++	}
 +    }
 +
-+  if (! (*insn_data[icode].operand[2].predicate) (op1, mode1))
-+    {
-+      error ("the last operand must be an immediate");
-+      return const0_rtx;
-+    }
++  distance = -1;
 +
-+  target = gen_reg_rtx (V2DImode);
-+  pat = GEN_FCN (icode) (simplify_gen_subreg (tmode, target,
-+					      V2DImode, 0),
-+			 op0, op1);
-+  if (! pat)
-+    return 0;
-+  emit_insn (pat);
-+  return target;
++done:
++  /* get_attr_type may modify recog data.  We want to make sure
++     that recog data is valid for instruction INSN, on which
++     distance_non_agu_define is called.  INSN is unchanged here.  */
++  extract_insn_cached (insn);
++  return distance;
 +}
 +
- /* Subroutine of ix86_expand_builtin to take care of binop insns.  */
- 
- static rtx
-@@ -20926,34 +21021,18 @@
-       return target;
- 
-     case IX86_BUILTIN_PSLLDQI128:
-+      return ix86_expand_binop_imm_builtin (CODE_FOR_sse2_ashlti3,
-+					     exp, target);
-+      break;
++/* Return the distance between INSN and the next insn that uses 
++   register number REGNO0 in memory address.  Return -1 if no such
++   a use is found within LEA_SEARCH_THRESHOLD or REGNO0 is set.  */
 +
-     case IX86_BUILTIN_PSRLDQI128:
--      icode = (fcode == IX86_BUILTIN_PSLLDQI128 ? CODE_FOR_sse2_ashlti3
--	       : CODE_FOR_sse2_lshrti3);
--      arg0 = CALL_EXPR_ARG (exp, 0);
--      arg1 = CALL_EXPR_ARG (exp, 1);
--      op0 = expand_normal (arg0);
--      op1 = expand_normal (arg1);
--      tmode = insn_data[icode].operand[0].mode;
--      mode1 = insn_data[icode].operand[1].mode;
--      mode2 = insn_data[icode].operand[2].mode;
-+      return ix86_expand_binop_imm_builtin (CODE_FOR_sse2_lshrti3,
-+					     exp, target);
++static int
++distance_agu_use (unsigned int regno0, rtx insn)
++{
++  basic_block bb = BLOCK_FOR_INSN (insn);
++  int distance = 0;
++  df_ref *def_rec;
++  df_ref *use_rec;
++
++  if (insn != BB_END (bb))
++    {
++      rtx next = NEXT_INSN (insn);
++      while (next && distance < LEA_SEARCH_THRESHOLD)
++	{
++	  if (INSN_P (next))
++	    {
++	      distance++;
++
++	      for (use_rec = DF_INSN_USES (next); *use_rec; use_rec++)
++		if ((DF_REF_TYPE (*use_rec) == DF_REF_REG_MEM_LOAD
++		     || DF_REF_TYPE (*use_rec) == DF_REF_REG_MEM_STORE)
++		    && regno0 == DF_REF_REGNO (*use_rec))
++		  {
++		    /* Return DISTANCE if OP0 is used in memory
++		       address in NEXT.  */
++		    return distance;
++		  }
++
++	      for (def_rec = DF_INSN_DEFS (next); *def_rec; def_rec++)
++		if (DF_REF_TYPE (*def_rec) == DF_REF_REG_DEF
++		    && !DF_REF_IS_ARTIFICIAL (*def_rec)
++		    && regno0 == DF_REF_REGNO (*def_rec))
++		  {
++		    /* Return -1 if OP0 is set in NEXT.  */
++		    return -1;
++		  }
++	    }
++	  if (next == BB_END (bb))
++	    break;
++	  next = NEXT_INSN (next);
++	}
++    }
++
++  if (distance < LEA_SEARCH_THRESHOLD)
++    {
++      edge e;
++      edge_iterator ei;
++      bool simple_loop = false;
++  
++      FOR_EACH_EDGE (e, ei, bb->succs)
++        if (e->dest == bb)
++	  {
++	    simple_loop = true;
++	    break;
++	  }
++  
++      if (simple_loop)
++	{
++	  rtx next = BB_HEAD (bb);
++	  while (next
++		 && next != insn
++		 && distance < LEA_SEARCH_THRESHOLD)
++	    {
++	      if (INSN_P (next))
++		{
++		  distance++;
++
++		  for (use_rec = DF_INSN_USES (next); *use_rec; use_rec++)
++		    if ((DF_REF_TYPE (*use_rec) == DF_REF_REG_MEM_LOAD
++			 || DF_REF_TYPE (*use_rec) == DF_REF_REG_MEM_STORE)
++			&& regno0 == DF_REF_REGNO (*use_rec))
++		      {
++			/* Return DISTANCE if OP0 is used in memory
++			   address in NEXT.  */
++			return distance;
++		      }
++
++		  for (def_rec = DF_INSN_DEFS (next); *def_rec; def_rec++)
++		    if (DF_REF_TYPE (*def_rec) == DF_REF_REG_DEF
++			&& !DF_REF_IS_ARTIFICIAL (*def_rec)
++			&& regno0 == DF_REF_REGNO (*def_rec))
++		      {
++			/* Return -1 if OP0 is set in NEXT.  */
++			return -1;
++		      }
++
++		}
++	      next = NEXT_INSN (next);
++	    }
++	}
++    }  
++
++  return -1;
++}
++
++/* Define this macro to tune LEA priority vs ADD, it take effect when
++   there is a dilemma of choicing LEA or ADD
++   Negative value: ADD is more preferred than LEA
++   Zero: Netrual
++   Positive value: LEA is more preferred than ADD*/
++#define IX86_LEA_PRIORITY 2
++
++/* Return true if it is ok to optimize an ADD operation to LEA
++   operation to avoid flag register consumation.  For the processors
++   like ATOM, if the destination register of LEA holds an actual
++   address which will be used soon, LEA is better and otherwise ADD
++   is better.  */
++
++bool
++ix86_lea_for_add_ok (enum rtx_code code ATTRIBUTE_UNUSED,
++                     rtx insn, rtx operands[])
++{
++  unsigned int regno0 = true_regnum (operands[0]);
++  unsigned int regno1 = true_regnum (operands[1]);
++  unsigned int regno2;
++
++  if (!TARGET_OPT_AGU || optimize_function_for_size_p (cfun))
++    return regno0 != regno1;
++
++  regno2 = true_regnum (operands[2]);
++
++  /* If a = b + c, (a!=b && a!=c), must use lea form. */
++  if (regno0 != regno1 && regno0 != regno2)
++    return true;
++  else    
++    {
++      int dist_define, dist_use;
++      dist_define = distance_non_agu_define (regno1, regno2, insn);
++      if (dist_define <= 0)
++        return true;
++
++      /* If this insn has both backward non-agu dependence and forward
++         agu dependence, the one with short distance take effect. */
++      dist_use = distance_agu_use (regno0, insn);
++      if (dist_use <= 0
++	  || (dist_define + IX86_LEA_PRIORITY) < dist_use)
++        return false;
++
++      return true;
++    }
++}
++
++/* Return true if destination reg of SET_BODY is shift count of
++   USE_BODY.  */
++
++static bool
++ix86_dep_by_shift_count_body (const_rtx set_body, const_rtx use_body)
++{
++  rtx set_dest;
++  rtx shift_rtx;
++  int i;
++
++  /* Retrieve destination of SET_BODY.  */
++  switch (GET_CODE (set_body))
++    {
++    case SET:
++      set_dest = SET_DEST (set_body);
++      if (!set_dest || !REG_P (set_dest))
++	return false;
 +      break;
++    case PARALLEL:
++      for (i = XVECLEN (set_body, 0) - 1; i >= 0; i--)
++	if (ix86_dep_by_shift_count_body (XVECEXP (set_body, 0, i),
++					  use_body))
++	  return true;
++    default:
++      return false;
++      break;
++    }
++
++  /* Retrieve shift count of USE_BODY.  */
++  switch (GET_CODE (use_body))
++    {
++    case SET:
++      shift_rtx = XEXP (use_body, 1);
++      break;
++    case PARALLEL:
++      for (i = XVECLEN (use_body, 0) - 1; i >= 0; i--)
++	if (ix86_dep_by_shift_count_body (set_body,
++					  XVECEXP (use_body, 0, i)))
++	  return true;
++    default:
++      return false;
++      break;
++    }
++
++  if (shift_rtx 
++      && (GET_CODE (shift_rtx) == ASHIFT
++	  || GET_CODE (shift_rtx) == LSHIFTRT
++	  || GET_CODE (shift_rtx) == ASHIFTRT
++	  || GET_CODE (shift_rtx) == ROTATE
++	  || GET_CODE (shift_rtx) == ROTATERT))
++    {
++      rtx shift_count = XEXP (shift_rtx, 1);
++
++      /* Return true if shift count is dest of SET_BODY.  */
++      if (REG_P (shift_count)
++	  && true_regnum (set_dest) == true_regnum (shift_count))
++	return true;
++    }
++
++  return false;
++}
++
++/* Return true if destination reg of SET_INSN is shift count of
++   USE_INSN.  */
++
++bool
++ix86_dep_by_shift_count (const_rtx set_insn, const_rtx use_insn)
++{
++  return ix86_dep_by_shift_count_body (PATTERN (set_insn),
++				       PATTERN (use_insn));
++}
++
+ /* Return TRUE or FALSE depending on whether the unary operator meets the
+    appropriate constraints.  */
  
--      if (! (*insn_data[icode].operand[1].predicate) (op0, mode1))
--	{
--	  op0 = copy_to_reg (op0);
--	  op0 = simplify_gen_subreg (mode1, op0, GET_MODE (op0), 0);
--	}
--      if (! (*insn_data[icode].operand[2].predicate) (op1, mode2))
--	{
--	  error ("shift must be an immediate");
--	  return const0_rtx;
--	}
--      target = gen_reg_rtx (V2DImode);
--      pat = GEN_FCN (icode) (simplify_gen_subreg (tmode, target, V2DImode, 0),
--			     op0, op1);
--      if (! pat)
--	return 0;
--      emit_insn (pat);
--      return target;
-+    case IX86_BUILTIN_AESKEYGENASSIST128:
-+      return ix86_expand_binop_imm_builtin (CODE_FOR_aeskeygenassist,
-+					     exp, target);
+@@ -18761,7 +19183,7 @@
+   f = GGC_CNEW (struct machine_function);
+   f->use_fast_prologue_epilogue_nregs = -1;
+   f->tls_descriptor_call_expanded_p = 0;
+-  f->call_abi = DEFAULT_ABI;
++  f->call_abi = ix86_abi;
  
-     case IX86_BUILTIN_FEMMS:
-       emit_insn (gen_mmx_femms ());
+   return f;
+ }
+@@ -19022,6 +19444,7 @@
+   switch (ix86_tune)
+     {
+     case PROCESSOR_PENTIUM:
++    case PROCESSOR_ATOM:
+     case PROCESSOR_K6:
+       return 2;
+ 
+@@ -19088,41 +19511,21 @@
+   return 1;
+ }
+ 
+-/* A subroutine of ix86_adjust_cost -- return true iff INSN has a memory
+-   address with operands set by DEP_INSN.  */
++/* Return true iff USE_INSN has a memory address with operands set by
++   SET_INSN.  */
+ 
+-static int
+-ix86_agi_dependent (rtx insn, rtx dep_insn, enum attr_type insn_type)
++bool
++ix86_agi_dependent (rtx set_insn, rtx use_insn)
+ {
+-  rtx addr;
+-
+-  if (insn_type == TYPE_LEA
+-      && TARGET_PENTIUM)
+-    {
+-      addr = PATTERN (insn);
+-
+-      if (GET_CODE (addr) == PARALLEL)
+-	addr = XVECEXP (addr, 0, 0);
+-
+-      gcc_assert (GET_CODE (addr) == SET);
+-
+-      addr = SET_SRC (addr);
+-    }
+-  else
+-    {
+-      int i;
+-      extract_insn_cached (insn);
+-      for (i = recog_data.n_operands - 1; i >= 0; --i)
+-	if (MEM_P (recog_data.operand[i]))
+-	  {
+-	    addr = XEXP (recog_data.operand[i], 0);
+-	    goto found;
+-	  }
+-      return 0;
+-    found:;
+-    }
+-
+-  return modified_in_p (addr, dep_insn);
++  int i;
++  extract_insn_cached (use_insn);
++  for (i = recog_data.n_operands - 1; i >= 0; --i)
++    if (MEM_P (recog_data.operand[i]))
++      {
++	rtx addr = XEXP (recog_data.operand[i], 0);
++	return modified_in_p (addr, set_insn) != 0;
++      }
++  return false;
+ }
+ 
+ static int
+@@ -19150,7 +19553,20 @@
+     {
+     case PROCESSOR_PENTIUM:
+       /* Address Generation Interlock adds a cycle of latency.  */
+-      if (ix86_agi_dependent (insn, dep_insn, insn_type))
++      if (insn_type == TYPE_LEA)
++	{
++	  rtx addr = PATTERN (insn);
++
++	  if (GET_CODE (addr) == PARALLEL)
++	    addr = XVECEXP (addr, 0, 0);
++
++	  gcc_assert (GET_CODE (addr) == SET);
++
++	  addr = SET_SRC (addr);
++	  if (modified_in_p (addr, dep_insn))
++	    cost += 1;
++	}
++      else if (ix86_agi_dependent (dep_insn, insn))
+ 	cost += 1;
+ 
+       /* ??? Compares pair with jump/setcc.  */
+@@ -19160,7 +19576,7 @@
+       /* Floating point stores require value to be ready one cycle earlier.  */
+       if (insn_type == TYPE_FMOV
+ 	  && get_attr_memory (insn) == MEMORY_STORE
+-	  && !ix86_agi_dependent (insn, dep_insn, insn_type))
++	  && !ix86_agi_dependent (dep_insn, insn))
+ 	cost += 1;
+       break;
+ 
+@@ -19183,7 +19599,7 @@
+ 	 in parallel with previous instruction in case
+ 	 previous instruction is not needed to compute the address.  */
+       if ((memory == MEMORY_LOAD || memory == MEMORY_BOTH)
+-	  && !ix86_agi_dependent (insn, dep_insn, insn_type))
++	  && !ix86_agi_dependent (dep_insn, insn))
+ 	{
+ 	  /* Claim moves to take one cycle, as core can issue one load
+ 	     at time and the next load can start cycle later.  */
+@@ -19212,7 +19628,7 @@
+ 	 in parallel with previous instruction in case
+ 	 previous instruction is not needed to compute the address.  */
+       if ((memory == MEMORY_LOAD || memory == MEMORY_BOTH)
+-	  && !ix86_agi_dependent (insn, dep_insn, insn_type))
++	  && !ix86_agi_dependent (dep_insn, insn))
+ 	{
+ 	  /* Claim moves to take one cycle, as core can issue one load
+ 	     at time and the next load can start cycle later.  */
+@@ -19229,6 +19645,7 @@
+     case PROCESSOR_ATHLON:
+     case PROCESSOR_K8:
+     case PROCESSOR_AMDFAM10:
++    case PROCESSOR_ATOM:
+     case PROCESSOR_GENERIC32:
+     case PROCESSOR_GENERIC64:
+       memory = get_attr_memory (insn);
+@@ -19237,7 +19654,7 @@
+ 	 in parallel with previous instruction in case
+ 	 previous instruction is not needed to compute the address.  */
+       if ((memory == MEMORY_LOAD || memory == MEMORY_BOTH)
+-	  && !ix86_agi_dependent (insn, dep_insn, insn_type))
++	  && !ix86_agi_dependent (dep_insn, insn))
+ 	{
+ 	  enum attr_unit unit = get_attr_unit (insn);
+ 	  int loadcost = 3;
+@@ -29480,14 +29897,11 @@
+ tree
+ ix86_fn_abi_va_list (tree fndecl)
+ {
+-  int abi;
+-
+   if (!TARGET_64BIT)
+     return va_list_type_node;
+   gcc_assert (fndecl != NULL_TREE);
+-  abi = ix86_function_abi ((const_tree) fndecl);
+ 
+-  if (abi == MS_ABI)
++  if (ix86_function_abi ((const_tree) fndecl) == MS_ABI)
+     return ms_va_list_type_node;
+   else
+     return sysv_va_list_type_node;
+
+Property changes on: libstdc++-v3/testsuite/27_io/basic_ofstream/cons/char/1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/27_io/basic_ofstream/pthread2.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/27_io/basic_fstream/open/char/1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/27_io/basic_fstream/cons/1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/27_io/basic_ostringstream/pthread3.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/18_support/pthread_guard.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/21_strings/char_traits/requirements/explicit_instantiation/wchar_t/1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/21_strings/char_traits/requirements/explicit_instantiation/char/1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/21_strings/basic_string/pthread18185.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/21_strings/basic_string/pthread4.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/30_threads/thread/members
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/30_threads/thread/swap
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/30_threads/condition_variable/members
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/30_threads/this_thread
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/ext/rope/pthread7-rope.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/tr1/6_containers/unordered_multimap/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/tr1/6_containers/unordered_set/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/tr1/6_containers/unordered_map/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/tr1/6_containers/unordered_multiset/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/unordered_map/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/unordered_multimap/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/unordered_set/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/headers/forward_list/synopsis.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/list/pthread5.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/list/pthread1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/unordered_multiset/requirements/typedefs.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/23_containers/map/pthread6.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/20_util/unique_ptr/assign/assign_neg.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/20_util/ratio/cons/cons_overflow_neg.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/20_util/ratio/operations/ops_overflow_neg.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libstdc++-v3/testsuite/20_util/shared_ptr/cons/unique_ptr_deleter_ref_1.cc
+___________________________________________________________________
+Deleted: svn:mergeinfo
+
+
+Property changes on: libjava/classpath
+___________________________________________________________________
+Deleted: svn:mergeinfo
+   Reverse-merged /branches/CLASSPATH/libjava/classpath:r144110
+
 
 Property changes on: .
 ___________________________________________________________________
 Added: svn:mergeinfo
-   Merged /branches/gcc-4_3-branch:r139021-145062
+   Merged /branches/gcc-4_4-branch:r145147-146513
+   Merged /trunk:r145624
 
