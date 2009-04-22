@@ -1,3 +1,7 @@
+
+%define		major_ver	4.4
+%define		minor_ver	0
+
 Summary:	Cross PPC GNU binary utility development utilities - gcc
 Summary(es.UTF-8):	Utilitarios para desarrollo de binarios de la GNU - PPC gcc
 Summary(fr.UTF-8):	Utilitaires de développement binaire de GNU - PPC gcc
@@ -5,28 +9,30 @@ Summary(pl.UTF-8):	Skrośne narzędzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR.UTF-8):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr.UTF-8):	GNU geliştirme araçları - PPC gcc
 Name:		crossppc-gcc
-Version:	4.3.2
+Version:	%{major_ver}.%{minor_ver}
 Release:	0.1
 Epoch:		1
-License:	GPL
+License:	GPL v3+
 Group:		Development/Languages
 Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	5dfac5da961ecd5f227c3175859a486d
+# Source0-md5:	cf5d787bee57f38168b74d65a7c0e6fd
 Source1:	gcc-optimize-la.pl
-Patch100:	gcc-branch.diff.bz2
-Patch101:	gcc-ix86-branch.diff.bz2
+#Patch100:	gcc-branch.diff
+# svn diff svn://gcc.gnu.org/svn/gcc/branches/gcc-4_3-branch@145062 svn://gcc.gnu.org/svn/gcc/branches/ix86/gcc-4_3-branch > gcc-ix86-branch.diff
+# The goal of this branch is to add support for newer ix86 processors such as AMD's Barcelona and Intel's Westmere to GCC 4.3.x.
+Patch101:	gcc-ix86-branch.diff
 Patch0:		gcc-info.patch
 Patch1:		gcc-nolocalefiles.patch
 Patch2:		gcc-nodebug.patch
 Patch3:		gcc-ada-link.patch
 Patch4:		gcc-sparc64-ada_fix.patch
-
+Patch5:		gcc-pr14912.patch
 Patch6:		gcc-ppc64-m32-m64-multilib-only.patch
 Patch7:		gcc-libjava-multilib.patch
 Patch8:		gcc-enable-java-awt-qt.patch
 Patch9:		gcc-hash-style-gnu.patch
 Patch10:	gcc-moresparcs.patch
-
+Patch11:	gcc-build-id.patch
 URL:		http://gcc.gnu.org/
 BuildRequires:	autoconf
 BuildRequires:	automake
@@ -47,14 +53,17 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %define		arch		%{_prefix}/%{target}
 %define		gccarch		%{_libdir}/gcc/%{target}
 %define		gcclib		%{gccarch}/%{version}
+%define		_slibdir	/%{_lib}
+
+%define		filterout	-fwrapv -fno-strict-aliasing -fsigned-char
+%define		filterout_ld	-Wl,--as-needed
 
 # used for crtbegin.o / crtend.o
 %if 0%{?debug:1}
 %define		target_cflags	%{debugcflags}
 %else
-%define		target_cflags	-O2 -fno-strict-aliasing -fwrapv -fsigned-char%{!?nospecflags:%{?specflags: %{specflags}}%{?specflags_ppc: %{specflags_ppc}}}
+%define		target_cflags	-O2%{!?nospecflags:%{?specflags: %{specflags}}%{?specflags_ppc: %{specflags_ppc}}}
 %endif
-
 
 %define		_noautostrip	.*/libgc.*\\.a
 
@@ -84,21 +93,22 @@ Ten pakiet dodaje obsługę C++ do kompilatora gcc dla PPC.
 
 %prep
 %setup -q -n gcc-%{version}
-%patch100 -p0
+#patch100 -p0
 %patch101 -p0
 %patch0 -p1
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch5 -p1
 %patch4 -p1
-
 %patch6 -p1
 %patch7 -p0
 %if %{with qt}
 %patch8 -p1
 %endif
 %patch9 -p1
-%patch10 -p1
+#patch10 -p1
+%patch11 -p0
 
 mv ChangeLog ChangeLog.general
 
@@ -108,9 +118,9 @@ echo "release" > gcc/DEV-PHASE
 
 %build
 cd gcc
-%{__autoconf}
+#{__autoconf}
 cd ..
-cp -f /usr/share/automake/config.* .
+cp -f /usr/share/automake/config.sub .
 
 rm -rf builddir && install -d builddir && cd builddir
 
@@ -141,6 +151,7 @@ TEXCONFIG=false \
 	--with-gnu-ld \
 	--with-demangler-in-ld \
 	--with-system-zlib \
+	--with-slibdir=%{_slibdir} \
 	--without-x \
 	--with-long-double-128 \
 	--enable-secureplt \
@@ -154,7 +165,10 @@ TEXCONFIG=false \
 	--host=%{_target_platform} \
 	--build=%{_target_platform}
 
-%{__make} all-gcc
+cd ..
+
+%{__make} -C builddir all-gcc \
+	LDFLAGS_FOR_TARGET="%{rpmldflags}"
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -163,9 +177,6 @@ rm -rf $RPM_BUILD_ROOT
 	DESTDIR=$RPM_BUILD_ROOT
 
 install builddir/gcc/specs $RPM_BUILD_ROOT%{gcclib}
-
-# don't want this here
-rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
 
 gccdir=$RPM_BUILD_ROOT%{gcclib}
 cp $gccdir/install-tools/include/*.h $gccdir/include
