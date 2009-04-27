@@ -1,7 +1,259 @@
+Index: configure
+===================================================================
+--- configure	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ configure	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -272,7 +272,7 @@
+ PACKAGE_BUGREPORT=
+ 
+ ac_unique_file="move-if-change"
+-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS TOPLEVEL_CONFIGURE_ARGUMENTS build build_cpu build_vendor build_os build_noncanonical host_noncanonical target_noncanonical host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN LN_S build_libsubdir build_subdir host_subdir target_subdir CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT CXX CXXFLAGS ac_ct_CXX GNATBIND ac_ct_GNATBIND GNATMAKE ac_ct_GNATMAKE do_compare gmplibs gmpinc ppllibs pplinc clooglibs clooginc stage1_languages SYSROOT_CFLAGS_FOR_TARGET DEBUG_PREFIX_CFLAGS_FOR_TARGET CFLAGS_FOR_TARGET CXXFLAGS_FOR_TARGET RPATH_ENVVAR GCC_SHLIB_SUBDIR tooldir build_tooldir CONFIGURE_GDB_TK GDB_TK INSTALL_GDB_TK build_configargs build_configdirs host_configargs configdirs target_configargs AR_FOR_BUILD AS_FOR_BUILD CC_FOR_BUILD CFLAGS_FOR_BUILD CXXFLAGS_FOR_BUILD CXX_FOR_BUILD DLLTOOL_FOR_BUILD GCJ_FOR_BUILD GFORTRAN_FOR_BUILD LDFLAGS_FOR_BUILD LD_FOR_BUILD NM_FOR_BUILD RANLIB_FOR_BUILD WINDMC_FOR_BUILD WINDRES_FOR_BUILD config_shell YACC BISON M4 LEX FLEX MAKEINFO EXPECT RUNTEST AR AS DLLTOOL LD LIPO NM RANLIB STRIP WINDRES WINDMC OBJCOPY OBJDUMP CC_FOR_TARGET CXX_FOR_TARGET GCC_FOR_TARGET GCJ_FOR_TARGET GFORTRAN_FOR_TARGET AR_FOR_TARGET AS_FOR_TARGET DLLTOOL_FOR_TARGET LD_FOR_TARGET LIPO_FOR_TARGET NM_FOR_TARGET OBJDUMP_FOR_TARGET RANLIB_FOR_TARGET STRIP_FOR_TARGET WINDRES_FOR_TARGET WINDMC_FOR_TARGET RAW_CXX_FOR_TARGET FLAGS_FOR_TARGET COMPILER_AS_FOR_TARGET COMPILER_LD_FOR_TARGET COMPILER_NM_FOR_TARGET MAINTAINER_MODE_TRUE MAINTAINER_MODE_FALSE MAINT stage1_cflags stage1_checking stage2_werror_flag datarootdir docdir pdfdir htmldir LIBOBJS LTLIBOBJS'
++ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS TOPLEVEL_CONFIGURE_ARGUMENTS build build_cpu build_vendor build_os build_noncanonical host_noncanonical target_noncanonical host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA LN LN_S build_libsubdir build_subdir host_subdir target_subdir CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT CXX CXXFLAGS ac_ct_CXX GNATBIND ac_ct_GNATBIND GNATMAKE ac_ct_GNATMAKE do_compare gmplibs gmpinc extra_mpfr_configure_flags ppllibs pplinc clooglibs clooginc stage1_languages SYSROOT_CFLAGS_FOR_TARGET DEBUG_PREFIX_CFLAGS_FOR_TARGET CFLAGS_FOR_TARGET CXXFLAGS_FOR_TARGET RPATH_ENVVAR GCC_SHLIB_SUBDIR tooldir build_tooldir CONFIGURE_GDB_TK GDB_TK INSTALL_GDB_TK build_configargs build_configdirs host_configargs configdirs target_configargs AR_FOR_BUILD AS_FOR_BUILD CC_FOR_BUILD CFLAGS_FOR_BUILD CXXFLAGS_FOR_BUILD CXX_FOR_BUILD DLLTOOL_FOR_BUILD GCJ_FOR_BUILD GFORTRAN_FOR_BUILD LDFLAGS_FOR_BUILD LD_FOR_BUILD NM_FOR_BUILD RANLIB_FOR_BUILD WINDMC_FOR_BUILD WINDRES_FOR_BUILD config_shell YACC BISON M4 LEX FLEX MAKEINFO EXPECT RUNTEST AR AS DLLTOOL LD LIPO NM RANLIB STRIP WINDRES WINDMC OBJCOPY OBJDUMP CC_FOR_TARGET CXX_FOR_TARGET GCC_FOR_TARGET GCJ_FOR_TARGET GFORTRAN_FOR_TARGET AR_FOR_TARGET AS_FOR_TARGET DLLTOOL_FOR_TARGET LD_FOR_TARGET LIPO_FOR_TARGET NM_FOR_TARGET OBJDUMP_FOR_TARGET RANLIB_FOR_TARGET STRIP_FOR_TARGET WINDRES_FOR_TARGET WINDMC_FOR_TARGET RAW_CXX_FOR_TARGET FLAGS_FOR_TARGET COMPILER_AS_FOR_TARGET COMPILER_LD_FOR_TARGET COMPILER_NM_FOR_TARGET MAINTAINER_MODE_TRUE MAINTAINER_MODE_FALSE MAINT stage1_cflags stage1_checking stage2_werror_flag datarootdir docdir pdfdir htmldir LIBOBJS LTLIBOBJS'
+ ac_subst_files='serialization_dependencies host_makefile_frag target_makefile_frag alphaieee_frag ospace_frag'
+ ac_pwd=`pwd`
+ 
+@@ -4596,6 +4596,7 @@
+ if test "x$with_gmp$with_gmp_include$with_gmp_lib" = x && test -d ${srcdir}/gmp; then
+   gmplibs='-L$$r/$(HOST_SUBDIR)/gmp/.libs -L$$r/$(HOST_SUBDIR)/gmp/_libs '"$gmplibs"
+   gmpinc='-I$$r/$(HOST_SUBDIR)/gmp -I$$s/gmp '"$gmpinc"
++  extra_mpfr_configure_flags='--with-gmp-build=$$r/$(HOST_SUBDIR)/gmp'
+   # Do not test the gmp version.  Assume that it is sufficient, since
+   # it is in the source tree, and the library has not been built yet
+   # but it would be included on the link line in the version check below
+@@ -4810,6 +4811,7 @@
+ 
+ 
+ 
++
+ # Allow host libstdc++ to be specified for static linking with PPL.
+ 
+ # Check whether --with-host-libstdcxx or --without-host-libstdcxx was given.
+@@ -13251,6 +13253,7 @@
+ s,@do_compare@,$do_compare,;t t
+ s,@gmplibs@,$gmplibs,;t t
+ s,@gmpinc@,$gmpinc,;t t
++s,@extra_mpfr_configure_flags@,$extra_mpfr_configure_flags,;t t
+ s,@ppllibs@,$ppllibs,;t t
+ s,@pplinc@,$pplinc,;t t
+ s,@clooglibs@,$clooglibs,;t t
+Index: Makefile.in
+===================================================================
+--- Makefile.in	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ Makefile.in	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -17068,7 +17068,7 @@
+ 	libsrcdir="$$s/mpfr"; \
+ 	$(SHELL) $${libsrcdir}/configure \
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+-	  --target=none-${host_vendor}-${host_os} $${srcdiroption} --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp \
++	  --target=none-${host_vendor}-${host_os} $${srcdiroption} --disable-shared @extra_mpfr_configure_flags@ \
+ 	  || exit 1
+ @endif mpfr
+ 
+@@ -17101,7 +17101,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	   \
+-	  --disable-intermodule $(STAGE1_CHECKING) 	  --disable-coverage --enable-languages="$(STAGE1_LANGUAGES)" --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  --disable-intermodule $(STAGE1_CHECKING) 	  --disable-coverage --enable-languages="$(STAGE1_LANGUAGES)" --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stage2-mpfr maybe-configure-stage2-mpfr
+@@ -17132,7 +17132,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stageb2g0-mpfr maybe-configure-stageb2g0-mpfr
+@@ -17163,7 +17163,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stage3-mpfr maybe-configure-stage3-mpfr
+@@ -17194,7 +17194,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stageb3g2-mpfr maybe-configure-stageb3g2-mpfr
+@@ -17225,7 +17225,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stage4-mpfr maybe-configure-stage4-mpfr
+@@ -17256,7 +17256,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stageprofile-mpfr maybe-configure-stageprofile-mpfr
+@@ -17287,7 +17287,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ .PHONY: configure-stagefeedback-mpfr maybe-configure-stagefeedback-mpfr
+@@ -17318,7 +17318,7 @@
+ 	  $(HOST_CONFIGARGS) --build=${build_alias} --host=none-${host_vendor}-${host_os} \
+ 	  --target=none-${host_vendor}-${host_os} $${srcdiroption} \
+ 	  --with-build-libsubdir=$(HOST_SUBDIR) \
+-	  @stage2_werror_flag@ --disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp
++	  @stage2_werror_flag@ --disable-shared @extra_mpfr_configure_flags@
+ @endif mpfr-bootstrap
+ 
+ 
+Index: gcc/fwprop.c
+===================================================================
+--- gcc/fwprop.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/fwprop.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1,5 +1,5 @@
+ /* RTL-based forward propagation pass for GNU compiler.
+-   Copyright (C) 2005, 2006, 2007, 2008 Free Software Foundation, Inc.
++   Copyright (C) 2005, 2006, 2007, 2008, 2009 Free Software Foundation, Inc.
+    Contributed by Paolo Bonzini and Steven Bosscher.
+ 
+ This file is part of GCC.
+@@ -852,6 +852,80 @@
+     return false;
+ }
+ 
++/* Try to replace USE with SRC (defined in DEF_INSN) in __asm.  */
++
++static bool
++forward_propagate_asm (df_ref use, rtx def_insn, rtx def_set, rtx reg)
++{
++  rtx use_insn = DF_REF_INSN (use), src, use_pat, asm_operands, new_rtx, *loc;
++  int speed_p, i;
++  df_ref *use_vec;
++
++  gcc_assert ((DF_REF_FLAGS (use) & DF_REF_IN_NOTE) == 0);
++
++  src = SET_SRC (def_set);
++  use_pat = PATTERN (use_insn);
++
++  /* In __asm don't replace if src might need more registers than
++     reg, as that could increase register pressure on the __asm.  */
++  use_vec = DF_INSN_USES (def_insn);
++  if (use_vec[0] && use_vec[1])
++    return false;
++
++  speed_p = optimize_bb_for_speed_p (BLOCK_FOR_INSN (use_insn));
++  asm_operands = NULL_RTX;
++  switch (GET_CODE (use_pat))
++    {
++    case ASM_OPERANDS:
++      asm_operands = use_pat;
++      break;
++    case SET:
++      if (MEM_P (SET_DEST (use_pat)))
++	{
++	  loc = &SET_DEST (use_pat);
++	  new_rtx = propagate_rtx (*loc, GET_MODE (*loc), reg, src, speed_p);
++	  if (new_rtx)
++	    validate_unshare_change (use_insn, loc, new_rtx, true);
++	}
++      asm_operands = SET_SRC (use_pat);
++      break;
++    case PARALLEL:
++      for (i = 0; i < XVECLEN (use_pat, 0); i++)
++	if (GET_CODE (XVECEXP (use_pat, 0, i)) == SET)
++	  {
++	    if (MEM_P (SET_DEST (XVECEXP (use_pat, 0, i))))
++	      {
++		loc = &SET_DEST (XVECEXP (use_pat, 0, i));
++		new_rtx = propagate_rtx (*loc, GET_MODE (*loc), reg,
++					 src, speed_p);
++		if (new_rtx)
++		  validate_unshare_change (use_insn, loc, new_rtx, true);
++	      }
++	    asm_operands = SET_SRC (XVECEXP (use_pat, 0, i));
++	  }
++	else if (GET_CODE (XVECEXP (use_pat, 0, i)) == ASM_OPERANDS)
++	  asm_operands = XVECEXP (use_pat, 0, i);
++      break;
++    default:
++      gcc_unreachable ();
++    }
++
++  gcc_assert (asm_operands && GET_CODE (asm_operands) == ASM_OPERANDS);
++  for (i = 0; i < ASM_OPERANDS_INPUT_LENGTH (asm_operands); i++)
++    {
++      loc = &ASM_OPERANDS_INPUT (asm_operands, i);
++      new_rtx = propagate_rtx (*loc, GET_MODE (*loc), reg, src, speed_p);
++      if (new_rtx)
++	validate_unshare_change (use_insn, loc, new_rtx, true);
++    }
++
++  if (num_changes_pending () == 0 || !apply_change_group ())
++    return false;
++
++  num_changes++;
++  return true;
++}
++
+ /* Try to replace USE with SRC (defined in DEF_INSN) and simplify the
+    result.  */
+ 
+@@ -863,12 +937,16 @@
+   rtx src, reg, new_rtx, *loc;
+   bool set_reg_equal;
+   enum machine_mode mode;
++  int asm_use = -1;
+ 
+-  if (!use_set)
++  if (INSN_CODE (use_insn) < 0)
++    asm_use = asm_noperands (PATTERN (use_insn));
++
++  if (!use_set && asm_use < 0)
+     return false;
+ 
+   /* Do not propagate into PC, CC0, etc.  */
+-  if (GET_MODE (SET_DEST (use_set)) == VOIDmode)
++  if (use_set && GET_MODE (SET_DEST (use_set)) == VOIDmode)
+     return false;
+ 
+   /* If def and use are subreg, check if they match.  */
+@@ -900,7 +978,7 @@
+   if (MEM_P (src) && MEM_READONLY_P (src))
+     {
+       rtx x = avoid_constant_pool_reference (src);
+-      if (x != src)
++      if (x != src && use_set)
+ 	{
+           rtx note = find_reg_note (use_insn, REG_EQUAL, NULL_RTX);
+ 	  rtx old_rtx = note ? XEXP (note, 0) : SET_SRC (use_set);
+@@ -911,6 +989,9 @@
+       return false;
+     }
+ 
++  if (asm_use >= 0)
++    return forward_propagate_asm (use, def_insn, def_set, reg);
++
+   /* Else try simplifying.  */
+ 
+   if (DF_REF_TYPE (use) == DF_REF_REG_MEM_STORE)
 Index: gcc/ira-conflicts.c
 ===================================================================
---- gcc/ira-conflicts.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ira-conflicts.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ira-conflicts.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ira-conflicts.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -411,9 +411,9 @@
      /* Can not be tied.  It is not in the cover class.  */
      return false;
@@ -16,15 +268,15 @@ Index: gcc/ira-conflicts.c
        ira_allocate_and_set_costs
 Index: gcc/DATESTAMP
 ===================================================================
---- gcc/DATESTAMP	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/DATESTAMP	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/DATESTAMP	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/DATESTAMP	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1 +1 @@
 -20090421
-+20090424
++20090427
 Index: gcc/fold-const.c
 ===================================================================
---- gcc/fold-const.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/fold-const.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/fold-const.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/fold-const.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -5293,31 +5293,34 @@
  	break;
  
@@ -82,15 +334,29 @@ Index: gcc/fold-const.c
  	    }
 Index: gcc/DEV-PHASE
 ===================================================================
---- gcc/DEV-PHASE	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/DEV-PHASE	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/DEV-PHASE	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/DEV-PHASE	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1 @@
 +prerelease
 Index: gcc/ChangeLog
 ===================================================================
---- gcc/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
-@@ -1,3 +1,98 @@
+--- gcc/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1,3 +1,112 @@
++2009-04-26  Jakub Jelinek  <jakub@redhat.com>
++
++	PR inline-asm/39543
++	* fwprop.c (forward_propagate_asm): New function.
++	(forward_propagate_and_simplify): Propagate also into __asm, if it
++	doesn't increase the number of referenced registers.
++
++	PR c/39889
++	* stmt.c (warn_if_unused_value): Look through NON_LVALUE_EXPR.
++
++2009-04-24  Andreas Krebbel  <krebbel1@de.ibm.com>
++
++	* config/s390/constraints.md ('I', 'J'): Fix condition.
++
 +2009-04-24  Paolo Bonzini  <bonzini@gnu.org>
 +
 +	PR middle-end/39867
@@ -192,7 +458,7 @@ Index: gcc/ChangeLog
 Index: gcc/testsuite/gcc.c-torture/compile/pr39824.c
 ===================================================================
 --- gcc/testsuite/gcc.c-torture/compile/pr39824.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr39824.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gcc.c-torture/compile/pr39824.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,26 @@
 +static const double internalEndianMagic = 7.949928895127363e-275;
 +static const unsigned char ieee_754_mantissa_mask[] = { 0x00, 0x0F, 0xFF, 0xFF,
@@ -223,7 +489,7 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr39824.c
 Index: gcc/testsuite/gcc.c-torture/compile/pr39845.c
 ===================================================================
 --- gcc/testsuite/gcc.c-torture/compile/pr39845.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gcc.c-torture/compile/pr39845.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gcc.c-torture/compile/pr39845.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,43 @@
 +typedef union tree_node *tree;
 +enum tree_code { EXCESS_PRECISION_EXPR };
@@ -268,10 +534,170 @@ Index: gcc/testsuite/gcc.c-torture/compile/pr39845.c
 +  return convert_arguments (function);
 +}
 +
+Index: gcc/testsuite/gcc.target/i386/pr39543-1.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/pr39543-1.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/pr39543-1.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -0,0 +1,52 @@
++/* PR inline-asm/39543 */
++/* { dg-do compile } */
++/* { dg-options "-O3 -fomit-frame-pointer" } */
++
++float __attribute__ ((aligned (16))) s0[128];
++const float s1 = 0.707;
++float s2[8] __attribute__ ((aligned (16)));
++float s3[8] __attribute__ ((aligned (16)));
++float s4[16] __attribute__ ((aligned (16)));
++float s5[16] __attribute__ ((aligned (16)));
++
++void
++foo (int k, float *x, float *y, const float *d, const float *z)
++{
++  float *a, *b, *c, *e;
++
++  a = x + 2 * k;
++  b = a + 2 * k;
++  c = b + 2 * k;
++  e = y + 2 * k;
++  __asm__ volatile (""
++		    : "=m" (x[0]), "=m" (b[0]), "=m" (a[0]), "=m" (c[0])
++		    : "m" (y[0]), "m" (y[k * 2]), "m" (x[0]), "m" (a[0])
++		    : "memory");
++  for (;;)
++    {
++      __asm__ volatile (""
++			:
++			: "m" (y[2]), "m" (d[2]), "m" (e[2]), "m" (z[2])
++			: "memory");
++      if (!--k)
++	break;
++    }
++  __asm__ volatile (""
++		    : "=m" (x[2]), "=m" (x[10]), "=m" (x[6]), "=m" (x[14])
++		    : "m" (y[2]), "m" (y[6]), "m" (x[2]), "m" (x[6]),
++		      "m" (y[18]), "m" (s1)
++		    : "memory");
++}
++
++void
++bar (float *a)
++{
++  foo (4, a, a + 16, s2, s3);
++  foo (8, a, a + 32, s4, s5);
++}
++
++void
++baz (void)
++{
++  bar (s0);
++}
+Index: gcc/testsuite/gcc.target/i386/pr39543-3.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/pr39543-3.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/pr39543-3.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -0,0 +1,42 @@
++/* PR inline-asm/39543 */
++/* { dg-do compile } */
++/* { dg-options "-O2" } */
++
++int s[128];
++
++void
++f1 (void)
++{
++  int i;
++  asm volatile ("# %0 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16 %17"
++		: "=r" (i)
++		: "m" (s[0]), "m" (s[2]), "m" (s[4]), "m" (s[6]), "m" (s[8]),
++		  "m" (s[10]), "m" (s[12]), "m" (s[14]), "m" (s[16]), "m" (s[18]),
++		  "m" (s[20]), "m" (s[22]), "m" (s[24]), "m" (s[26]), "m" (s[28]),
++		  "m" (s[30]), "m" (s[32]));
++  asm volatile ("# %0 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16 %17"
++		: "=r" (i)
++		: "m" (s[0]), "m" (s[2]), "m" (s[4]), "m" (s[6]), "m" (s[8]),
++		  "m" (s[10]), "m" (s[12]), "m" (s[14]), "m" (s[16]), "m" (s[18]),
++		  "m" (s[20]), "m" (s[22]), "m" (s[24]), "m" (s[26]), "m" (s[28]),
++		  "m" (s[30]), "m" (s[32]));
++}
++
++void
++f2 (int *q)
++{
++  int i;
++  int *p = q + 32;
++  asm volatile ("# %0 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16 %17"
++		: "=r" (i)
++		: "m" (p[0]), "m" (p[2]), "m" (p[4]), "m" (p[6]), "m" (p[8]),
++		  "m" (p[10]), "m" (p[12]), "m" (p[14]), "m" (p[16]), "m" (p[18]),
++		  "m" (p[20]), "m" (p[22]), "m" (p[24]), "m" (p[26]), "m" (p[28]),
++		  "m" (p[30]), "m" (p[32]));
++  asm volatile ("# %0 %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12 %13 %14 %15 %16 %17"
++		: "=r" (i)
++		: "m" (p[0]), "m" (p[2]), "m" (p[4]), "m" (p[6]), "m" (p[8]),
++		  "m" (p[10]), "m" (p[12]), "m" (p[14]), "m" (p[16]), "m" (p[18]),
++		  "m" (p[20]), "m" (p[22]), "m" (p[24]), "m" (p[26]), "m" (p[28]),
++		  "m" (p[30]), "m" (p[32]));
++}
+Index: gcc/testsuite/gcc.target/i386/pr39543-2.c
+===================================================================
+--- gcc/testsuite/gcc.target/i386/pr39543-2.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.target/i386/pr39543-2.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -0,0 +1,51 @@
++/* PR inline-asm/39543 */
++/* { dg-do compile } */
++/* { dg-options "-O3" } */
++
++float __attribute__ ((aligned (16))) s0[128];
++const float s1 = 0.707;
++float s2[8] __attribute__ ((aligned (16)));
++float s3[8] __attribute__ ((aligned (16)));
++float s4[16] __attribute__ ((aligned (16)));
++float s5[16] __attribute__ ((aligned (16)));
++
++void
++foo (int k, float *x, float *y, const float *d, const float *z)
++{
++  float *a, *b, *c, *e;
++
++  a = x + 2 * k;
++  b = a + 2 * k;
++  c = b + 2 * k;
++  e = y + 2 * k;
++  __asm__ volatile (""
++		    : "=m" (x[0]), "=m" (b[0]), "=m" (a[0]), "=m" (c[0])
++		    : "m" (y[0]), "m" (y[k * 2]), "m" (x[0]), "m" (a[0])
++		    : "memory");
++  for (;;)
++    {
++      __asm__ volatile (""
++			:
++			: "m" (y[2]), "m" (d[2]), "m" (e[2]), "m" (z[2])
++			: "memory");
++      if (!--k)
++	break;
++    }
++  __asm__ volatile (""
++		    : "=m" (x[2]), "=m" (x[10]), "=m" (x[6]), "=m" (x[14])
++		    : "m" (y[2]), "m" (y[6]), "m" (x[2]), "m" (x[6]), "m" (s1)
++		    : "memory");
++}
++
++void
++bar (float *a)
++{
++  foo (4, a, a + 16, s2, s3);
++  foo (8, a, a + 32, s4, s5);
++}
++
++void
++baz (void)
++{
++  bar (s0);
++}
 Index: gcc/testsuite/gnat.dg/enum2_pkg.ads
 ===================================================================
 --- gcc/testsuite/gnat.dg/enum2_pkg.ads	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gnat.dg/enum2_pkg.ads	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gnat.dg/enum2_pkg.ads	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,8 @@
 +with Ada.Finalization; use Ada.Finalization;
 +
@@ -284,7 +710,7 @@ Index: gcc/testsuite/gnat.dg/enum2_pkg.ads
 Index: gcc/testsuite/gnat.dg/enum2.adb
 ===================================================================
 --- gcc/testsuite/gnat.dg/enum2.adb	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gnat.dg/enum2.adb	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gnat.dg/enum2.adb	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,11 @@
 +-- { dg-do run }
 +-- { dg-options "-gnat05 -O2" }
@@ -300,7 +726,7 @@ Index: gcc/testsuite/gnat.dg/enum2.adb
 Index: gcc/testsuite/gcc.dg/torture/pr39855.c
 ===================================================================
 --- gcc/testsuite/gcc.dg/torture/pr39855.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/torture/pr39855.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gcc.dg/torture/pr39855.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,24 @@
 +/* PR c/39855 */
 +/* { dg-do run { target { int32plus } } } */
@@ -329,7 +755,7 @@ Index: gcc/testsuite/gcc.dg/torture/pr39855.c
 Index: gcc/testsuite/gcc.dg/torture/pr39829.c
 ===================================================================
 --- gcc/testsuite/gcc.dg/torture/pr39829.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/torture/pr39829.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gcc.dg/torture/pr39829.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,27 @@
 +/* { dg-do compile } */
 +/* { dg-options "-w" } */
@@ -361,7 +787,7 @@ Index: gcc/testsuite/gcc.dg/torture/pr39829.c
 Index: gcc/testsuite/gcc.dg/pr39867.c
 ===================================================================
 --- gcc/testsuite/gcc.dg/pr39867.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gcc.dg/pr39867.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gcc.dg/pr39867.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,12 @@
 +/* { dg-do link } */
 +/* { dg-options "-O2" } */
@@ -375,11 +801,35 @@ Index: gcc/testsuite/gcc.dg/pr39867.c
 +  return 0;
 +}
 +
+Index: gcc/testsuite/gcc.dg/Wunused-value-3.c
+===================================================================
+--- gcc/testsuite/gcc.dg/Wunused-value-3.c	(.../tags/gcc_4_4_0_release)	(wersja 0)
++++ gcc/testsuite/gcc.dg/Wunused-value-3.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -0,0 +1,9 @@
++/* PR c/39889 */
++/* { dg-do compile } */
++/* { dg-options "-Wunused-value" } */
++
++int x;
++int foo (void)
++{
++  return (1 ? x = 0 : (void) 0), 0; /* { dg-bogus "value computed is not used" } */
++}
 Index: gcc/testsuite/ChangeLog
 ===================================================================
---- gcc/testsuite/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
-@@ -1,3 +1,110 @@
+--- gcc/testsuite/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1,3 +1,120 @@
++2009-04-26  Jakub Jelinek  <jakub@redhat.com>
++
++	PR inline-asm/39543
++	* gcc.target/i386/pr39543-1.c: New test.
++	* gcc.target/i386/pr39543-2.c: New test.
++	* gcc.target/i386/pr39543-3.c: New test.
++
++	PR c/39889
++	* gcc.dg/Wunused-value-3.c: New test.
++
 +2009-04-24  Paolo Bonzini  <bonzini@gnu.org>
 +
 +	PR middle-end/39867
@@ -493,7 +943,7 @@ Index: gcc/testsuite/ChangeLog
 Index: gcc/testsuite/gfortran.fortran-torture/execute/getarg_1.x
 ===================================================================
 --- gcc/testsuite/gfortran.fortran-torture/execute/getarg_1.x	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/gfortran.fortran-torture/execute/getarg_1.x	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/gfortran.fortran-torture/execute/getarg_1.x	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,5 @@
 +if [istarget "spu-*-*"] {
 +    # We need -mstdmain to enable argument processing on SPU.
@@ -502,8 +952,8 @@ Index: gcc/testsuite/gfortran.fortran-torture/execute/getarg_1.x
 +return 0
 Index: gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_nearest.x
 ===================================================================
---- gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_nearest.x	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_nearest.x	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_nearest.x	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_nearest.x	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,2 +1,6 @@
 +if [istarget "spu-*-*"] {
 +    # No Inf/NaN support on SPU.
@@ -513,8 +963,8 @@ Index: gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_nearest.x
  return 0
 Index: gcc/testsuite/gfortran.fortran-torture/execute/nan_inf_fmt.x
 ===================================================================
---- gcc/testsuite/gfortran.fortran-torture/execute/nan_inf_fmt.x	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.fortran-torture/execute/nan_inf_fmt.x	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.fortran-torture/execute/nan_inf_fmt.x	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.fortran-torture/execute/nan_inf_fmt.x	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,2 +1,6 @@
 +if [istarget "spu-*-*"] {
 +    # No Inf/NaN support on SPU.
@@ -524,8 +974,8 @@ Index: gcc/testsuite/gfortran.fortran-torture/execute/nan_inf_fmt.x
  return 0
 Index: gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_set_exponent.x
 ===================================================================
---- gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_set_exponent.x	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_set_exponent.x	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_set_exponent.x	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_set_exponent.x	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,2 +1,6 @@
 +if [istarget "spu-*-*"] {
 +    # No denormal support on SPU.
@@ -536,7 +986,7 @@ Index: gcc/testsuite/gfortran.fortran-torture/execute/intrinsic_set_exponent.x
 Index: gcc/testsuite/g++.dg/expr/bound-mem-fun.C
 ===================================================================
 --- gcc/testsuite/g++.dg/expr/bound-mem-fun.C	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/expr/bound-mem-fun.C	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/g++.dg/expr/bound-mem-fun.C	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,18 @@
 +// Contributed by Dodji Seketeli <dodji@redhat.com>
 +// Origin PR c++/38228
@@ -559,7 +1009,7 @@ Index: gcc/testsuite/g++.dg/expr/bound-mem-fun.C
 Index: gcc/testsuite/g++.dg/cpp0x/pr39639.C
 ===================================================================
 --- gcc/testsuite/g++.dg/cpp0x/pr39639.C	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/testsuite/g++.dg/cpp0x/pr39639.C	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/testsuite/g++.dg/cpp0x/pr39639.C	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,20 @@
 +// Contributed by Dodji Seketeli <dodji@redhat.com>
 +// Origin: PR c++/39639
@@ -583,8 +1033,8 @@ Index: gcc/testsuite/g++.dg/cpp0x/pr39639.C
 +
 Index: gcc/testsuite/lib/gcc-dg.exp
 ===================================================================
---- gcc/testsuite/lib/gcc-dg.exp	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/lib/gcc-dg.exp	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/lib/gcc-dg.exp	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/lib/gcc-dg.exp	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -186,7 +186,7 @@
      # Likewise, if we see ".text exceeds local store range" or
      # similar.
@@ -596,8 +1046,8 @@ Index: gcc/testsuite/lib/gcc-dg.exp
      }
 Index: gcc/testsuite/lib/gcc-defs.exp
 ===================================================================
---- gcc/testsuite/lib/gcc-defs.exp	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/lib/gcc-defs.exp	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/lib/gcc-defs.exp	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/lib/gcc-defs.exp	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -155,6 +155,10 @@
      if [regexp "(^|\n)\[^\n\]*: region \[^\n\]* is full" $output] {
  	return "memory full"
@@ -611,8 +1061,8 @@ Index: gcc/testsuite/lib/gcc-defs.exp
  
 Index: gcc/testsuite/lib/gfortran.exp
 ===================================================================
---- gcc/testsuite/lib/gfortran.exp	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/lib/gfortran.exp	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/lib/gfortran.exp	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/lib/gfortran.exp	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -27,6 +27,7 @@
  load_lib gcc-defs.exp
  load_lib timeout.exp
@@ -637,8 +1087,8 @@ Index: gcc/testsuite/lib/gfortran.exp
      verbose "gfortran is initialized" 3
 Index: gcc/testsuite/gfortran.dg/nearest_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/nearest_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/nearest_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/nearest_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/nearest_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  ! { dg-do run }
  ! { dg-options "-O0 -ffloat-store" }
@@ -649,8 +1099,8 @@ Index: gcc/testsuite/gfortran.dg/nearest_1.f90
  ! Converted to Dejagnu for the testsuite by Steven G. Kargl
 Index: gcc/testsuite/gfortran.dg/nearest_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/nearest_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/nearest_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/nearest_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/nearest_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,5 +1,6 @@
  ! { dg-do run }
  ! { dg-options "-pedantic-errors -mieee" { target alpha*-*-* sh*-*-* } } 
@@ -660,8 +1110,8 @@ Index: gcc/testsuite/gfortran.dg/nearest_3.f90
  !
 Index: gcc/testsuite/gfortran.dg/namelist_42.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/namelist_42.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/namelist_42.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/namelist_42.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/namelist_42.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,5 +1,6 @@
  ! { dg-do run { target fd_truncate } }
  ! { dg-options "-mieee" { target alpha*-*-* sh*-*-* } }
@@ -671,8 +1121,8 @@ Index: gcc/testsuite/gfortran.dg/namelist_42.f90
  !
 Index: gcc/testsuite/gfortran.dg/module_nan.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/module_nan.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/module_nan.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/module_nan.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/module_nan.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  ! { dg-do run }
  ! { dg-options "-fno-range-check" }
@@ -683,8 +1133,8 @@ Index: gcc/testsuite/gfortran.dg/module_nan.f90
  !
 Index: gcc/testsuite/gfortran.dg/nan_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/nan_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/nan_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/nan_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/nan_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  ! { dg-do run }
  ! { dg-options "-fno-range-check -pedantic" }
@@ -695,8 +1145,8 @@ Index: gcc/testsuite/gfortran.dg/nan_2.f90
  !
 Index: gcc/testsuite/gfortran.dg/init_flag_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/init_flag_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/init_flag_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/init_flag_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/init_flag_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  ! { dg-do run }
  ! { dg-options "-finit-integer=-1 -finit-logical=false -finit-real=nan" }
@@ -707,8 +1157,8 @@ Index: gcc/testsuite/gfortran.dg/init_flag_3.f90
    call real_test
 Index: gcc/testsuite/gfortran.dg/isnan_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/isnan_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/isnan_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/isnan_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/isnan_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -2,6 +2,7 @@
  !
  ! { dg-do run }
@@ -719,8 +1169,8 @@ Index: gcc/testsuite/gfortran.dg/isnan_1.f90
    real :: x
 Index: gcc/testsuite/gfortran.dg/nan_4.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/nan_4.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/nan_4.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/nan_4.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/nan_4.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  ! { dg-do compile }
  ! { dg-options "-std=gnu" } 
@@ -731,8 +1181,8 @@ Index: gcc/testsuite/gfortran.dg/nan_4.f90
  !
 Index: gcc/testsuite/gfortran.dg/chmod_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/chmod_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/chmod_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/chmod_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/chmod_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do run { target { ! *-*-mingw* } } }
 +! { dg-do run { target { ! { *-*-mingw* spu-*-* } } } }
@@ -741,8 +1191,8 @@ Index: gcc/testsuite/gfortran.dg/chmod_2.f90
    character(len=*), parameter :: n = "foobar_file"
 Index: gcc/testsuite/gfortran.dg/default_format_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/default_format_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/default_format_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/default_format_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/default_format_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do run }
 +! { dg-do run { xfail spu-*-* } }
@@ -751,8 +1201,8 @@ Index: gcc/testsuite/gfortran.dg/default_format_1.f90
  !
 Index: gcc/testsuite/gfortran.dg/int_conv_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/int_conv_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/int_conv_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/int_conv_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/int_conv_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,5 @@
  ! { dg-do compile }
 +! { dg-skip-if "NaN not supported" { spu-*-* } { "*" } { "" } }
@@ -761,8 +1211,8 @@ Index: gcc/testsuite/gfortran.dg/int_conv_2.f90
    implicit none
 Index: gcc/testsuite/gfortran.dg/open_errors.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/open_errors.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/open_errors.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/open_errors.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/open_errors.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do run { target { ! *-*-mingw* } } }
 +! { dg-do run { target { ! { *-*-mingw* spu-*-* } } } }
@@ -771,8 +1221,8 @@ Index: gcc/testsuite/gfortran.dg/open_errors.f90
  character(60) :: msg
 Index: gcc/testsuite/gfortran.dg/scalar_mask_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/scalar_mask_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/scalar_mask_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/scalar_mask_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/scalar_mask_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,5 @@
 -! { dg-do run }
 +! { dg-do run { xfail spu-*-* } }
@@ -782,8 +1232,8 @@ Index: gcc/testsuite/gfortran.dg/scalar_mask_2.f90
    real, dimension(2,2) :: a
 Index: gcc/testsuite/gfortran.dg/stat_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/stat_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/stat_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/stat_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/stat_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,5 +1,5 @@
  ! { dg-do run { target fd_truncate } }
 -! { dg-skip-if "" { *-*-mingw* } { "*" } { "" } }
@@ -793,8 +1243,8 @@ Index: gcc/testsuite/gfortran.dg/stat_2.f90
    integer :: s1(13), r1, s2(13), r2, s3(13), r3
 Index: gcc/testsuite/gfortran.dg/pr20257.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/pr20257.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/pr20257.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/pr20257.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/pr20257.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,5 @@
  ! { dg-do run { target fd_truncate } }
 +! { dg-skip-if "Too big for local store" { spu-*-* } { "*" } { "" } }
@@ -803,8 +1253,8 @@ Index: gcc/testsuite/gfortran.dg/pr20257.f90
  
 Index: gcc/testsuite/gfortran.dg/default_format_denormal_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/default_format_denormal_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/default_format_denormal_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/default_format_denormal_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/default_format_denormal_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do run { xfail alpha*-*-* *-*-darwin[89]* *-*-freebsd* *-*-mingw* } }
 +! { dg-do run { xfail alpha*-*-* *-*-darwin[89]* *-*-freebsd* *-*-mingw* spu-*-* } }
@@ -813,8 +1263,8 @@ Index: gcc/testsuite/gfortran.dg/default_format_denormal_1.f90
  !
 Index: gcc/testsuite/gfortran.dg/nan_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/nan_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/nan_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/nan_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/nan_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -3,6 +3,7 @@
  !
  ! { dg-do run }
@@ -825,8 +1275,8 @@ Index: gcc/testsuite/gfortran.dg/nan_1.f90
    interface isnan
 Index: gcc/testsuite/gfortran.dg/gamma_5.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/gamma_5.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/gamma_5.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/gamma_5.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/gamma_5.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -21,7 +21,7 @@
       xd = n + 0.5d0
       td = c(n)*sqrt(pi)
@@ -838,8 +1288,8 @@ Index: gcc/testsuite/gfortran.dg/gamma_5.f90
    call tst_s(2.3, gamma(2.3))
 Index: gcc/testsuite/gfortran.dg/namelist_43.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/namelist_43.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/namelist_43.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/namelist_43.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/namelist_43.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,5 +1,6 @@
  ! { dg-do run { target fd_truncate } }
  ! { dg-options "-mieee" { target alpha*-*-* sh*-*-* } }
@@ -849,8 +1299,8 @@ Index: gcc/testsuite/gfortran.dg/namelist_43.f90
  !
 Index: gcc/testsuite/gfortran.dg/transfer_simplify_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/transfer_simplify_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/transfer_simplify_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/transfer_simplify_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/transfer_simplify_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,5 +1,6 @@
  ! { dg-do run }
  ! { dg-options "-O2" }
@@ -860,8 +1310,8 @@ Index: gcc/testsuite/gfortran.dg/transfer_simplify_1.f90
  ! (TRANSFER intrinsic).
 Index: gcc/testsuite/gfortran.dg/nan_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/nan_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/nan_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/nan_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/nan_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  ! { dg-do run }
  ! { dg-options "-fno-range-check" }
@@ -872,8 +1322,8 @@ Index: gcc/testsuite/gfortran.dg/nan_3.f90
  !
 Index: gcc/testsuite/gfortran.dg/chmod_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/chmod_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/chmod_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/chmod_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/chmod_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do run { target { ! *-*-mingw* } } }
 +! { dg-do run { target { ! { *-*-mingw* spu-*-* } } } }
@@ -882,8 +1332,8 @@ Index: gcc/testsuite/gfortran.dg/chmod_1.f90
    character(len=*), parameter :: n = "foobar_file"
 Index: gcc/testsuite/gfortran.dg/integer_exponentiation_3.F90
 ===================================================================
---- gcc/testsuite/gfortran.dg/integer_exponentiation_3.F90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/integer_exponentiation_3.F90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/integer_exponentiation_3.F90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/integer_exponentiation_3.F90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,5 @@
 -! { dg-do run }
 +! { dg-do run { xfail spu-*-* } }
@@ -893,8 +1343,8 @@ Index: gcc/testsuite/gfortran.dg/integer_exponentiation_3.F90
    implicit none
 Index: gcc/testsuite/gfortran.dg/elemental_subroutine_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/elemental_subroutine_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/elemental_subroutine_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/elemental_subroutine_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/elemental_subroutine_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -48,7 +48,7 @@
  ! Test an expression in the INTENT(IN) argument
    x = (/1.0, 2.0/)
@@ -906,8 +1356,8 @@ Index: gcc/testsuite/gfortran.dg/elemental_subroutine_1.f90
  
 Index: gcc/testsuite/gfortran.dg/isnan_2.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/isnan_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/isnan_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/isnan_2.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/isnan_2.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -3,6 +3,7 @@
  ! { dg-do run }
  ! { dg-options "-fno-range-check" }
@@ -918,8 +1368,8 @@ Index: gcc/testsuite/gfortran.dg/isnan_2.f90
    character(len=1) :: s
 Index: gcc/testsuite/gfortran.dg/chmod_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/chmod_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/chmod_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/chmod_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/chmod_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do run { target { ! *-*-mingw* } } }
 +! { dg-do run { target { ! { *-*-mingw* spu-*-* } } } }
@@ -928,8 +1378,8 @@ Index: gcc/testsuite/gfortran.dg/chmod_3.f90
    character(len=*), parameter :: n = "foobar_file"
 Index: gcc/testsuite/gfortran.dg/integer_exponentiation_5.F90
 ===================================================================
---- gcc/testsuite/gfortran.dg/integer_exponentiation_5.F90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/integer_exponentiation_5.F90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/integer_exponentiation_5.F90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/integer_exponentiation_5.F90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,5 @@
 -! { dg-do run }
 +! { dg-do run { xfail spu-*-* } }
@@ -939,8 +1389,8 @@ Index: gcc/testsuite/gfortran.dg/integer_exponentiation_5.F90
  module mod_check
 Index: gcc/testsuite/gfortran.dg/stat_1.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/stat_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/stat_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/stat_1.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/stat_1.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,5 +1,5 @@
  ! { dg-do run { target fd_truncate } }
 -! { dg-skip-if "" { *-*-mingw* } { "*" } { "" } }
@@ -950,8 +1400,8 @@ Index: gcc/testsuite/gfortran.dg/stat_1.f90
    integer :: s1(13), r1, s2(13), r2, s3(13), r3
 Index: gcc/testsuite/gfortran.dg/real_const_3.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/real_const_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/real_const_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/real_const_3.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/real_const_3.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,6 +1,7 @@
  !{ dg-do run }
  !{ dg-options "-fno-range-check" }
@@ -962,8 +1412,8 @@ Index: gcc/testsuite/gfortran.dg/real_const_3.f90
  program main
 Index: gcc/testsuite/gfortran.dg/vect/pr39318.f90
 ===================================================================
---- gcc/testsuite/gfortran.dg/vect/pr39318.f90	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/testsuite/gfortran.dg/vect/pr39318.f90	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/testsuite/gfortran.dg/vect/pr39318.f90	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/testsuite/gfortran.dg/vect/pr39318.f90	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,4 +1,4 @@
 -! { dg-do compile } 
 +! { dg-do compile { target fopenmp } } 
@@ -972,8 +1422,8 @@ Index: gcc/testsuite/gfortran.dg/vect/pr39318.f90
        subroutine adw_trajsp (F_u,i0,in,j0,jn)
 Index: gcc/cp/typeck.c
 ===================================================================
---- gcc/cp/typeck.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/cp/typeck.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/cp/typeck.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/cp/typeck.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1508,7 +1508,7 @@
  bool
  invalid_nonstatic_memfn_p (const_tree expr, tsubst_flags_t complain)
@@ -985,8 +1435,8 @@ Index: gcc/cp/typeck.c
          error ("invalid use of non-static member function");
 Index: gcc/cp/call.c
 ===================================================================
---- gcc/cp/call.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/cp/call.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/cp/call.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/cp/call.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -4069,8 +4069,20 @@
  	default:
  	  if ((flags & LOOKUP_COMPLAIN) && (complain & tf_error))
@@ -1012,8 +1462,8 @@ Index: gcc/cp/call.c
  	  break;
 Index: gcc/cp/cvt.c
 ===================================================================
---- gcc/cp/cvt.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/cp/cvt.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/cp/cvt.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/cp/cvt.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -760,8 +760,15 @@
      }
  
@@ -1034,8 +1484,8 @@ Index: gcc/cp/cvt.c
  
 Index: gcc/cp/ChangeLog
 ===================================================================
---- gcc/cp/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/cp/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/cp/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/cp/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,3 +1,22 @@
 +2009-04-23  Dodji Seketeli  <dodji@redhat.com>
 +
@@ -1061,8 +1511,8 @@ Index: gcc/cp/ChangeLog
  	* GCC 4.4.0 released.
 Index: gcc/cp/pt.c
 ===================================================================
---- gcc/cp/pt.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/cp/pt.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/cp/pt.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/cp/pt.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -13532,6 +13532,13 @@
  	  && !template_parameter_pack_p (parm))
  	return 1;
@@ -1079,8 +1529,8 @@ Index: gcc/cp/pt.c
  
 Index: gcc/cp/parser.c
 ===================================================================
---- gcc/cp/parser.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/cp/parser.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/cp/parser.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/cp/parser.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -10477,6 +10477,12 @@
           argument pack. */
        if (cp_lexer_next_token_is (parser->lexer, CPP_ELLIPSIS))
@@ -1096,8 +1546,8 @@ Index: gcc/cp/parser.c
  
 Index: gcc/tree-ssa-ccp.c
 ===================================================================
---- gcc/tree-ssa-ccp.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/tree-ssa-ccp.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/tree-ssa-ccp.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/tree-ssa-ccp.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1290,7 +1290,9 @@
  	if (TREE_CODE (base) == SSA_NAME
  	    && (value = get_value (base))
@@ -1111,8 +1561,8 @@ Index: gcc/tree-ssa-ccp.c
        }
 Index: gcc/dbxout.c
 ===================================================================
---- gcc/dbxout.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/dbxout.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/dbxout.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/dbxout.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -3593,7 +3593,7 @@
    while (block)
      {
@@ -1124,8 +1574,8 @@ Index: gcc/dbxout.c
  	  int blocknum = BLOCK_NUMBER (block);
 Index: gcc/ira-int.h
 ===================================================================
---- gcc/ira-int.h	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ira-int.h	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ira-int.h	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ira-int.h	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -730,21 +730,24 @@
  extern HARD_REG_SET ira_reg_mode_hard_regset
                      [FIRST_PSEUDO_REGISTER][NUM_MACHINE_MODES];
@@ -1192,8 +1642,8 @@ Index: gcc/ira-int.h
    /* The number of the current element in IRA_ALLOCNOS.  */
 Index: gcc/ira-color.c
 ===================================================================
---- gcc/ira-color.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ira-color.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ira-color.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ira-color.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -285,8 +285,8 @@
  	    continue;
  
@@ -1254,8 +1704,8 @@ Index: gcc/ira-color.c
  	 cover_class, ALLOCNO_COVER_CLASS_COST (a),
 Index: gcc/ada/ChangeLog
 ===================================================================
---- gcc/ada/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ada/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ada/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ada/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,3 +1,14 @@
 +2009-04-22  Eric Botcazou  <ebotcazou@adacore.com>
 +
@@ -44980,8 +45430,8 @@ Index: gcc/ada/ChangeLog
 +notice and this notice are preserved.
 Index: gcc/ada/gcc-interface/utils.c
 ===================================================================
---- gcc/ada/gcc-interface/utils.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ada/gcc-interface/utils.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ada/gcc-interface/utils.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ada/gcc-interface/utils.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1570,6 +1570,15 @@
    TREE_STATIC (var_decl)
      = !extern_flag && (public_flag || static_flag || global_bindings_p ());
@@ -45000,8 +45450,8 @@ Index: gcc/ada/gcc-interface/utils.c
  
 Index: gcc/ada/gcc-interface/utils2.c
 ===================================================================
---- gcc/ada/gcc-interface/utils2.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ada/gcc-interface/utils2.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ada/gcc-interface/utils2.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ada/gcc-interface/utils2.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -6,7 +6,7 @@
   *                                                                          *
   *                          C Implementation File                           *
@@ -45044,7 +45494,7 @@ Index: gcc/ada/gcc-interface/utils2.c
 Index: gcc/ada/ChangeLog-2001
 ===================================================================
 --- gcc/ada/ChangeLog-2001	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2001	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2001	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,2239 @@
 +2001-12-23  Richard Henderson  <rth@redhat.com>
 +
@@ -47288,7 +47738,7 @@ Index: gcc/ada/ChangeLog-2001
 Index: gcc/ada/ChangeLog-2002
 ===================================================================
 --- gcc/ada/ChangeLog-2002	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2002	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2002	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,986 @@
 +2002-12-28  Joseph S. Myers  <jsm@polyomino.org.uk>
 +
@@ -48279,7 +48729,7 @@ Index: gcc/ada/ChangeLog-2002
 Index: gcc/ada/ChangeLog-2003
 ===================================================================
 --- gcc/ada/ChangeLog-2003	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2003	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2003	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,3021 @@
 +2003-12-23  Kelley Cook  <kcook@gcc.gnu.org>
 +
@@ -51305,7 +51755,7 @@ Index: gcc/ada/ChangeLog-2003
 Index: gcc/ada/ChangeLog-2004
 ===================================================================
 --- gcc/ada/ChangeLog-2004	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2004	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2004	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,8347 @@
 +2004-12-30  Sohail Somani  <sohail@sohailsomani.com>
 +
@@ -59657,7 +60107,7 @@ Index: gcc/ada/ChangeLog-2004
 Index: gcc/ada/ChangeLog-2005
 ===================================================================
 --- gcc/ada/ChangeLog-2005	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2005	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2005	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,8014 @@
 +2005-12-28  John David Anglin  <dave.anglin@nrc-cnrc.gc.ca>
 +
@@ -67676,7 +68126,7 @@ Index: gcc/ada/ChangeLog-2005
 Index: gcc/ada/ChangeLog-2006
 ===================================================================
 --- gcc/ada/ChangeLog-2006	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2006	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2006	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,4462 @@
 +2006-12-07  Geoffrey Keating  <geoffk@apple.com>
 +
@@ -72143,7 +72593,7 @@ Index: gcc/ada/ChangeLog-2006
 Index: gcc/ada/ChangeLog-2007
 ===================================================================
 --- gcc/ada/ChangeLog-2007	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2007	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2007	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,9221 @@
 +2007-12-27  Samuel Tardieu  <sam@rfc1149.net>
 +
@@ -81369,7 +81819,7 @@ Index: gcc/ada/ChangeLog-2007
 Index: gcc/ada/ChangeLog-2008
 ===================================================================
 --- gcc/ada/ChangeLog-2008	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ gcc/ada/ChangeLog-2008	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ gcc/ada/ChangeLog-2008	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,7464 @@
 +2008-12-09  Jakub Jelinek  <jakub@redhat.com>
 +
@@ -88837,8 +89287,8 @@ Index: gcc/ada/ChangeLog-2008
 +notice and this notice are preserved.
 Index: gcc/fortran/ChangeLog
 ===================================================================
---- gcc/fortran/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/fortran/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/fortran/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/fortran/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,3 +1,13 @@
 +2009-04-22  Ulrich Weigand  <Ulrich.Weigand@de.ibm.com>
 +
@@ -88855,8 +89305,8 @@ Index: gcc/fortran/ChangeLog
  	* GCC 4.4.0 released.
 Index: gcc/fortran/f95-lang.c
 ===================================================================
---- gcc/fortran/f95-lang.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/fortran/f95-lang.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/fortran/f95-lang.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/fortran/f95-lang.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -917,12 +917,12 @@
    gfc_define_builtin ("__builtin_fmodf", mfunc_float[1], 
  		      BUILT_IN_FMODF, "fmodf", true);
@@ -88878,8 +89328,8 @@ Index: gcc/fortran/f95-lang.c
    type = tree_cons (NULL_TREE, float_type_node, void_list_node);
 Index: gcc/fortran/trans-intrinsic.c
 ===================================================================
---- gcc/fortran/trans-intrinsic.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/fortran/trans-intrinsic.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/fortran/trans-intrinsic.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/fortran/trans-intrinsic.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -3129,32 +3129,32 @@
  
  
@@ -88929,8 +89379,8 @@ Index: gcc/fortran/trans-intrinsic.c
  			      fold_convert (type, args[0]), tmp);
 Index: gcc/ira-lives.c
 ===================================================================
---- gcc/ira-lives.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ira-lives.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ira-lives.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ira-lives.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -782,10 +782,11 @@
  		  [ira_class_hard_regs[cl][0]]) >= 0
  	      && reg_class_size[cl] <= (unsigned) CLASS_MAX_NREGS (cl, mode))
@@ -88949,15 +89399,15 @@ Index: gcc/ira-lives.c
  	      ALLOCNO_CONFLICT_HARD_REG_COSTS (operand_a)
 Index: gcc/BASE-VER
 ===================================================================
---- gcc/BASE-VER	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/BASE-VER	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/BASE-VER	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/BASE-VER	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1 +1 @@
 -4.4.0
 +4.4.1
 Index: gcc/ira-emit.c
 ===================================================================
---- gcc/ira-emit.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ira-emit.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ira-emit.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ira-emit.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -812,7 +812,8 @@
  	}
        else
@@ -88970,8 +89420,8 @@ Index: gcc/ira-emit.c
        ira_overall_cost += cost;
 Index: gcc/alias.c
 ===================================================================
---- gcc/alias.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/alias.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/alias.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/alias.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1438,15 +1438,16 @@
  	  return x;
        return 0;
@@ -88995,8 +89445,8 @@ Index: gcc/alias.c
        {
 Index: gcc/tree-ssa-live.c
 ===================================================================
---- gcc/tree-ssa-live.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/tree-ssa-live.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/tree-ssa-live.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/tree-ssa-live.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -595,6 +595,8 @@
     /* Verfify that only blocks with source location set
        are entry points to the inlined functions.  */
@@ -89008,8 +89458,8 @@ Index: gcc/tree-ssa-live.c
  
 Index: gcc/po/exgettext
 ===================================================================
---- gcc/po/exgettext	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/po/exgettext	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/po/exgettext	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/po/exgettext	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -83,7 +83,7 @@
  echo "scanning for keywords and %e strings..." >&2
  
@@ -89021,8 +89471,8 @@ Index: gcc/po/exgettext
          do  eval echo $dir$glob
 Index: gcc/po/ChangeLog
 ===================================================================
---- gcc/po/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/po/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/po/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/po/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,3 +1,12 @@
 +2009-04-22  Joseph Myers  <joseph@codesourcery.com>
 +
@@ -89038,8 +89488,8 @@ Index: gcc/po/ChangeLog
  	* GCC 4.4.0 released.
 Index: gcc/po/gcc.pot
 ===================================================================
---- gcc/po/gcc.pot	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/po/gcc.pot	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/po/gcc.pot	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/po/gcc.pot	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -8,7 +8,7 @@
  msgstr ""
  "Project-Id-Version: PACKAGE VERSION\n"
@@ -100284,8 +100734,8 @@ Index: gcc/po/gcc.pot
 +msgstr ""
 Index: gcc/ira-costs.c
 ===================================================================
---- gcc/ira-costs.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/ira-costs.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/ira-costs.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/ira-costs.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -138,9 +138,6 @@
    sri.extra_cost = 0;
    secondary_class = targetm.secondary_reload (to_p, x, rclass, mode, &sri);
@@ -100424,10 +100874,30 @@ Index: gcc/ira-costs.c
    ira_free (common_classes);
    ira_free (allocno_pref_buffer);
    ira_free (total_costs);
+Index: gcc/config/s390/constraints.md
+===================================================================
+--- gcc/config/s390/constraints.md	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/s390/constraints.md	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -129,13 +129,13 @@
+ (define_constraint "I"
+   "An 8-bit constant (0..255)"
+   (and (match_code "const_int")
+-       (match_test "(unsigned int) ival <= 255")))
++       (match_test "(unsigned HOST_WIDE_INT) ival <= 255")))
+ 
+ 
+ (define_constraint "J"
+   "A 12-bit constant (0..4095)"
+   (and (match_code "const_int")
+-       (match_test "(unsigned int) ival <= 4095")))
++       (match_test "(unsigned HOST_WIDE_INT) ival <= 4095")))
+ 
+ 
+ (define_constraint "K"
 Index: gcc/config/spu/spu-builtins.h
 ===================================================================
---- gcc/config/spu/spu-builtins.h	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/config/spu/spu-builtins.h	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/config/spu/spu-builtins.h	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/spu/spu-builtins.h	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,119 +0,0 @@
 -/* Copyright (C) 2006, 2007 Free Software Foundation, Inc.
 -
@@ -100550,8 +101020,8 @@ Index: gcc/config/spu/spu-builtins.h
 -
 Index: gcc/config/spu/spu.c
 ===================================================================
---- gcc/config/spu/spu.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/config/spu/spu.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/config/spu/spu.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/spu/spu.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -52,13 +52,79 @@
  #include "machmode.h"
  #include "gimple.h"
@@ -100667,8 +101137,8 @@ Index: gcc/config/spu/spu.c
 +
 Index: gcc/config/spu/spu.h
 ===================================================================
---- gcc/config/spu/spu.h	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/config/spu/spu.h	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/config/spu/spu.h	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/spu/spu.h	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -622,3 +622,33 @@
  extern GTY(()) rtx spu_compare_op0;
  extern GTY(()) rtx spu_compare_op1;
@@ -100705,8 +101175,8 @@ Index: gcc/config/spu/spu.h
 +
 Index: gcc/config/spu/spu-c.c
 ===================================================================
---- gcc/config/spu/spu-c.c	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/config/spu/spu-c.c	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/config/spu/spu-c.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/spu/spu-c.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -32,7 +32,6 @@
  #include "insn-codes.h"
  #include "recog.h"
@@ -100755,8 +101225,8 @@ Index: gcc/config/spu/spu-c.c
  	    break;
 Index: gcc/config/spu/t-spu-elf
 ===================================================================
---- gcc/config/spu/t-spu-elf	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/config/spu/t-spu-elf	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/config/spu/t-spu-elf	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/spu/t-spu-elf	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -85,13 +85,10 @@
    output.h $(BASIC_BLOCK_H) $(INTEGRATE_H) toplev.h $(GGC_H) $(HASHTAB_H) \
    $(TM_P_H) $(TARGET_H) $(TARGET_DEF_H) langhooks.h reload.h cfglayout.h \
@@ -100773,8 +101243,8 @@ Index: gcc/config/spu/t-spu-elf
  	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(srcdir)/config/spu/spu-c.c
 Index: gcc/config/arm/arm.h
 ===================================================================
---- gcc/config/arm/arm.h	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ gcc/config/arm/arm.h	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- gcc/config/arm/arm.h	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/config/arm/arm.h	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -2244,8 +2244,10 @@
  #define GO_IF_MODE_DEPENDENT_ADDRESS(ADDR, LABEL)	\
    if (TARGET_32BIT)					\
@@ -100787,10 +101257,22 @@ Index: gcc/config/arm/arm.h
  /* Specify the machine mode that this machine uses
     for the index in the tablejump instruction.  */
  #define CASE_VECTOR_MODE Pmode
+Index: gcc/stmt.c
+===================================================================
+--- gcc/stmt.c	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ gcc/stmt.c	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1418,6 +1418,7 @@
+       goto restart;
+ 
+     case SAVE_EXPR:
++    case NON_LVALUE_EXPR:
+       exp = TREE_OPERAND (exp, 0);
+       goto restart;
+ 
 Index: libstdc++-v3/include/bits/locale_facets.tcc
 ===================================================================
---- libstdc++-v3/include/bits/locale_facets.tcc	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libstdc++-v3/include/bits/locale_facets.tcc	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- libstdc++-v3/include/bits/locale_facets.tcc	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libstdc++-v3/include/bits/locale_facets.tcc	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -379,8 +379,7 @@
  	if (!__testeof)
  	  {
@@ -100823,9 +101305,21 @@ Index: libstdc++-v3/include/bits/locale_facets.tcc
  	      __v = __gnu_cxx::__numeric_traits<_ValueT>::__max;
 Index: libstdc++-v3/ChangeLog
 ===================================================================
---- libstdc++-v3/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
-@@ -1,3 +1,12 @@
+--- libstdc++-v3/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libstdc++-v3/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1,3 +1,24 @@
++2009-04-26  Paolo Carlini  <paolo.carlini@oracle.com>
++
++	Revert the last commit.
++
++2009-04-25  Jonathan Wakely  <jwakely.gcc@gmail.com>
++
++	* include/std/mutex (__get_once_functor_lock, __get_once_mutex):
++	Replace global lock object with local locks on global mutex.
++	* src/mutex.cc: Likewise.
++	* config/abi/pre/gnu.ver: Adjust.
++	* testsuite/30_threads/call_once/call_once2.cc: New.
++
 +2009-04-21  Paolo Carlini  <paolo.carlini@oracle.com>
 +
 +	PR libstdc++/39802
@@ -100841,7 +101335,7 @@ Index: libstdc++-v3/ChangeLog
 Index: libstdc++-v3/testsuite/22_locale/num_get/get/wchar_t/39802.cc
 ===================================================================
 --- libstdc++-v3/testsuite/22_locale/num_get/get/wchar_t/39802.cc	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ libstdc++-v3/testsuite/22_locale/num_get/get/wchar_t/39802.cc	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ libstdc++-v3/testsuite/22_locale/num_get/get/wchar_t/39802.cc	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,77 @@
 +// Copyright (C) 2009 Free Software Foundation
 +//
@@ -100923,7 +101417,7 @@ Index: libstdc++-v3/testsuite/22_locale/num_get/get/wchar_t/39802.cc
 Index: libstdc++-v3/testsuite/22_locale/num_get/get/char/39802.cc
 ===================================================================
 --- libstdc++-v3/testsuite/22_locale/num_get/get/char/39802.cc	(.../tags/gcc_4_4_0_release)	(wersja 0)
-+++ libstdc++-v3/testsuite/22_locale/num_get/get/char/39802.cc	(.../branches/gcc-4_4-branch)	(wersja 146715)
++++ libstdc++-v3/testsuite/22_locale/num_get/get/char/39802.cc	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -0,0 +1,77 @@
 +// Copyright (C) 2009 Free Software Foundation
 +//
@@ -101002,10 +101496,59 @@ Index: libstdc++-v3/testsuite/22_locale/num_get/get/char/39802.cc
 +  test01();
 +  return 0;
 +}
+Index: configure.ac
+===================================================================
+--- configure.ac	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ configure.ac	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1250,6 +1250,7 @@
+ if test "x$with_gmp$with_gmp_include$with_gmp_lib" = x && test -d ${srcdir}/gmp; then
+   gmplibs='-L$$r/$(HOST_SUBDIR)/gmp/.libs -L$$r/$(HOST_SUBDIR)/gmp/_libs '"$gmplibs"
+   gmpinc='-I$$r/$(HOST_SUBDIR)/gmp -I$$s/gmp '"$gmpinc"
++  extra_mpfr_configure_flags='--with-gmp-build=$$r/$(HOST_SUBDIR)/gmp'
+   # Do not test the gmp version.  Assume that it is sufficient, since
+   # it is in the source tree, and the library has not been built yet
+   # but it would be included on the link line in the version check below
+@@ -1314,6 +1315,7 @@
+ # Flags needed for both GMP and/or MPFR
+ AC_SUBST(gmplibs)
+ AC_SUBST(gmpinc)
++AC_SUBST(extra_mpfr_configure_flags)
+ 
+ # Allow host libstdc++ to be specified for static linking with PPL.
+ AC_ARG_WITH(host-libstdcxx, [  --with-host-libstdcxx=L Use linker arguments L to link with libstdc++
+Index: Makefile.def
+===================================================================
+--- Makefile.def	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ Makefile.def	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -65,7 +65,7 @@
+ 	        host="none-${host_vendor}-${host_os}";
+ 		target="none-${host_vendor}-${host_os}"; };
+ host_modules= { module= mpfr; lib_path=.libs; bootstrap=true;
+-		extra_configure_flags='--disable-shared --with-gmp-build=$$r/$(HOST_SUBDIR)/gmp';
++		extra_configure_flags='--disable-shared @extra_mpfr_configure_flags@';
+ 		no_install= true; 
+ 	        host="none-${host_vendor}-${host_os}";
+ 		target="none-${host_vendor}-${host_os}"; };
+Index: ChangeLog
+===================================================================
+--- ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1,3 +1,11 @@
++2009-04-25  Kaveh R. Ghazi  <ghazi@caip.rutgers.edu>
++
++	PR bootstrap/39739
++	* configure.ac (extra_mpfr_configure_flags): Set and AC_SUBST.
++	* Makefile.def (module=mpfr): Use extra_mpfr_configure_flags.
++
++	* configure, Makefile.in: Regenerate.
++
+ 2009-04-21  Release Manager
+ 
+ 	* GCC 4.4.0 released.
 Index: libjava/Makefile.in
 ===================================================================
---- libjava/Makefile.in	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libjava/Makefile.in	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- libjava/Makefile.in	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libjava/Makefile.in	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -12425,6 +12425,8 @@
  @CREATE_JAVA_HOME_TRUE@	RELATIVE=$$(relative $(DESTDIR)$(bindir) $(DESTDIR)$(SDK_BIN_DIR)); \
  @CREATE_JAVA_HOME_TRUE@	ln -sf $$RELATIVE/`echo gij | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'` \
@@ -101015,11 +101558,44 @@ Index: libjava/Makefile.in
  @CREATE_JAVA_HOME_TRUE@	ln -sf $$RELATIVE/`echo gjar | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'` \
  @CREATE_JAVA_HOME_TRUE@	  $(DESTDIR)$(SDK_BIN_DIR)/jar; \
  @CREATE_JAVA_HOME_TRUE@	ln -sf $$RELATIVE/`echo gjdoc | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'` \
+Index: libjava/configure.ac
+===================================================================
+--- libjava/configure.ac	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libjava/configure.ac	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -834,6 +834,8 @@
+ AC_CONFIG_LINKS(gnu/java/nio/channels/natFileChannelImpl.cc:gnu/java/nio/channels/natFileChannel${FILE-${PLATFORM}}.cc)
+ 
+ # Likewise for natVMSecureRandom.cc
++test -d gnu/java/security || mkdir gnu/java/security
++test -d gnu/java/security/jce || mkdir gnu/java/security/jce
+ test -d gnu/java/security/jce/prng || mkdir gnu/java/security/jce/prng
+ AC_CONFIG_LINKS(gnu/java/security/jce/prng/natVMSecureRandom.cc:gnu/java/security/jce/prng/natVMSecureRandom${FILE-${PLATFORM}}.cc)
+ 
+@@ -1921,6 +1923,7 @@
+ contrib/aotcompile.py
+ contrib/aot-compile
+ contrib/aot-compile-rpm
++contrib/generate-cacerts.pl
+ contrib/rebuild-gcj-db
+ ])
+ 
 Index: libjava/ChangeLog
 ===================================================================
---- libjava/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libjava/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
-@@ -1,3 +1,8 @@
+--- libjava/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libjava/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -1,3 +1,20 @@
++2009-04-26  Matthias Klose <doko@ubuntu.com>
++
++	* contrib/aot-compile.in: Print diagnostics for malformed or invalid
++	class files.
++	* contrib/generate-cacerts.pl.in: New.
++	* configure.ac (AC_CONFIG_FILES): Add generate-cacerts.pl.
++
++2009-04-24  Matthias Klose  <doko@ubuntu.com>
++
++	* configure.ac: Create missing directory gnu/java/security/jce/prng.
++	* configure: Regenerate.
++
 +2009-04-23  Matthias Klose  <doko@ubuntu.com>
 +
 +	* Makefile.am (install-data-local): Fix symlinks to header files.
@@ -101028,10 +101604,204 @@ Index: libjava/ChangeLog
  2009-04-21  Release Manager
  
  	* GCC 4.4.0 released.
+Index: libjava/contrib/aotcompile.py.in
+===================================================================
+--- libjava/contrib/aotcompile.py.in	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libjava/contrib/aotcompile.py.in	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -177,11 +177,14 @@
+     
+     def __init__(self, path):
+         self.path, self.classes, self.blocks = path, {}, None
++        self.classnames = {}
+ 
+-    def addClass(self, bytes):
++    def addClass(self, bytes, name):
+         """Subclasses call this from their __init__ method for
+         every class they find."""
+-        self.classes[md5.new(bytes).digest()] = bytes
++        digest = md5.new(bytes).digest()
++        self.classes[digest] = bytes
++        self.classnames[digest] = name
+ 
+     def __makeBlocks(self):
+         """Split self.classes into chunks that can be compiled to
+@@ -200,7 +203,12 @@
+         if the job is subsetted."""
+         names = {}
+         for hash, bytes in self.classes.items():
+-            name = classname(bytes)
++            try:
++                name = classname(bytes)
++            except:
++                warn("job %s: class %s malformed or not a valid class file" \
++                     % (self.path, self.classnames[hash]))
++                raise
+             if not names.has_key(name):
+                 names[name] = []
+             names[name].append(hash)
+@@ -302,7 +310,7 @@
+             if bytes.startswith(ZIPMAGIC):
+                 self._walk(zipfile.ZipFile(StringIO.StringIO(bytes)))
+             elif bytes.startswith(CLASSMAGIC):
+-                self.addClass(bytes)
++                self.addClass(bytes, name)
+ 
+ class DirJob(Job):
+     """A Job whose origin was a directory of classfiles."""
+@@ -319,7 +327,7 @@
+             fp = open(path, "r")
+             magic = fp.read(4)
+             if magic == CLASSMAGIC:
+-                self.addClass(magic + fp.read())
++                self.addClass(magic + fp.read(), name)
+     
+ def weed_jobs(jobs):
+     """Remove any jarfiles that are completely contained within
+Index: libjava/contrib/generate-cacerts.pl.in
+===================================================================
+--- libjava/contrib/generate-cacerts.pl.in	(.../tags/gcc_4_4_0_release)	(wersja 0)
++++ libjava/contrib/generate-cacerts.pl.in	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -0,0 +1,106 @@
++#!/usr/bin/perl
++
++# Copyright (C) 2007, 2009 Free Software Foundation
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++
++# generate-cacerts.pl generates a gkeytool keystore named 'cacerts'
++# from OpenSSL's certificate bundle.
++
++# First extract each of OpenSSL's bundled certificates into its own
++# aliased filename.
++chomp($file=@ARGV[0]);
++$file = "/etc/pki/tls/cert.pem" unless $file ne "";
++open(CERTS, $file);
++@certs = <CERTS>;
++close(CERTS);
++
++$pem_file_number = 0;
++$writing_cert = 0;
++foreach $cert (@certs)
++{
++	 if ($cert eq "-----BEGIN CERTIFICATE-----\n")
++	 {
++		  if ($writing_cert != 0)
++		  {
++				die "$file is malformed.";
++		  }
++		  $pem_file_number++;
++		  # Numbering each file guarantees that cert aliases will be
++		  # unique.
++		  $pem_file_name = "$pem_file_number$cert_alias.pem";
++		  $writing_cert = 1;
++		  open(PEM, ">$pem_file_name");
++		  print PEM $cert;
++	 }
++	 elsif ($cert eq "-----END CERTIFICATE-----\n")
++	 {
++		  $writing_cert = 0;
++		  print PEM $cert;
++		  close(PEM);
++	 }
++	 elsif ($cert =~ /Issuer: /)
++	 {
++		  # Generate an alias using the OU and CN attributes of the
++		  # Issuer field if both are present, otherwise use only the CN
++		  # attribute.  The Issuer field must have either the OU or the
++		  # CN attribute.
++		  $_ = $cert;
++		  if ($cert =~ /OU=/)
++		  {
++				s/Issuer:.*?OU=//;
++				# Remove other occurrences of OU=.
++				s/OU=.*CN=//;
++				# Remove CN= if there were not other occurrences of OU=.
++				s/CN=//;
++		  }
++		  elsif ($cert =~ /CN=/)
++		  {
++				s/Issuer:.*CN=//;
++		  }
++		  s/\W//g;
++		  tr/A-Z/a-z/;
++		  $cert_alias = $_
++	 }
++	 else
++	 {
++		  if ($writing_cert == 1)
++		  {
++				print PEM $cert;
++		  }
++	 }
++}
++
++# Check that the correct number of .pem files were produced.
++@pem_files = <*.pem>;
++if (@pem_files != $pem_file_number)
++{
++	 die "Number of .pem files produced does not match".
++		  " number of certs read from $file.";
++}
++
++# Now store each cert in the 'cacerts' file using gkeytool.
++$certs_written_count = 0;
++foreach $pem_file (@pem_files)
++{
++	 system "yes | gkeytool@gcc_suffix@ -import -alias `basename $pem_file .pem`".
++		  " -keystore cacerts -storepass '' -file $pem_file".
++		  " 2>&1 >/dev/null";
++	 unlink($pem_file);
++	 $certs_written_count++;
++}
++
++# Check that the correct number of certs were added to the keystore.
++if ($certs_written_count != $pem_file_number)
++{
++	 die "Number of certs added to keystore does not match".
++		  " number of certs read from $file.";
++}
+Index: libjava/configure
+===================================================================
+--- libjava/configure	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libjava/configure	(.../branches/gcc-4_4-branch)	(wersja 146826)
+@@ -19141,6 +19141,8 @@
+ 
+ 
+ # Likewise for natVMSecureRandom.cc
++test -d gnu/java/security || mkdir gnu/java/security
++test -d gnu/java/security/jce || mkdir gnu/java/security/jce
+ test -d gnu/java/security/jce/prng || mkdir gnu/java/security/jce/prng
+           ac_config_links="$ac_config_links gnu/java/security/jce/prng/natVMSecureRandom.cc:gnu/java/security/jce/prng/natVMSecureRandom${FILE-${PLATFORM}}.cc"
+ 
+@@ -28310,7 +28312,7 @@
+ 
+ fi
+ 
+-                                                                                                              ac_config_files="$ac_config_files Makefile libgcj.pc libgcj.spec libgcj-test.spec gcj/Makefile include/Makefile testsuite/Makefile contrib/aotcompile.py contrib/aot-compile contrib/aot-compile-rpm contrib/rebuild-gcj-db"
++                                                                                                                        ac_config_files="$ac_config_files Makefile libgcj.pc libgcj.spec libgcj-test.spec gcj/Makefile include/Makefile testsuite/Makefile contrib/aotcompile.py contrib/aot-compile contrib/aot-compile-rpm contrib/generate-cacerts.pl contrib/rebuild-gcj-db"
+ 
+ 
+ if test ${multilib} = yes; then
+@@ -29560,6 +29562,7 @@
+   "contrib/aotcompile.py" ) CONFIG_FILES="$CONFIG_FILES contrib/aotcompile.py" ;;
+   "contrib/aot-compile" ) CONFIG_FILES="$CONFIG_FILES contrib/aot-compile" ;;
+   "contrib/aot-compile-rpm" ) CONFIG_FILES="$CONFIG_FILES contrib/aot-compile-rpm" ;;
++  "contrib/generate-cacerts.pl" ) CONFIG_FILES="$CONFIG_FILES contrib/generate-cacerts.pl" ;;
+   "contrib/rebuild-gcj-db" ) CONFIG_FILES="$CONFIG_FILES contrib/rebuild-gcj-db" ;;
+   "scripts/jar" ) CONFIG_FILES="$CONFIG_FILES scripts/jar" ;;
+   "include/platform.h" ) CONFIG_LINKS="$CONFIG_LINKS include/platform.h:include/$PLATFORMH" ;;
 Index: libjava/Makefile.am
 ===================================================================
---- libjava/Makefile.am	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libjava/Makefile.am	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- libjava/Makefile.am	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libjava/Makefile.am	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -578,6 +578,8 @@
  	RELATIVE=$$(relative $(DESTDIR)$(bindir) $(DESTDIR)$(SDK_BIN_DIR)); \
  	ln -sf $$RELATIVE/`echo gij | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'` \
@@ -101043,8 +101813,8 @@ Index: libjava/Makefile.am
  	ln -sf $$RELATIVE/`echo gjdoc | sed 's,^.*/,,;$(transform);s/$$/$(EXEEXT)/'` \
 Index: libcpp/po/ChangeLog
 ===================================================================
---- libcpp/po/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libcpp/po/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- libcpp/po/ChangeLog	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libcpp/po/ChangeLog	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -1,3 +1,7 @@
 +2009-04-22  Joseph Myers  <joseph@codesourcery.com>
 +
@@ -101055,8 +101825,8 @@ Index: libcpp/po/ChangeLog
  	* GCC 4.4.0 released.
 Index: libcpp/po/cpplib.pot
 ===================================================================
---- libcpp/po/cpplib.pot	(.../tags/gcc_4_4_0_release)	(wersja 146715)
-+++ libcpp/po/cpplib.pot	(.../branches/gcc-4_4-branch)	(wersja 146715)
+--- libcpp/po/cpplib.pot	(.../tags/gcc_4_4_0_release)	(wersja 146826)
++++ libcpp/po/cpplib.pot	(.../branches/gcc-4_4-branch)	(wersja 146826)
 @@ -8,7 +8,7 @@
  msgstr ""
  "Project-Id-Version: PACKAGE VERSION\n"
