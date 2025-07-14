@@ -94,21 +94,21 @@ Ten pakiet dodaje obsługę C++ do kompilatora gcc dla PPC.
 %prep
 %setup -q -n gcc-%{version}
 #patch100 -p0
-%patch101 -p0
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch5 -p1
-%patch4 -p1
-%patch6 -p1
-%patch7 -p0
+%patch -P101 -p0
+%patch -P0 -p1
+%patch -P1 -p1
+%patch -P2 -p1
+%patch -P3 -p1
+%patch -P5 -p1
+%patch -P4 -p1
+%patch -P6 -p1
+%patch -P7 -p0
 %if %{with qt}
-%patch8 -p1
+%patch -P8 -p1
 %endif
-%patch9 -p1
+%patch -P9 -p1
 #patch10 -p1
-%patch11 -p0
+%patch -P11 -p0
 
 mv ChangeLog ChangeLog.general
 
