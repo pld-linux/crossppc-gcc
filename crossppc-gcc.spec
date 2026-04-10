@@ -1,7 +1,3 @@
-
-%define		major_ver	4.4
-%define		minor_ver	0
-
 Summary:	Cross PPC GNU binary utility development utilities - gcc
 Summary(es.UTF-8):	Utilitarios para desarrollo de binarios de la GNU - PPC gcc
 Summary(fr.UTF-8):	Utilitaires de développement binaire de GNU - PPC gcc
@@ -9,43 +5,34 @@ Summary(pl.UTF-8):	Skrośne narzędzia programistyczne GNU dla PPC - gcc
 Summary(pt_BR.UTF-8):	Utilitários para desenvolvimento de binários da GNU - PPC gcc
 Summary(tr.UTF-8):	GNU geliştirme araçları - PPC gcc
 Name:		crossppc-gcc
-Version:	%{major_ver}.%{minor_ver}
-Release:	0.1
+Version:	15.2.0
+Release:	1
 Epoch:		1
 License:	GPL v3+
 Group:		Development/Languages
-Source0:	ftp://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.bz2
-# Source0-md5:	cf5d787bee57f38168b74d65a7c0e6fd
-Source1:	gcc-optimize-la.pl
-#Patch100:	gcc-branch.diff
-# svn diff svn://gcc.gnu.org/svn/gcc/branches/gcc-4_3-branch@145062 svn://gcc.gnu.org/svn/gcc/branches/ix86/gcc-4_3-branch > gcc-ix86-branch.diff
-# The goal of this branch is to add support for newer ix86 processors such as AMD's Barcelona and Intel's Westmere to GCC 4.3.x.
-Patch101:	gcc-ix86-branch.diff
-Patch0:		gcc-info.patch
-Patch1:		gcc-nolocalefiles.patch
-Patch2:		gcc-nodebug.patch
-Patch3:		gcc-ada-link.patch
-Patch4:		gcc-sparc64-ada_fix.patch
-Patch5:		gcc-pr14912.patch
-Patch6:		gcc-ppc64-m32-m64-multilib-only.patch
-Patch7:		gcc-libjava-multilib.patch
-Patch8:		gcc-enable-java-awt-qt.patch
-Patch9:		gcc-hash-style-gnu.patch
-Patch10:	gcc-moresparcs.patch
-Patch11:	gcc-build-id.patch
+Source0:	https://gcc.gnu.org/pub/gcc/releases/gcc-%{version}/gcc-%{version}.tar.xz
+# Source0-md5:	b861b092bf1af683c46a8aa2e689a6fd
 URL:		http://gcc.gnu.org/
-BuildRequires:	autoconf
-BuildRequires:	automake
+BuildRequires:	autoconf >= 2.64
+BuildRequires:	automake >= 1:1.11.1
 BuildRequires:	bison
-BuildRequires:	crossppc-binutils
-BuildRequires:	fileutils >= 4.0.41
-BuildRequires:	flex
-BuildRequires:	gmp-devel >= 4.1
-BuildRequires:	mpfr-devel >= 2.3.0
-BuildRequires:	rpmbuild(macros) >= 1.211
-BuildRequires:	texinfo >= 4.1
-Requires:	crossppc-binutils
+BuildRequires:	crossppc-binutils >= 2.30
+BuildRequires:	flex >= 2.5.4
+BuildRequires:	gmp-devel >= 4.3.2
+BuildRequires:	isl-devel >= 0.15
+BuildRequires:	libmpc-devel >= 0.8.1
+BuildRequires:	libstdc++-devel
+BuildRequires:	mpfr-devel >= 3.1.0
+BuildRequires:	tar >= 1:1.22
+BuildRequires:	xz
+BuildRequires:	zlib-devel
+BuildRequires:	zstd-devel
+Requires:	crossppc-binutils >= 2.30
 Requires:	gcc-dirs
+Requires:	gmp >= 4.3.2
+Requires:	isl >= 0.15
+Requires:	libmpc >= 0.8.1
+Requires:	mpfr >= 3.1.0
 ExcludeArch:	ppc
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
@@ -53,19 +40,10 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 %define		arch		%{_prefix}/%{target}
 %define		gccarch		%{_libdir}/gcc/%{target}
 %define		gcclib		%{gccarch}/%{version}
-%define		_slibdir	/%{_lib}
 
-%define		filterout	-fwrapv -fno-strict-aliasing -fsigned-char
-%define		filterout_ld	-Wl,--as-needed
-
-# used for crtbegin.o / crtend.o
-%if 0%{?debug:1}
-%define		target_cflags	%{debugcflags}
-%else
-%define		target_cflags	-O2%{!?nospecflags:%{?specflags: %{specflags}}%{?specflags_ppc: %{specflags_ppc}}}
-%endif
-
-%define		_noautostrip	.*/libgc.*\\.a
+# gcc diagnostic infrastructure legitimately uses variable format strings
+%define		filterout_c	-Werror=format-security
+%define		filterout_cxx	-Werror=format-security
 
 %description
 This package contains a cross-gcc which allows the creation of
@@ -93,101 +71,54 @@ Ten pakiet dodaje obsługę C++ do kompilatora gcc dla PPC.
 
 %prep
 %setup -q -n gcc-%{version}
-#patch100 -p0
-%patch -P101 -p0
-%patch -P0 -p1
-%patch -P1 -p1
-%patch -P2 -p1
-%patch -P3 -p1
-%patch -P5 -p1
-%patch -P4 -p1
-%patch -P6 -p1
-%patch -P7 -p0
-%if %{with qt}
-%patch -P8 -p1
-%endif
-%patch -P9 -p1
-#patch10 -p1
-%patch -P11 -p0
-
-mv ChangeLog ChangeLog.general
-
-# override snapshot version.
-echo %{version} > gcc/BASE-VER
-echo "release" > gcc/DEV-PHASE
 
 %build
-cd gcc
-#{__autoconf}
-cd ..
-cp -f /usr/share/automake/config.sub .
+rm -rf obj-%{target}
+install -d obj-%{target}
+cd obj-%{target}
 
-rm -rf builddir && install -d builddir && cd builddir
-
-CC="%{__cc}" \
-CFLAGS="%{rpmcflags}" \
-CXXFLAGS="%{rpmcxxflags}" \
-CFLAGS_FOR_TARGET="%{target_cflags}" \
-TEXCONFIG=false \
-../configure \
-	--prefix=%{_prefix} \
-	--with-local-prefix=%{_prefix}/local \
-	--libdir=%{_libdir} \
+export TEXCONFIG=false
+%define configuredir ..
+%configure \
 	--libexecdir=%{_libdir} \
-	--infodir=%{_infodir} \
-	--mandir=%{_mandir} \
-	--bindir=%{_bindir} \
 	--disable-shared \
 	--disable-threads \
 	--without-headers \
 	--enable-languages="c,c++" \
-	--disable-libgomp \
 	--enable-c99 \
 	--enable-long-long \
-	--disable-multilib \
 	--disable-nls \
-	--disable-werror \
 	--with-gnu-as \
 	--with-gnu-ld \
 	--with-demangler-in-ld \
 	--with-system-zlib \
-	--with-slibdir=%{_slibdir} \
+	--disable-multilib \
 	--without-x \
-	--with-long-double-128 \
 	--enable-secureplt \
-	--with-gxx-include-dir=%{_includedir}/c++/%{version} \
-	--disable-libstdcxx-pch \
-	--enable-__cxa_atexit \
-	--enable-libstdcxx-allocator=new \
-	--with-pkgversion="PLD-Linux" \
-	--with-bugurl="http://bugs.pld-linux.org" \
-	--target=%{target} \
-	--host=%{_target_platform} \
-	--build=%{_target_platform}
+	--with-long-double-128 \
+	--target=%{target}
 
-cd ..
-
-%{__make} -C builddir all-gcc \
-	LDFLAGS_FOR_TARGET="%{rpmldflags}"
+# serialize configure phase to avoid parallel conftest.c race
+%{__make} -j1 configure-host
+%{__make} all-gcc
 
 %install
 rm -rf $RPM_BUILD_ROOT
 
-%{__make} -C builddir install-gcc \
+%{__make} -C obj-%{target} install-gcc \
 	DESTDIR=$RPM_BUILD_ROOT
 
-install builddir/gcc/specs $RPM_BUILD_ROOT%{gcclib}
+install obj-%{target}/gcc/specs $RPM_BUILD_ROOT%{gcclib}
 
-gccdir=$RPM_BUILD_ROOT%{gcclib}
-cp $gccdir/install-tools/include/*.h $gccdir/include
-cp $gccdir/include-fixed/syslimits.h $gccdir/include
-rm -rf $gccdir/install-tools
-rm -rf $gccdir/include-fixed
+# don't want this here
+rm -f $RPM_BUILD_ROOT%{_libdir}/libiberty.a
 
-#%if 0%{!?debug:1}
-#%{target}-strip -g -R.note -R.comment $RPM_BUILD_ROOT%{gcclib}/libgcc.a
-#%{target}-strip -g -R.note -R.comment $RPM_BUILD_ROOT%{gcclib}/libgcov.a
-#%endif
+# include/ contains install-tools/include/* and headers that were fixed up
+# by fixincludes, we don't want former
+gccdir=$(echo $RPM_BUILD_ROOT%{_libdir}/gcc/*/*/)
+cp -f	$gccdir/install-tools/include/*.h $gccdir/include
+# but we don't want anything more from install-tools
+rm -rf	$gccdir/install-tools
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -196,23 +127,34 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %attr(755,root,root) %{_bindir}/%{target}-cpp
 %attr(755,root,root) %{_bindir}/%{target}-gcc
-%attr(755,root,root) %{_bindir}/%{target}-gccbug
+%attr(755,root,root) %{_bindir}/%{target}-gcc-%{version}
+%attr(755,root,root) %{_bindir}/%{target}-gcc-ar
+%attr(755,root,root) %{_bindir}/%{target}-gcc-nm
+%attr(755,root,root) %{_bindir}/%{target}-gcc-ranlib
 %attr(755,root,root) %{_bindir}/%{target}-gcov
+%attr(755,root,root) %{_bindir}/%{target}-gcov-dump
+%attr(755,root,root) %{_bindir}/%{target}-gcov-tool
+%attr(755,root,root) %{_bindir}/%{target}-lto-dump
 %dir %{gccarch}
 %dir %{gcclib}
 %attr(755,root,root) %{gcclib}/cc1
 %attr(755,root,root) %{gcclib}/collect2
-#%{gcclib}/*crt*.o
-#%{gcclib}/libgcc.a
-%{gcclib}/specs
+%attr(755,root,root) %{gcclib}/lto-wrapper
+%attr(755,root,root) %{gcclib}/lto1
+%attr(755,root,root) %{gcclib}/liblto_plugin.so*
+%{gcclib}/specs*
 %dir %{gcclib}/include
 %{gcclib}/include/*.h
 %{_mandir}/man1/%{target}-cpp.1*
 %{_mandir}/man1/%{target}-gcc.1*
 %{_mandir}/man1/%{target}-gcov.1*
+%{_mandir}/man1/%{target}-gcov-dump.1*
+%{_mandir}/man1/%{target}-gcov-tool.1*
+%{_mandir}/man1/%{target}-lto-dump.1*
 
 %files c++
 %defattr(644,root,root,755)
+%attr(755,root,root) %{_bindir}/%{target}-c++
 %attr(755,root,root) %{_bindir}/%{target}-g++
 %attr(755,root,root) %{gcclib}/cc1plus
 %{_mandir}/man1/%{target}-g++.1*
